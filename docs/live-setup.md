@@ -10,6 +10,7 @@
    Public repositories need no token. Private repositories need a token with
    repository read access. Anonymous requests have GitHub's lower rate limit.
 5. Save and **Check repository access**.
+   You can save and check GitHub before adding AI access.
 6. Ask **Explain my code**. AiMate reads repository files through scoped API
    tools, streams the model's answer, and shows source links.
 
@@ -31,6 +32,7 @@ browser cookie, or copied session token should be entered as an API key.
 - [ChatGPT Go](https://help.openai.com/en/articles/11989085-what-is-chatgpt-go)
 - [Plan usage in participating apps](https://help.openai.com/en/articles/20001542-using-your-chatgpt-plan-in-other-apps-and-sites)
 - [Open-source integration](https://developers.openai.com/siwc/token-sharing-open-source)
+- [Sign-in quickstart and eligibility](https://developers.openai.com/siwc/quickstart)
 
 ## Host a private, single-owner workspace
 

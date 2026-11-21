@@ -195,6 +195,19 @@ class WorkflowTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             service.section("github")
 
+    def test_github_can_be_configured_and_checked_before_ai(self):
+        config = fixture_config()
+        config["ai"] = {"provider": "anthropic", "model": "", "clear_token": True}
+        config["github"] = {"url": "https://api.github.com", "repos": ["team/repo"], "clear_token": True}
+        saved = self.client.put("/api/settings", json=config, headers=self.csrf)
+        self.assertEqual(saved.status_code, 200)
+        self.assertFalse(saved.json()["config"]["ai"]["api_key_configured"])
+        checked = self.client.post("/api/connections/github/test", headers=self.csrf)
+        self.assertEqual(checked.status_code, 200)
+        self.assertTrue(checked.json()["ok"])
+        self.assertEqual(checked.json()["targets"], [{"target": "team/repo", "ok": True}])
+        self.assertNotIn("authorization", self.requests[-1].headers)
+
     def test_tokens_encrypted_and_not_returned(self):
         raw = (Path(self.directory.name) / "app.sqlite3").read_bytes()
         self.assertNotIn(b"github-private-token", raw)
