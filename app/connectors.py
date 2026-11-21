@@ -16,7 +16,8 @@ OPERATIONS = {
     "jenkins": ["build_job", "abort_build"],
 }
 SECRET_KEYS = {"token", "api_key", "password", "authorization", "access_token", "secret",
-               "client_secret", "private_key", "aws_secret_access_key", "refresh_token", "id_token"}
+               "client_secret", "private_key", "aws_secret_access_key", "refresh_token", "id_token",
+               "aws_access_key", "aws_secret_key", "aws_session_token"}
 
 
 def scrub(value, config):
@@ -110,7 +111,11 @@ class Services:
             async with client.stream(method, base + path, params=params, json=body, data=form, headers=headers) as r:
                 if r.status_code >= 300:
                     # Do not echo response bodies: provider errors can contain credentials.
-                    raise ValueError(f"{service}: HTTP {r.status_code}; check token rights and target")
+                    hint = {401: "token is invalid or expired",
+                            403: "check token permissions, organization SSO approval and service access",
+                            404: "target was not found or your token cannot see it",
+                            429: "service rate limit reached; retry later"}.get(r.status_code, "check service availability and target")
+                    raise ValueError(f"{service}: HTTP {r.status_code}; {hint}")
                 data, capped = bytearray(), False
                 async for chunk in r.aiter_bytes():
                     remaining = 2_000_000 - len(data)

@@ -1,5 +1,6 @@
 """Claude tool loop with streamed answers and persisted, user-confirmed proposals."""
 import json
+import os
 import secrets
 import time
 
@@ -86,12 +87,42 @@ def ai_client(config):
         if not ai.get("region"):
             raise ValueError("Set your AWS region")
         kwargs = {"aws_region": ai["region"], "timeout": 90, "max_retries": 1}
-        if ai.get("api_key"):
+        if ai.get("bedrock_endpoint", "runtime") == "mantle":
+            if not ai.get("api_key"):
+                raise ValueError("Add your Bedrock bearer key for Mantle")
+            return anthropic.AsyncAnthropic(
+                api_key=ai["api_key"],
+                base_url=f"https://bedrock-mantle.{ai['region']}.api.aws/anthropic",
+                timeout=90, max_retries=1)
+        if ai.get("bedrock_auth", "bearer") == "bearer":
+            if not ai.get("api_key"):
+                raise ValueError("Add your Bedrock API key, or choose AWS credentials")
             kwargs["api_key"] = ai["api_key"]
+        else:
+            # Explicit credentials take precedence; otherwise the SDK uses the AWS credential chain.
+            if os.environ.get("AWS_BEARER_TOKEN_BEDROCK"):
+                raise ValueError("AWS_BEARER_TOKEN_BEDROCK is set on the server. Choose bearer authentication or unset it before using AWS credentials.")
+            for key in ("aws_access_key", "aws_secret_key", "aws_session_token"):
+                if ai.get(key):
+                    kwargs[key] = ai[key]
         return anthropic.AsyncAnthropicBedrock(**kwargs)
     if not ai.get("api_key"):
         raise ValueError("Add your Anthropic API key in Settings")
     return anthropic.AsyncAnthropic(api_key=ai["api_key"], timeout=90, max_retries=1)
+
+
+def ai_error(exc):
+    """Useful diagnostics without returning provider bodies or credential-bearing exceptions."""
+    if isinstance(exc, ValueError):
+        return str(exc)
+    status = getattr(exc, "status_code", None)
+    return {
+        400: "AI rejected the request. Check the model ID, inference profile and selected Bedrock endpoint.",
+        401: "AI credentials are invalid or expired. Update the saved key or AWS session.",
+        403: "AI access denied. Check AWS IAM invocation permissions, bearer-key permission and model access.",
+        404: "AI model was not found. Check the exact model ID and AWS region.",
+        429: "AI quota or rate limit reached. Wait before retrying.",
+    }.get(status, "AI connection failed. Check credentials, AWS session expiry, region and network connectivity.")
 
 
 def public_action(row):

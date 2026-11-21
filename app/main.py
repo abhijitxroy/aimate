@@ -15,7 +15,7 @@ from fastapi.responses import FileResponse, StreamingResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from app.agent import ai_client, public_action, run_turn
+from app.agent import ai_client, ai_error, public_action, run_turn
 from app.connectors import Services, plan_fingerprint, scrub, valid_base
 from app.store import Store
 from app.validation import validate_config
@@ -221,15 +221,17 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
                 if cfg.get("ai", {}).get("model") not in {m["slug"] for m in models}:
                     raise ValueError("Choose an available ChatGPT model and save")
                 return {"ok": True, "message": "ChatGPT plan access and model catalog verified; no inference was requested"}
-            client = client_factory(cfg)
+            client = None
             try:
+                client = client_factory(cfg)
                 message = await client.messages.create(model=cfg["ai"]["model"], max_tokens=16,
                                                        messages=[{"role": "user", "content": "Reply OK."}])
                 return {"ok": True, "message": "AI responded", "model": message.model}
-            except Exception:
-                raise HTTPException(400, "AI connection failed; check provider, model ID, region and credentials") from None
+            except Exception as exc:
+                raise HTTPException(400, ai_error(exc)) from None
             finally:
-                await client.close()
+                if client is not None:
+                    await client.close()
         try:
             section = services.section(service)
             targets = section.get({"github": "repos", "jira": "projects", "jenkins": "jobs"}[service], [])
@@ -295,7 +297,7 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
             except asyncio.CancelledError:
                 raise
             except Exception as exc:
-                message = str(exc) if isinstance(exc, ValueError) else "AI request failed. Check Settings, model access and network connectivity."
+                message = ai_error(exc)
                 yield "data: " + json.dumps({"event": "error", "message": scrub(message, store.config())}) + "\n\n"
             finally:
                 lock.release()

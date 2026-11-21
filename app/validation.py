@@ -83,7 +83,8 @@ def validate_config(raw, old):
         raise ValueError("Settings must be an object")
     out = {"allow_writes": bool(raw.get("allow_writes"))}
     allowed_fields = {
-        "ai": {"provider", "model", "region", "api_key"},
+        "ai": {"provider", "model", "region", "api_key", "bedrock_auth", "bedrock_endpoint",
+               "aws_access_key", "aws_secret_key", "aws_session_token"},
         "github": {"url", "repos", "token"},
         "jira": {"url", "projects", "auth", "username", "api_version", "token"},
         "jenkins": {"url", "jobs", "username", "token"},
@@ -95,7 +96,12 @@ def validate_config(raw, old):
         out[name] = {k: v for k, v in section.items() if k in fields}
         secret = "api_key" if name == "ai" else "token"
         if not out[name].get(secret):
-            out[name][secret] = "" if section.get("clear_token") else old.get(name, {}).get(secret, "")
+            changed_provider = name == "ai" and section.get("provider") != old.get(name, {}).get("provider")
+            out[name][secret] = "" if section.get("clear_token") or changed_provider else old.get(name, {}).get(secret, "")
+        if name == "ai":
+            for key in ("aws_access_key", "aws_secret_key", "aws_session_token"):
+                if not out[name].get(key):
+                    out[name][key] = "" if section.get("clear_aws") else old.get(name, {}).get(key, "")
         for key, value in out[name].items():
             if key not in {"repos", "projects", "jobs"} and (not isinstance(value, str) or len(value) > 20_000):
                 raise ValueError("Connection fields must be strings")
@@ -105,6 +111,17 @@ def validate_config(raw, old):
             raise ValueError(f"Add the {name} URL")
     if out["ai"].get("provider", "anthropic") not in {"anthropic", "bedrock", "chatgpt"}:
         raise ValueError("Choose ChatGPT, Anthropic or Bedrock")
+    ai = out["ai"]
+    if ai.get("bedrock_auth", "bearer") not in {"bearer", "iam"}:
+        raise ValueError("Choose a Bedrock API key or AWS credentials")
+    if ai.get("bedrock_endpoint", "runtime") not in {"runtime", "mantle"}:
+        raise ValueError("Choose Bedrock Runtime or Mantle")
+    if ai.get("region") and not re.fullmatch(r"[a-z]{2}(?:-[a-z0-9]+)+-\d+", ai["region"]):
+        raise ValueError("Use an AWS region such as us-east-1")
+    if bool(ai.get("aws_access_key")) != bool(ai.get("aws_secret_key")):
+        raise ValueError("Add both the AWS access key ID and secret access key, or remove saved AWS credentials")
+    if ai.get("provider") == "bedrock" and ai.get("bedrock_endpoint") == "mantle" and ai.get("bedrock_auth") == "iam":
+        raise ValueError("Use a Bedrock bearer key with Mantle in this app")
     if out["jira"].get("auth", "bearer") not in {"basic", "bearer"}:
         raise ValueError("Choose Jira basic or bearer authentication")
     if out["jira"].get("api_version", "2") not in {"2", "3"}:

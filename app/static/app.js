@@ -2,10 +2,14 @@ const $ = selector => document.querySelector(selector);
 let csrf = "", config = {}, cid = null, controller = null, busy = false;
 let demo = false;
 let chatgpt = {}, modelLoad = 0;
+let settingsDirty = false;
+const aiSecretFields = ["api_key", "aws_access_key", "aws_secret_key", "aws_session_token"];
 
 function aiReady() {
   return Boolean(config.ai?.model && (config.ai.provider === "chatgpt"
-    ? chatgpt.plan_enabled : config.ai.api_key_configured || config.ai.provider === "bedrock"));
+    ? chatgpt.plan_enabled : config.ai.provider === "bedrock"
+      ? config.ai.region && (config.ai.bedrock_auth === "iam" || config.ai.api_key_configured)
+      : config.ai.api_key_configured));
 }
 
 async function api(path, options = {}) {
@@ -52,10 +56,10 @@ async function refreshState() {
     if (["jira", "jenkins"].includes(key) && !config[key]?.token_configured) continue;
     bar.append(sourceBadge(demo ? `${label} (sample)` : label, Boolean(config[key]?.token_configured || publicGitHub)));
   }
-  bar.append(sourceBadge(demo ? "Scripted demo" : config.ai?.provider === "chatgpt" ? "ChatGPT" : "AI", demo || aiReady()));
-  const ready = aiReady() && config.github?.repos?.length;
+  bar.append(sourceBadge(demo ? "Scripted demo" : config.ai?.provider === "chatgpt" ? "ChatGPT" : config.ai?.provider === "bedrock" ? "Claude · Bedrock" : "Claude", demo || aiReady()));
+  const ready = aiReady() && (config.github?.repos?.length || config.jira?.projects?.length || config.jenkins?.jobs?.length);
   $("#setupHint").hidden = Boolean(demo || ready);
-  $("#setupHint").textContent = "Connect AI + GitHub to start →";
+  $("#setupHint").textContent = "Connect AI + your project sources →";
   $("#setupHint").onclick = openSettings;
   const nav = $("#conversations");
   nav.replaceChildren();
@@ -292,6 +296,7 @@ async function ask(question) {
 }
 
 function openSettings() {
+  settingsDirty = false;
   const form = $("#settingsForm");
   for (const input of form.elements) input.disabled = demo;
   form.reset();
@@ -299,12 +304,12 @@ function openSettings() {
     if (!input.name) continue;
     const [section, key] = input.name.split(".");
     if (input.name === "allow_writes") { input.checked = Boolean(config.allow_writes); continue; }
-    if (key === "token" || key === "api_key") {
+    if (key === "token" || aiSecretFields.includes(key)) {
       input.value = "";
       input.placeholder = config[section]?.[key + "_configured"] ? "Saved · leave blank to keep" : "Enter your token/key";
       continue;
     }
-    if (key === "clear_token") { input.checked = false; continue; }
+    if (key === "clear_token" || key === "clear_aws") { input.checked = false; continue; }
     const value = config[section]?.[key];
     if (value !== undefined) input.value = Array.isArray(value) ? value.join("\n") : value;
   }
@@ -317,12 +322,19 @@ function openSettings() {
 
 async function updateProvider() {
   const form = $("#settingsForm"), selected = form.elements["ai.provider"].value === "chatgpt";
+  if (!selected) {
+    const sameProvider = form.elements["ai.provider"].value === config.ai?.provider;
+    form.elements["ai.model"].value = sameProvider ? config.ai?.model || "" : "";
+    form.elements["ai.api_key"].placeholder = sameProvider && config.ai?.api_key_configured
+      ? "Saved · leave blank to keep" : "Enter this provider's key";
+  }
   const generation = ++modelLoad;
   $("#chatgptConnection").hidden = !selected;
   $("#chatgptModelLabel").hidden = !selected;
   $("#apiModelLabel").hidden = selected;
   $("#apiCredentials").hidden = selected;
   $("#removeAIKey").hidden = selected;
+  updateBedrock();
   $("#testAIButton").textContent = selected ? "Check plan access" : "Test AI · small billable request";
   if (!selected) return;
   const accounts = $("#chatgptAccount");
@@ -364,6 +376,20 @@ async function updateProvider() {
   }
 }
 $("#settingsForm").elements["ai.provider"].onchange = updateProvider;
+function updateBedrock() {
+  const form = $("#settingsForm");
+  const bedrock = form.elements["ai.provider"].value === "bedrock";
+  const iam = bedrock && form.elements["ai.bedrock_auth"].value === "iam";
+  $("#bedrockSettings").hidden = !bedrock;
+  $("#awsCredentials").hidden = !iam;
+  $("#aiKeyLabel").hidden = iam;
+  $("#removeAIKey").hidden = iam || form.elements["ai.provider"].value === "chatgpt";
+  form.elements["ai.bedrock_endpoint"].querySelector('[value="mantle"]').disabled = iam;
+  if (iam) form.elements["ai.bedrock_endpoint"].value = "runtime";
+}
+$("#settingsForm").elements["ai.bedrock_auth"].onchange = updateBedrock;
+$("#settingsForm").addEventListener("input", () => { settingsDirty = true; });
+$("#settingsForm").addEventListener("change", () => { settingsDirty = true; });
 $("#connectChatGPT").onclick = async () => {
   $("#connectChatGPT").disabled = true;
   try {
@@ -450,8 +476,10 @@ $("#settingsForm").onsubmit = async event => {
   try {
     await api("/api/settings", {method: "PUT", body: JSON.stringify(data)});
     await refreshState();
+    settingsDirty = false;
+    for (const key of aiSecretFields) event.target.elements[`ai.${key}`].value = "";
     for (const name of ["ai", "github", "jira", "jenkins"]) {
-      event.target.elements[`${name}.${name === "ai" ? "api_key" : "token"}`].value = "";
+      if (name !== "ai") event.target.elements[`${name}.token`].value = "";
       $(`#test-${name}`).textContent = "";
     }
     $("#settingsStatus").textContent = "Saved. Test each connection, then close to start.";
@@ -460,6 +488,7 @@ $("#settingsForm").onsubmit = async event => {
 document.querySelectorAll("[data-test]").forEach(button => {
   button.onclick = async () => {
     const target = $(`#test-${button.dataset.test}`);
+    if (settingsDirty) { target.textContent = "Save connections first to test these settings."; return; }
     button.disabled = true; target.textContent = "Checking…";
     try {
       const result = await api(`/api/connections/${button.dataset.test}/test`, {method: "POST"});

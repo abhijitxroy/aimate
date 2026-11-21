@@ -119,7 +119,7 @@ Open **Connections & settings** and add:
 
 | Connection | Required setup |
 |---|---|
-| AI | Local ChatGPT account sign-in + an available model; alternatively Anthropic API key + model ID, or Bedrock Runtime + model/inference-profile ID + AWS region and credentials. |
+| AI | Local ChatGPT account + an available model; Anthropic API key + model ID; or Claude through Bedrock with region, model ID and bearer key / AWS credentials. Runtime and Mantle endpoints are supported. |
 | GitHub | `https://api.github.com` + `OWNER/REPO` entries; public reads need no token. Private reads and writes need a PAT. Enterprise API bases require a token. |
 | Jira Data Center | HTTPS site URL, bearer PAT, API version 2, project keys. |
 | Jira Cloud | HTTPS site URL, email + API token using Basic auth, API version 3, project keys. |

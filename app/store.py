@@ -71,7 +71,7 @@ class Store:
         for section in config.values():
             if isinstance(section, dict):
                 for key in list(section):
-                    if key in {"token", "api_key"}:
+                    if key in {"token", "api_key", "aws_access_key", "aws_secret_key", "aws_session_token"}:
                         section[key + "_configured"] = bool(section.pop(key))
         config.pop("_version", None)
         return config

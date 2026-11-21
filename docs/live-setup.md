@@ -77,3 +77,35 @@ that owner's connections and history. A public multi-user product still needs
 per-user accounts, credential isolation and durable session/rate-limit storage.
 
 No remote deployment has been provisioned by these configuration files.
+
+## GitHub + Jira + Claude through Bedrock
+
+In **Connections & settings**:
+
+1. Choose **AWS Bedrock Runtime**, enter the AWS region and exact Claude model
+   or inference-profile ID from your AWS account.
+2. Select **Bedrock API key** and enter your bearer key. For models served by
+   the native Messages endpoint, select **Bedrock Mantle** and its model ID.
+   Alternatively, select **AWS credentials / server role** for Runtime:
+   enter the access key ID and secret access key, plus the session token for
+   temporary credentials. With no saved AWS credentials, the SDK uses the
+   server's AWS credential chain. Remove saved AWS credentials to return to it.
+3. Add your GitHub PAT and repository names. The PAT must cover those repositories;
+   organization SSO may require approval. Reading private code needs Contents
+   access; the actions you request need corresponding Issues, Pull requests
+   or Contents write permissions.
+4. Add your Jira URL, PAT and project keys. Data Center uses bearer authentication
+   and API 2; Cloud uses email + API token, Basic authentication and API 3.
+5. Save, then check AI, repository and project access. The AI check is a small
+   billable inference request. Service checks verify reads, not every write
+   permission. Ask “Compare open Jira issues with my GitHub pull requests.”
+6. Enable change proposals when needed. Review and confirm each proposed change.
+
+Keys are stored encrypted by the backend and omitted from AI context. Enter
+them only in Settings. The assistant supports the operations listed in the
+README; it does not gain every service API operation by adding a token.
+AWS IAM, model availability, token permissions and API quotas still apply.
+
+References: [AWS bearer-key permissions](https://docs.aws.amazon.com/bedrock/latest/userguide/api-keys-permissions.html),
+[Claude on Bedrock Runtime](https://platform.claude.com/docs/en/build-with-claude/claude-on-amazon-bedrock-legacy),
+[Claude on Bedrock Mantle](https://platform.claude.com/docs/en/build-with-claude/claude-in-amazon-bedrock).
