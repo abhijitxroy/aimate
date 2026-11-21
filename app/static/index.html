@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Project AI — your engineering workspace</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <section id="loginScreen" class="login-screen">
+    <div class="login-card">
+      <div class="brand-mark">P<span>·</span></div>
+      <p class="eyebrow">YOUR ENGINEERING WORKSPACE</p>
+      <h1>One conversation.<br>All your project context.</h1>
+      <p class="muted">Connect your repositories, issues and builds. Ask questions, investigate failures, and review changes before they run.</p>
+      <form id="loginForm">
+        <label>Local app password<input id="password" type="password" autocomplete="current-password" required></label>
+        <button class="primary" type="submit">Open workspace <span>→</span></button>
+      </form>
+      <p id="loginError" class="error" role="alert"></p>
+      <p class="hint">Your password is in <code>.data/access-password.txt</code> inside the app folder, unless you set APP_PASSWORD.</p>
+    </div>
+  </section>
+
+  <div id="workspace" class="workspace" hidden>
+    <aside class="sidebar">
+      <div class="brand"><div class="brand-mark small">P<span>·</span></div><div>Project AI<small>ENGINEERING ASSISTANT</small></div></div>
+      <button id="newChat" class="new-chat">＋ New conversation</button>
+      <p class="eyebrow section-label">CONVERSATIONS</p>
+      <nav id="conversations" aria-label="Conversations"></nav>
+      <div class="sidebar-bottom">
+        <button id="openSettings">⚙ Connections & settings</button>
+        <button id="openAudit">↗ Action history</button>
+        <button id="logout">Sign out</button>
+        <div class="local-label"><i></i> Local, single-user workspace</div>
+      </div>
+    </aside>
+    <main>
+      <header><div><p class="eyebrow">PROJECT WORKSPACE</p><h2 id="chatTitle">Ask your project</h2></div><div class="header-controls"><span id="writeBadge" class="badge">Read mode</span><button id="headerSettings" aria-label="Open connections and settings">⚙</button></div></header>
+      <div class="source-bar" id="sourceBar"></div>
+      <section id="welcome" class="welcome">
+        <div class="welcome-icon">✳</div>
+        <p class="eyebrow">FROM CONTEXT TO ACTION</p>
+        <h1>What are we working on?</h1>
+        <p class="muted">Find the issue. Read the code. Understand the build.<br>Then review the next step, together.</p>
+        <div class="suggestions">
+          <button data-question="Show the open issues and pull requests in my configured repositories. What needs attention?"><span>01 / EXPLORE</span><b>What needs attention?</b><small>Issues and pull requests across your repos →</small></button>
+          <button data-question="Inspect the last completed build of my configured Jenkins jobs. Explain any failures and cite the relevant log evidence."><span>02 / INVESTIGATE</span><b>Why did the build fail?</b><small>Read stages, logs and related changes →</small></button>
+          <button data-question="List recently updated unresolved issues in my Jira projects and look for related pull requests in my repositories."><span>03 / CONNECT</span><b>Connect issues to code</b><small>Match Jira work to GitHub changes →</small></button>
+        </div>
+        <p id="setupHint" class="setup-hint">Start by adding your API connections in Settings.</p>
+      </section>
+      <section id="messages" class="messages" aria-live="polite"></section>
+      <footer class="composer-wrap">
+        <div id="activity" class="activity" role="status"></div>
+        <form id="chatForm" class="composer">
+          <textarea id="question" rows="2" maxlength="30000" placeholder="Ask about your project, or paste a log excerpt…" aria-label="Your question" required></textarea>
+          <div class="composer-bottom"><span>Sources checked · Changes reviewed</span><button id="send" class="primary" type="submit">Ask <span>↑</span></button><button id="stop" type="button" hidden>Stop</button></div>
+        </form>
+        <p class="footnote">The assistant uses your configured scope and token permissions. Review its evidence and proposed changes.</p>
+      </footer>
+    </main>
+  </div>
+
+  <dialog id="settingsDialog">
+    <div class="dialog-head"><div><p class="eyebrow">MAKE IT YOURS</p><h2>Connections & settings</h2></div><button class="close" data-close="settingsDialog" aria-label="Close settings">×</button></div>
+    <p class="muted">Tokens are stored encrypted on this server. Leave a token blank to keep it. Save settings before testing.</p>
+    <form id="settingsForm">
+      <fieldset><legend><span class="dot violet"></span> AI provider</legend>
+        <div class="fields two"><label>Provider<select name="ai.provider"><option value="anthropic">Anthropic API</option><option value="bedrock">AWS Bedrock Runtime</option></select></label><label>Exact model / inference profile ID<input name="ai.model" placeholder="Model ID available to your account" required></label></div>
+        <div class="fields two"><label>API key / Bedrock bearer key<input name="ai.api_key" type="password" autocomplete="off" placeholder="Leave blank to keep saved key"></label><label>AWS region (Bedrock)<input name="ai.region" placeholder="e.g. us-east-1"></label></div>
+        <div class="test-row"><label class="check"><input name="ai.clear_token" type="checkbox">Remove saved AI key</label><button type="button" data-test="ai">Test AI · small billable request</button><span id="test-ai"></span></div>
+      </fieldset>
+      <fieldset><legend><span class="dot"></span> GitHub</legend>
+        <div class="fields two"><label>API base URL<input name="github.url" placeholder="https://api.github.com"></label><label>Personal access token<input name="github.token" type="password" autocomplete="off" placeholder="Leave blank to keep saved token"></label></div>
+        <label>Repositories · one OWNER/REPO per line<textarea name="github.repos" rows="3" placeholder="your-team/your-repo"></textarea></label>
+        <p class="hint">Enterprise example: https://github.company.com/api/v3. The token must have access to each added repository.</p>
+        <div class="test-row"><label class="check"><input name="github.clear_token" type="checkbox">Remove saved token</label><button type="button" data-test="github">Check repository access</button><span id="test-github"></span></div>
+      </fieldset>
+      <fieldset><legend><span class="dot amber"></span> Jira</legend>
+        <div class="fields two"><label>Site URL<input name="jira.url" placeholder="https://your-team.atlassian.net"></label><label>API token / personal access token<input name="jira.token" type="password" autocomplete="off" placeholder="Leave blank to keep saved token"></label></div>
+        <div class="fields three"><label>Authentication<select name="jira.auth"><option value="bearer">Bearer · Data Center PAT</option><option value="basic">Basic · email + Cloud token</option></select></label><label>Username / email<input name="jira.username" autocomplete="off"></label><label>API version<select name="jira.api_version"><option value="2">2 · Data Center</option><option value="3">3 · Cloud</option></select></label></div>
+        <label>Project keys · one per line<textarea name="jira.projects" rows="2" placeholder="DEMO"></textarea></label>
+        <div class="test-row"><label class="check"><input name="jira.clear_token" type="checkbox">Remove saved token</label><button type="button" data-test="jira">Check project access</button><span id="test-jira"></span></div>
+      </fieldset>
+      <fieldset><legend><span class="dot blue"></span> Jenkins</legend>
+        <div class="fields two"><label>Controller URL<input name="jenkins.url" placeholder="https://jenkins.company.com"></label><label>Username<input name="jenkins.username" autocomplete="off"></label></div>
+        <label>API token<input name="jenkins.token" type="password" autocomplete="off" placeholder="Leave blank to keep saved token"></label>
+        <label>Job names · one per line; use folder/job for nested jobs<textarea name="jenkins.jobs" rows="2" placeholder="team/build"></textarea></label>
+        <div class="test-row"><label class="check"><input name="jenkins.clear_token" type="checkbox">Remove saved token</label><button type="button" data-test="jenkins">Check job access</button><span id="test-jenkins"></span></div>
+      </fieldset>
+      <fieldset class="write-setting"><legend>Change proposals</legend><label class="check"><input name="allow_writes" type="checkbox">Allow the assistant to prepare changes</label><p class="hint">Every change still requires Confirm. File edits use a working branch; pull requests start as drafts. Proposals expire after 30 minutes.</p></fieldset>
+      <div class="dialog-footer"><span id="settingsStatus" role="status"></span><button class="primary" type="submit">Save connections</button></div>
+    </form>
+  </dialog>
+  <dialog id="auditDialog"><div class="dialog-head"><h2>Action history</h2><button class="close" data-close="auditDialog" aria-label="Close history">×</button></div><pre id="auditContent"></pre></dialog>
+</body>
+</html>

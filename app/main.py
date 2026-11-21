@@ -1,0 +1,238 @@
+import asyncio
+import hmac
+import json
+import re
+import secrets
+import time
+from pathlib import Path
+from urllib.parse import urlsplit
+
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
+from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+
+from app.agent import ai_client, public_action, run_turn
+from app.connectors import Services, plan_fingerprint, scrub, valid_base
+from app.store import Store
+from app.validation import validate_config
+
+
+
+
+def create_app(store=None, services_factory=Services, client_factory=ai_client):
+    store = store or Store()
+    app = FastAPI(title="Project AI", docs_url=None, redoc_url=None)
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost", "[::1]", "testserver"])
+    app.state.store = store
+    sessions, attempts, chat_limits, chat_locks = {}, {}, {}, {}
+    config_lock = asyncio.Lock()
+    # A process dying during a write leaves its outcome uncertain; never auto-replay it.
+    store.execute("UPDATE actions SET status='unknown' WHERE status='executing'")
+    static = Path(__file__).parent / "static"
+
+    @app.middleware("http")
+    async def browser_boundary(request, call_next):
+        origin = request.headers.get("origin")
+        if origin:
+            parsed = urlsplit(origin)
+            host = request.headers.get("host", "")
+            if parsed.scheme != "http" or parsed.netloc != host:
+                return Response("Cross-origin requests are refused", status_code=403)
+        if request.headers.get("sec-fetch-site") == "cross-site":
+            return Response("Cross-site requests are refused", status_code=403)
+        if request.headers.get("content-length", "0").isdigit() and int(request.headers.get("content-length", "0")) > 250_000:
+            return Response("Request too large", status_code=413)
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; "
+            "img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
+        response.headers["Cache-Control"] = "no-store"
+        return response
+
+    def auth(request: Request):
+        token = request.cookies.get("project_session", "")
+        session = sessions.get(token)
+        if not session or time.time() - session["created"] > 12 * 3600:
+            sessions.pop(token, None)
+            raise HTTPException(401, "Sign in first")
+        if request.method not in {"GET", "HEAD"} and not hmac.compare_digest(
+                request.headers.get("x-csrf-token", "").encode(), session["csrf"].encode()):
+            raise HTTPException(403, "Refresh the page and retry (CSRF token)")
+        return session
+
+    @app.exception_handler(ValueError)
+    async def bad_input(request, exc):
+        return Response(json.dumps({"detail": str(exc)}), status_code=400, media_type="application/json")
+
+    @app.get("/")
+    def index():
+        return FileResponse(static / "index.html")
+
+    @app.post("/api/login")
+    async def login(request: Request, response: Response):
+        ip = request.client.host if request.client else "local"
+        now = time.time()
+        recent = [t for t in attempts.get(ip, []) if now - t < 60]
+        if len(recent) >= 8:
+            raise HTTPException(429, "Too many attempts; wait one minute")
+        attempts[ip] = recent + [now]
+        body = await request.json()
+        password = body.get("password", "") if isinstance(body, dict) else ""
+        if not isinstance(password, str) or not hmac.compare_digest(password.encode(), store.password.encode()):
+            raise HTTPException(401, "Incorrect local app password")
+        token, csrf = secrets.token_urlsafe(32), secrets.token_urlsafe(32)
+        sessions[token] = {"csrf": csrf, "created": now, "token": token}
+        response.set_cookie("project_session", token, httponly=True, samesite="strict", max_age=12 * 3600, path="/")
+        return {"csrf": csrf}
+
+    @app.post("/api/logout")
+    def logout(response: Response, session=Depends(auth)):
+        sessions.pop(session["token"], None)
+        response.delete_cookie("project_session")
+        return {"ok": True}
+
+    @app.get("/api/state")
+    def state(session=Depends(auth)):
+        return {"csrf": session["csrf"], "config": store.public_config(),
+                "conversations": store.rows("SELECT * FROM conversations ORDER BY created DESC")}
+
+    @app.put("/api/settings")
+    async def settings(request: Request, session=Depends(auth)):
+        async with config_lock:
+            config = validate_config(await request.json(), store.config())
+            store.save_config(config)
+        return {"config": store.public_config()}
+
+    @app.post("/api/connections/{service}/test")
+    async def connection_test(service: str, session=Depends(auth)):
+        cfg = store.config()
+        services = services_factory(cfg)
+        if service == "ai":
+            client = client_factory(cfg)
+            try:
+                message = await client.messages.create(model=cfg["ai"]["model"], max_tokens=16,
+                                                       messages=[{"role": "user", "content": "Reply OK."}])
+                return {"ok": True, "message": "AI responded", "model": message.model}
+            except Exception:
+                raise HTTPException(400, "AI connection failed; check provider, model ID, region and credentials") from None
+            finally:
+                await client.close()
+        try:
+            section = services.section(service)
+            targets = section.get({"github": "repos", "jira": "projects", "jenkins": "jobs"}[service], [])
+            results = []
+            for target in targets:
+                try:
+                    if service == "github":
+                        path = "/repos/" + target
+                    elif service == "jira":
+                        path = "/rest/api/" + section.get("api_version", "2") + "/project/" + target
+                    else:
+                        path = services.job_path(target) + "/api/json"
+                    await services.read(service, path)
+                    results.append({"target": target, "ok": True})
+                except Exception as exc:
+                    results.append({"target": target, "ok": False, "message": str(exc) if isinstance(exc, ValueError) else "Connection failed"})
+            return {"ok": bool(results) and all(r["ok"] for r in results), "targets": results}
+        except (ValueError, KeyError) as exc:
+            raise HTTPException(400, str(exc)) from None
+
+    @app.post("/api/conversations")
+    def create_conversation(session=Depends(auth)):
+        return {"id": store.new_conversation()}
+
+    @app.get("/api/conversations/{cid}")
+    def conversation(cid: str, session=Depends(auth)):
+        store.require_conversation(cid)
+        turns = store.rows("SELECT messages,created FROM turns WHERE conversation=? ORDER BY id", (cid,))
+        return {"id": cid, "turns": [{"messages": json.loads(t["messages"]), "created": t["created"]} for t in turns],
+                "actions": [public_action(store.action(r["id"])) for r in store.rows("SELECT id FROM actions WHERE conversation=? ORDER BY created", (cid,))]}
+
+    @app.post("/api/chat")
+    async def chat(request: Request, session=Depends(auth)):
+        body = await request.json()
+        if not isinstance(body, dict):
+            raise ValueError("Expected a question object")
+        cid, question = body.get("conversation"), body.get("question")
+        store.require_conversation(cid)
+        if not isinstance(question, str) or not question.strip() or len(question) > 30_000:
+            raise ValueError("Question must have 1–30,000 characters")
+        now = time.time()
+        recent = [t for t in chat_limits.get(session["token"], []) if now - t < 60]
+        if len(recent) >= 10:
+            raise HTTPException(429, "At most 10 questions per minute")
+        chat_limits[session["token"]] = recent + [now]
+        lock = chat_locks.setdefault(cid, asyncio.Lock())
+        if lock.locked():
+            raise HTTPException(409, "This conversation is already answering")
+        await lock.acquire()
+
+        async def events():
+            try:
+                async for event in run_turn(store, cid, question, client_factory=client_factory, services_factory=services_factory):
+                    yield "data: " + json.dumps(event, ensure_ascii=False) + "\n\n"
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                message = str(exc) if isinstance(exc, ValueError) else "AI request failed. Check Settings, model access and network connectivity."
+                yield "data: " + json.dumps({"event": "error", "message": scrub(message, store.config())}) + "\n\n"
+            finally:
+                lock.release()
+        return StreamingResponse(events(), media_type="text/event-stream", headers={"X-Accel-Buffering": "no"})
+
+    @app.post("/api/actions/{aid}/{decision}")
+    async def decide(aid: str, decision: str, session=Depends(auth)):
+        if decision not in {"confirm", "cancel"}:
+            raise ValueError("Choose confirm or cancel")
+        async with config_lock:
+            action = store.action(aid)
+            if action["status"] != "pending":
+                raise HTTPException(409, "Proposal has already been handled; do not replay it")
+            if decision == "cancel":
+                store.execute("UPDATE actions SET status='cancelled' WHERE id=? AND status='pending'", (aid,))
+                return public_action(store.action(aid))
+            if time.time() - action["created"] > 1800:
+                store.execute("UPDATE actions SET status='expired' WHERE id=?", (aid,))
+                raise HTTPException(409, "Proposal expired; ask for a new one")
+            config = store.config()
+            if not config.get("allow_writes") or config.get("_version") != action["config_version"]:
+                raise HTTPException(409, "Settings changed; review a new proposal")
+            services = services_factory(config)
+            original = services.plan(action["service"], action["operation"], action["payload"])
+            # Recheck default branch and file SHA immediately before execution.
+            plan = await services.prepare(action["service"], action["operation"], action["payload"])
+            if plan_fingerprint({k: v for k, v in plan.items() if k != "preview"}) != plan_fingerprint(original):
+                raise HTTPException(409, "Proposal changed; ask for a new one")
+            claimed = store.execute("UPDATE actions SET status='executing' WHERE id=? AND status='pending'", (aid,))
+            if claimed.rowcount != 1:
+                raise HTTPException(409, "Proposal already claimed")
+            store.execute("INSERT INTO audit (action,status,created) VALUES (?,'confirmed',?)", (aid, time.time()))
+            try:
+                result = await services.execute(plan)
+                status = "completed"
+            except BaseException as exc:
+                # HTTP/transport failure may occur after a remote write; be conservative.
+                result = {"message": str(exc) if isinstance(exc, ValueError) else "Write outcome uncertain. Inspect the target system before trying again."}
+                status = "unknown"
+                if isinstance(exc, (KeyboardInterrupt, SystemExit)):
+                    raise
+            finally:
+                if "status" in locals():
+                    result = scrub(result, config)
+                    store.execute("UPDATE actions SET status=?,result=? WHERE id=?", (status, json.dumps(result), aid))
+                    store.execute("INSERT INTO audit (action,status,result,created) VALUES (?,?,?,?)",
+                                  (aid, status, json.dumps(result), time.time()))
+            return public_action(store.action(aid))
+
+    @app.get("/api/audit")
+    def audit(session=Depends(auth)):
+        return {"entries": store.rows("SELECT * FROM audit ORDER BY id DESC LIMIT 100")}
+
+    app.mount("/static", StaticFiles(directory=static), name="static")
+    return app
+
+
+app = create_app()
