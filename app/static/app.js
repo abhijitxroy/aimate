@@ -1,6 +1,12 @@
 const $ = selector => document.querySelector(selector);
 let csrf = "", config = {}, cid = null, controller = null, busy = false;
 let demo = false;
+let chatgpt = {}, modelLoad = 0;
+
+function aiReady() {
+  return Boolean(config.ai?.model && (config.ai.provider === "chatgpt"
+    ? chatgpt.plan_enabled : config.ai.api_key_configured || config.ai.provider === "bedrock"));
+}
 
 async function api(path, options = {}) {
   const headers = {"Content-Type": "application/json", "X-CSRF-Token": csrf, ...options.headers};
@@ -34,6 +40,7 @@ async function refreshState() {
   csrf = state.csrf;
   config = state.config;
   demo = Boolean(state.demo);
+  chatgpt = state.chatgpt || {};
   $("#demoBanner").hidden = !demo;
   $("#workspace").hidden = false;
   $("#loginScreen").hidden = true;
@@ -45,8 +52,8 @@ async function refreshState() {
     if (["jira", "jenkins"].includes(key) && !config[key]?.token_configured) continue;
     bar.append(sourceBadge(demo ? `${label} (sample)` : label, Boolean(config[key]?.token_configured || publicGitHub)));
   }
-  bar.append(sourceBadge(demo ? "Scripted demo" : "AI", demo || Boolean(config.ai?.model && (config.ai.api_key_configured || config.ai.provider === "bedrock"))));
-  const ready = config.ai?.model && (config.ai?.api_key_configured || config.ai?.provider === "bedrock") && config.github?.repos?.length;
+  bar.append(sourceBadge(demo ? "Scripted demo" : config.ai?.provider === "chatgpt" ? "ChatGPT" : "AI", demo || aiReady()));
+  const ready = aiReady() && config.github?.repos?.length;
   $("#setupHint").hidden = Boolean(demo || ready);
   $("#setupHint").textContent = "Connect AI + GitHub to start →";
   $("#setupHint").onclick = openSettings;
@@ -178,7 +185,7 @@ async function openConversation(id, title = "Project conversation", allowBusy = 
 
 async function ask(question) {
   if (busy || !question.trim()) return;
-  if (!config.ai?.model || (!demo && !config.ai?.api_key_configured && config.ai?.provider !== "bedrock")) {
+  if (!demo && !aiReady()) {
     openSettings(); $("#settingsStatus").textContent = "Add your AI credentials and model ID to start."; return;
   }
   busy = true;
@@ -254,9 +261,80 @@ function openSettings() {
     if (value !== undefined) input.value = Array.isArray(value) ? value.join("\n") : value;
   }
   if (!form.elements["github.url"].value) form.elements["github.url"].value = "https://api.github.com";
+  if (!config.ai?.provider && !demo) form.elements["ai.provider"].value = "chatgpt";
   $("#settingsStatus").textContent = demo ? "Fixed fictional connections. Restart in live mode to configure real services." : "";
+  updateProvider();
   $("#settingsDialog").showModal();
 }
+
+async function updateProvider() {
+  const form = $("#settingsForm"), selected = form.elements["ai.provider"].value === "chatgpt";
+  const generation = ++modelLoad;
+  $("#chatgptConnection").hidden = !selected;
+  $("#chatgptModelLabel").hidden = !selected;
+  $("#apiModelLabel").hidden = selected;
+  $("#apiCredentials").hidden = selected;
+  $("#removeAIKey").hidden = selected;
+  $("#testAIButton").textContent = selected ? "Check plan access" : "Test AI · small billable request";
+  if (!selected) return;
+  const accounts = $("#chatgptAccount");
+  accounts.replaceChildren(element("option", "", "Add a ChatGPT account"));
+  accounts.firstChild.value = "";
+  for (const account of chatgpt.accounts || []) {
+    const option = element("option", "", account.email + " · " + account.id.slice(-6));
+    option.value = account.id;
+    accounts.append(option);
+  }
+  accounts.value = chatgpt.active || "";
+  $("#connectChatGPT").disabled = demo || !chatgpt.available || busy;
+  $("#disconnectChatGPT").hidden = !chatgpt.connected;
+  $("#disconnectChatGPT").disabled = busy;
+  const picker = $("#chatgptModel");
+  picker.replaceChildren(element("option", "", "Connect your account first"));
+  picker.firstChild.value = "";
+  $("#chatgptStatus").textContent = !chatgpt.available
+    ? "Open the local live app at http://127.0.0.1:8765 to sign in."
+    : chatgpt.plan_enabled ? "Signed in. Loading models available to your account…"
+    : chatgpt.connected ? "Signed in, but ChatGPT plan usage is not enabled. Continue again to review permission."
+    : "Connect your personal account. Sign-in and plan permission stay with OpenAI.";
+  if (!chatgpt.plan_enabled) return;
+  try {
+    const result = await api("/api/chatgpt/models");
+    if (generation !== modelLoad) return;
+    picker.replaceChildren();
+    for (const model of result.models) {
+      const option = element("option", "", model.display_name);
+      option.value = model.slug;
+      picker.append(option);
+    }
+    if (result.models.some(m => m.slug === config.ai?.model)) picker.value = config.ai.model;
+    $("#chatgptStatus").textContent = result.models.length
+      ? "Plan access verified. Choose a model and save connections."
+      : "No models are available to this account. Check your ChatGPT plan access.";
+  } catch (error) {
+    if (generation === modelLoad) $("#chatgptStatus").textContent = error.message;
+  }
+}
+$("#settingsForm").elements["ai.provider"].onchange = updateProvider;
+$("#connectChatGPT").onclick = async () => {
+  $("#connectChatGPT").disabled = true;
+  try {
+    const result = await api("/api/chatgpt/start", {method: "POST",
+      body: JSON.stringify({account: $("#chatgptAccount").value || null})});
+    location.assign(result.url);
+  } catch (error) {
+    $("#chatgptStatus").textContent = error.message;
+    $("#connectChatGPT").disabled = false;
+  }
+};
+$("#disconnectChatGPT").onclick = async () => {
+  try {
+    const result = await api("/api/chatgpt/disconnect", {method: "POST"});
+    await refreshState();
+    await updateProvider();
+    $("#chatgptStatus").textContent = result.message;
+  } catch (error) { $("#chatgptStatus").textContent = error.message; }
+};
 
 $("#loginForm").onsubmit = async event => {
   event.preventDefault();
@@ -320,6 +398,7 @@ $("#settingsForm").onsubmit = async event => {
     if (["repos", "projects", "jobs"].includes(key)) value = value.split(/\r?\n/).map(x => x.trim()).filter(Boolean);
     data[section][key] = value;
   }
+  if (data.ai.provider === "chatgpt") data.ai.model = $("#chatgptModel").value;
   try {
     await api("/api/settings", {method: "PUT", body: JSON.stringify(data)});
     await refreshState();
@@ -359,5 +438,16 @@ async function initialize() {
   $("#loginForm").hidden = demo;
   $("#localPasswordHint").hidden = demo || Boolean(mode.hosted);
   await refreshState().catch(() => {});
+  const outcome = new URLSearchParams(location.search).get("chatgpt");
+  if (outcome) {
+    history.replaceState(null, "", "/");
+    if (!$("#workspace").hidden) {
+      openSettings();
+      $("#settingsForm").elements["ai.provider"].value = "chatgpt";
+      await updateProvider();
+      if (outcome === "failed") $("#chatgptStatus").textContent =
+        "Sign-in could not be completed. Continue again and review OpenAI's account and plan permission.";
+    } else $("#loginError").textContent = "Open your workspace to check the ChatGPT connection.";
+  }
 }
 initialize().catch(error => { $("#loginError").textContent = error.message; });

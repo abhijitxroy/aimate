@@ -106,10 +106,19 @@ async def propose(store, config, services, cid, args):
     return public_action(store.action(aid))
 
 
-async def run_turn(store, cid, question, *, client_factory=ai_client, services_factory=Services):
+async def run_turn(store, cid, question, *, client_factory=ai_client, services_factory=Services, chatgpt=None):
     config = store.config()
+    if config.get("ai", {}).get("provider") == "chatgpt":
+        if not chatgpt:
+            raise ValueError("ChatGPT sign-in is available in local live mode")
+        async for event in run_chatgpt_turn(store, cid, question, chatgpt, services_factory):
+            yield event
+        return
     question = scrub(question, config)
     messages = store.history(cid)
+    for message in messages:
+        if isinstance(message["content"], list):
+            message["content"] = [b for b in message["content"] if b.get("type") != "responses"]
     messages.append({"role": "user", "content": question})
     start = len(messages) - 1
     # Include action outcomes so a follow-up can continue after confirmation.
@@ -172,9 +181,119 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
                     results.append({"type": "tool_result", "tool_use_id": call["id"],
                                     "content": scrub(message, config), "is_error": True})
                     yield {"event": "tool_done", "name": call["name"], "ok": False, "message": scrub(message, config)}
+            messages.append({"role": "user", "content": results})
         if completed:
             store.save_turn(cid, scrub(messages[start:], config))
             store.execute("UPDATE conversations SET title=? WHERE id=? AND title='New conversation'", (question[:100], cid))
         yield {"event": "done", "usage": usage}
     finally:
         await client.close()
+
+
+def responses_history(messages):
+    items = []
+    for message in messages:
+        content = message["content"]
+        if isinstance(content, str):
+            items.append({"role": message["role"], "content": content})
+            continue
+        raw = next((b["items"] for b in content if b.get("type") == "responses"), None)
+        if raw is not None:
+            items.extend(raw)
+            continue
+        for block in content:
+            if block["type"] == "text":
+                items.append({"role": message["role"], "content": block["text"]})
+            elif block["type"] == "tool_use":
+                items.append({"type": "function_call", "call_id": block["id"], "name": block["name"],
+                              "arguments": json.dumps(block["input"]), "namespace": "project"})
+            elif block["type"] == "tool_result":
+                items.append({"type": "function_call_output", "call_id": block["tool_use_id"],
+                              "output": block["content"]})
+    return items
+
+
+async def run_chatgpt_turn(store, cid, question, connection, services_factory):
+    from app.chatgpt import response_events
+    config = store.config()
+    question = scrub(question, config)
+    account_id = connection.status()["active"]
+    model = config.get("ai", {}).get("model")
+    if not model or model not in {m["slug"] for m in await connection.models()}:
+        raise ValueError("Select an available ChatGPT model in Settings and save")
+    history = store.history(cid)
+    input_items = responses_history(history)
+    input_items.append({"role": "user", "content": question})
+    saved = [{"role": "user", "content": question}]
+    scope = {name: {k: v for k, v in config.get(name, {}).items() if k not in {"token", "api_key"}}
+             for name in ("github", "jira", "jenkins")}
+    outcomes = store.rows("SELECT id,operation,status,result FROM actions WHERE conversation=? ORDER BY created DESC LIMIT 12", (cid,))
+    instructions = SYSTEM + "\nConfigured sources:\n" + json.dumps(scope) + "\nRecent proposal outcomes:\n" + json.dumps(outcomes)
+    tools = TOOLS if config.get("allow_writes") else TOOLS[:1]
+    namespace = {"type": "namespace", "name": "project", "description": "Scoped engineering project tools",
+                 "tools": [{"type": "function", "name": t["name"], "description": t["description"],
+                            "parameters": t["input_schema"], "strict": False} for t in tools]}
+    services = services_factory(config)
+    usage = {"input_tokens": 0, "output_tokens": 0}
+    for round_no in range(9):
+        payload = {"model": model, "instructions": instructions, "input": input_items,
+                   "store": False, "stream": True, "tools": [namespace],
+                   "include": ["reasoning.encrypted_content"]}
+        if round_no == 8:
+            payload["tool_choice"] = "none"
+        output, text = None, ""
+        async for event in response_events(connection, payload, expected_account=account_id):
+            if event["type"] == "response.output_text.delta":
+                delta = scrub(event.get("delta", ""), config)
+                if not text and round_no:
+                    delta = "\n\n" + delta
+                text += delta
+                yield {"event": "text", "delta": delta}
+            elif event["type"] == "response.completed":
+                result = event["response"]
+                output = result["output"]
+                for key in usage:
+                    usage[key] += result.get("usage", {}).get(key, 0)
+        if output is None:
+            raise ValueError("ChatGPT returned no completed response")
+        output = scrub(output, config)
+        input_items.extend(output)
+        calls = [item for item in output if item["type"] == "function_call"]
+        # Keep opaque reasoning and exact calls for continuation, plus readable UI blocks.
+        blocks = [{"type": "responses", "items": output}]
+        if text:
+            blocks.append({"type": "text", "text": text.strip()})
+        saved.append({"role": "assistant", "content": blocks})
+        if not calls:
+            store.save_turn(cid, saved)
+            store.execute("UPDATE conversations SET title=? WHERE id=? AND title='New conversation'", (question[:100], cid))
+            yield {"event": "done", "usage": usage}
+            return
+        results = []
+        for call in calls:
+            name = call["name"]
+            try:
+                if call.get("namespace") not in {None, "project"} or name not in {t["name"] for t in tools}:
+                    raise ValueError("Unavailable tool")
+                args = json.loads(call["arguments"])
+                if not isinstance(args, dict):
+                    raise ValueError("Tool arguments must be an object")
+                yield {"event": "tool", "name": name, "input": scrub(args, config)}
+                if name == "api_read":
+                    result = await services.read(args["service"], args["path"], args.get("params"))
+                    yield {"event": "source", "url": result["source"]}
+                else:
+                    card = await propose(store, config, services, cid, args)
+                    result = {"proposal": card["id"], "status": "pending", "note": "User must confirm; not executed."}
+                    yield {"event": "action", "action": card}
+                value = json.dumps(scrub(result, config), ensure_ascii=False)
+                if len(value) > 24_000:
+                    value = value[:24_000] + "\n[truncated; narrow the query or paginate]"
+                yield {"event": "tool_done", "name": name, "ok": True}
+            except (ValueError, KeyError, TypeError, httpx.HTTPError) as exc:
+                value = scrub(str(exc) if isinstance(exc, ValueError) else "Tool failed; check connection and arguments", config)
+                yield {"event": "tool_done", "name": name, "ok": False, "message": value}
+            input_items.append({"type": "function_call_output", "call_id": call["call_id"], "output": value})
+            results.append({"type": "tool_result", "tool_use_id": call["call_id"], "content": value})
+        saved.append({"role": "user", "content": results})
+    raise ValueError("ChatGPT reached the tool-round limit; ask a narrower question")

@@ -5,11 +5,13 @@ import os
 import re
 import secrets
 import time
+import httpx
+import logging
 from pathlib import Path
 from urllib.parse import urlsplit
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
@@ -18,7 +20,16 @@ from app.connectors import Services, plan_fingerprint, scrub, valid_base
 from app.store import Store
 from app.validation import validate_config
 
-def create_app(store=None, services_factory=Services, client_factory=ai_client, demo=None):
+
+class OAuthLogFilter(logging.Filter):
+    def filter(self, record):
+        # Uvicorn's access log otherwise includes the authorization code and state.
+        return "/auth/callback" not in record.getMessage()
+
+
+logging.getLogger("uvicorn.access").addFilter(OAuthLogFilter())
+
+def create_app(store=None, services_factory=Services, client_factory=ai_client, demo=None, chatgpt_transport=None):
     public_url = os.environ.get("APP_PUBLIC_URL", "").strip().rstrip("/")
     if public_url:
         parsed_public = urlsplit(public_url)
@@ -43,6 +54,9 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
     app.state.store = store
     app.state.demo_backend = backend
+    from app.chatgpt import ChatGPT
+    chatgpt = ChatGPT(store, transport=chatgpt_transport)
+    app.state.chatgpt = chatgpt
     sessions, attempts, chat_limits, chat_locks = {}, {}, {}, {}
     config_lock = asyncio.Lock()
     # A process dying during a write leaves its outcome uncertain; never auto-replay it.
@@ -51,12 +65,14 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
 
     @app.middleware("http")
     async def browser_boundary(request, call_next):
+        oauth_callback = (request.method == "GET" and request.url.path == "/auth/callback"
+                          and not public_url and not demo and request.url.hostname == "127.0.0.1")
         origin = request.headers.get("origin")
-        if origin:
+        if origin and not oauth_callback:
             host = request.headers.get("host", "")
             if origin != (public_url or "http://" + host):
                 return Response("Cross-origin requests are refused", status_code=403)
-        if request.headers.get("sec-fetch-site") == "cross-site":
+        if request.headers.get("sec-fetch-site") == "cross-site" and not oauth_callback:
             return Response("Cross-site requests are refused", status_code=403)
         if request.headers.get("content-length", "0").isdigit() and int(request.headers.get("content-length", "0")) > 250_000:
             return Response("Request too large", status_code=413)
@@ -132,7 +148,46 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
     @app.get("/api/state")
     def state(session=Depends(auth)):
         return {"csrf": session["csrf"], "config": store.public_config(), "demo": bool(demo),
+                "chatgpt": {**chatgpt.status(), "available": not demo and not public_url},
                 "conversations": store.rows("SELECT * FROM conversations ORDER BY created DESC")}
+
+    def require_local_chatgpt():
+        if demo or public_url:
+            raise HTTPException(409, "ChatGPT sign-in is supported in local live mode. Hosted apps need a separate OpenAI registration.")
+
+    @app.post("/api/chatgpt/start")
+    async def start_chatgpt(request: Request, session=Depends(auth)):
+        require_local_chatgpt()
+        body = await request.json()
+        if not isinstance(body, dict):
+            raise ValueError("Expected a ChatGPT account selection")
+        origin = str(request.base_url).rstrip("/")
+        return {"url": chatgpt.start(origin, session["token"], body.get("account"))}
+
+    @app.get("/auth/callback")
+    async def chatgpt_callback(request: Request):
+        require_local_chatgpt()
+        try:
+            params = dict(request.query_params)
+            if any(len(request.query_params.getlist(key)) != 1 for key in params):
+                raise ValueError("Duplicate callback parameters")
+            await chatgpt.callback(params,
+                lambda token: token in sessions and time.time() - sessions[token]["created"] < 12 * 3600,
+                str(request.base_url).rstrip("/"))
+        except (ValueError, httpx.HTTPError) as exc:
+            # OAuth codes/tokens never appear in redirects or diagnostics.
+            return RedirectResponse("/?chatgpt=failed", status_code=303)
+        return RedirectResponse("/?chatgpt=connected", status_code=303)
+
+    @app.get("/api/chatgpt/models")
+    async def chatgpt_models(session=Depends(auth)):
+        require_local_chatgpt()
+        return {"models": await chatgpt.models()}
+
+    @app.post("/api/chatgpt/disconnect")
+    async def disconnect_chatgpt(session=Depends(auth)):
+        require_local_chatgpt()
+        return await chatgpt.disconnect()
 
     @app.put("/api/settings")
     async def settings(request: Request, session=Depends(auth)):
@@ -140,6 +195,8 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
             raise HTTPException(409, "Demo uses fixed fictional connections. Restart without AIMATE_DEMO for real connections.")
         async with config_lock:
             config = validate_config(await request.json(), store.config())
+            if config.get("ai", {}).get("provider") == "chatgpt":
+                require_local_chatgpt()
             store.save_config(config)
         return {"config": store.public_config()}
 
@@ -152,6 +209,12 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
         cfg = store.config()
         services = services_factory(cfg)
         if service == "ai":
+            if cfg.get("ai", {}).get("provider") == "chatgpt":
+                require_local_chatgpt()
+                models = await chatgpt.models()
+                if cfg.get("ai", {}).get("model") not in {m["slug"] for m in models}:
+                    raise ValueError("Choose an available ChatGPT model and save")
+                return {"ok": True, "message": "ChatGPT plan access and model catalog verified; no inference was requested"}
             client = client_factory(cfg)
             try:
                 message = await client.messages.create(model=cfg["ai"]["model"], max_tokens=16,
@@ -217,7 +280,10 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
                     from app.demo import run_demo_turn
                     turn = run_demo_turn(store, cid, question, backend=backend)
                 else:
-                    turn = run_turn(store, cid, question, client_factory=client_factory, services_factory=services_factory)
+                    if store.config().get("ai", {}).get("provider") == "chatgpt":
+                        require_local_chatgpt()
+                    turn = run_turn(store, cid, question, client_factory=client_factory,
+                                    services_factory=services_factory, chatgpt=chatgpt)
                 async for event in turn:
                     yield "data: " + json.dumps(event, ensure_ascii=False) + "\n\n"
             except asyncio.CancelledError:

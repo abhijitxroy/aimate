@@ -14,10 +14,14 @@ class Store:
     def __init__(self, directory=None):
         self.directory = Path(directory or os.environ.get("APP_DATA_DIR", ".data"))
         self.directory.mkdir(parents=True, exist_ok=True)
+        if os.name != "nt":
+            self.directory.chmod(0o700)
         key_file = self.directory / "encryption.key"
         if not key_file.exists():
             with key_file.open("xb") as f:
                 f.write(Fernet.generate_key())
+        if os.name != "nt":
+            key_file.chmod(0o600)
         self.cipher = Fernet(key_file.read_bytes())
         self.password = os.environ.get("APP_PASSWORD")
         if not self.password:

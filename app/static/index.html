@@ -70,9 +70,14 @@
     <p class="muted">Start with AI and one GitHub repository. Save, check access, then ask.</p>
     <form id="settingsForm">
       <fieldset><legend><span class="dot violet"></span> AI provider</legend>
-        <div class="fields two"><label>Provider<select name="ai.provider"><option value="anthropic">Anthropic API</option><option value="bedrock">AWS Bedrock Runtime</option></select></label><label>Exact model / inference profile ID<input name="ai.model" placeholder="Model ID available to your account"></label></div>
-        <div class="fields two"><label>API key / Bedrock bearer key<input name="ai.api_key" type="password" autocomplete="off" placeholder="Leave blank to keep saved key"></label><label>AWS region (Bedrock)<input name="ai.region" placeholder="e.g. us-east-1"></label></div>
-        <div class="test-row"><label class="check"><input name="ai.clear_token" type="checkbox">Remove saved AI key</label><button type="button" data-test="ai">Test AI · small billable request</button><span id="test-ai"></span></div>
+        <div class="fields two"><label>Provider<select name="ai.provider"><option value="chatgpt">ChatGPT account</option><option value="anthropic">Anthropic API</option><option value="bedrock">AWS Bedrock Runtime</option></select></label><label id="apiModelLabel">Exact model / inference profile ID<input name="ai.model" placeholder="Model ID available to your account"></label><label id="chatgptModelLabel" hidden>Available model<select id="chatgptModel"><option value="">Connect your account first</option></select></label></div>
+        <div id="chatgptConnection" hidden>
+          <div class="test-row"><label>Account<select id="chatgptAccount"><option value="">Add a ChatGPT account</option></select></label><button id="connectChatGPT" type="button" data-oai-siwc-button>Continue with ChatGPT</button><button id="disconnectChatGPT" type="button" hidden>Disconnect</button></div>
+          <p id="chatgptStatus" class="hint" role="status"></p>
+          <p class="hint">Uses your eligible ChatGPT plan. Go access will be checked after sign-in. <a href="https://chatgpt.com/settings/usage" target="_blank" rel="noopener noreferrer">Manage usage</a></p>
+        </div>
+        <div id="apiCredentials" class="fields two"><label>API key / Bedrock bearer key<input name="ai.api_key" type="password" autocomplete="off" placeholder="Leave blank to keep saved key"></label><label>AWS region (Bedrock)<input name="ai.region" placeholder="e.g. us-east-1"></label></div>
+        <div class="test-row"><label id="removeAIKey" class="check"><input name="ai.clear_token" type="checkbox">Remove saved AI key</label><button id="testAIButton" type="button" data-test="ai">Check AI access</button><span id="test-ai"></span></div>
       </fieldset>
       <fieldset><legend><span class="dot"></span> GitHub</legend>
         <div class="fields two"><label>API base URL<input name="github.url" placeholder="https://api.github.com"></label><label>Personal access token<input name="github.token" type="password" autocomplete="off" placeholder="Leave blank to keep saved token"></label></div>

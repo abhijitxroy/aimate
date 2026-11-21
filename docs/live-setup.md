@@ -5,7 +5,10 @@
    environment variable is set. Direct server commands need their own proxy
    configuration where required.
 2. Sign in using `.data/access-password.txt`.
-3. Open **Connections & settings**. Add an AI provider key and model ID.
+3. Open **Connections & settings**. Choose **ChatGPT account** and
+   **Continue with ChatGPT**. Sign in on OpenAI's page and review plan permission.
+   After returning, choose an available model. Alternatively, configure
+   Anthropic or AWS Bedrock with its own model ID and credentials.
 4. Set GitHub to `https://api.github.com` and add `abhijitxroy/aimate`.
    Public repositories need no token. Private repositories need a token with
    repository read access. Anonymous requests have GitHub's lower rate limit.
@@ -19,15 +22,30 @@ proposals still requires confirmation for every change.
 
 ## ChatGPT subscriptions
 
-ChatGPT Go does not include ordinary OpenAI API usage. The current AiMate backend
-supports Claude through Anthropic or AWS Bedrock; it does not yet implement
-ChatGPT sign-in or OpenAI inference.
+Local AiMate supports **Continue with ChatGPT** using OpenAI's documented
+public-client OAuth flow and Responses API. You do not enter an API key or
+ChatGPT password in AiMate. The app retrieves the signed-in account's model
+catalog and sends streamed requests using its granted plan permission.
 
 OpenAI documents a separate **Sign in with ChatGPT** integration for eligible
-plan usage. Its commercial-app guidance includes Go, while the current
-open-source quickstart references Plus and Pro. Go eligibility for a new local
-AiMate integration must be verified before promising it. No ChatGPT password,
-browser cookie, or copied session token should be entered as an API key.
+plan usage. Go eligibility is not promised: verify sign-in, plan permission,
+model access and one completed answer with your own account. Reaching a plan
+limit stops the answer; AiMate never switches automatically to paid API usage.
+Ordinary API billing remains separate from ChatGPT Go.
+
+Run at **http://127.0.0.1:8765**, using one server process. The callback is
+`/auth/callback` on the same loopback port; `localhost` is not accepted by this
+OAuth integration. Your existing workspace password remains the local app's
+access control. Sign-in callbacks expire after ten minutes and cannot be reused.
+OAuth credentials are separate from service settings: Windows protects them
+with the current OS user's DPAPI; other systems use the app's local encryption
+key in a private data directory. Saved account registrations can be selected
+and reauthorized without creating a new client. Disconnect attempts remote
+revocation and removes local tokens while retaining the registration.
+
+The OAuth client is for this local personal/open-source app. Hosted commercial
+apps need their own OpenAI registration; the local flow is disabled in hosted
+and offline demo modes. GitHub Pages remains a scripted showcase.
 
 - [ChatGPT Go](https://help.openai.com/en/articles/11989085-what-is-chatgpt-go)
 - [Plan usage in participating apps](https://help.openai.com/en/articles/20001542-using-your-chatgpt-plan-in-other-apps-and-sites)

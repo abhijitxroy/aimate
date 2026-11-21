@@ -5,7 +5,8 @@
 ```mermaid
 flowchart LR
     User[Developer] --> App[AiMate]
-    App <--> Claude[Claude / Anthropic or Bedrock]
+    App <--> Claude[ChatGPT Responses / Claude]
+    App <--> OAuth[OpenAI OAuth: local ChatGPT account]
     App <--> GH[GitHub REST API]
     App <--> Jira[Jira REST API]
     App <--> Jenkins[Jenkins REST API]
@@ -18,7 +19,12 @@ flowchart LR
 flowchart TD
     UI[HTML / JavaScript browser] --> API[FastAPI: sessions and CSRF]
     API --> Loop[Agent: context and bounded tool loop]
-    Loop <--> Model[Anthropic SDK / Claude]
+    Loop <--> Model[Responses HTTP/SSE or Anthropic SDK]
+    UI --> SignIn[Continue with ChatGPT]
+    SignIn --> OpenAI[OpenAI sign-in and plan consent]
+    OpenAI --> Callback[Loopback callback: state / PKCE / nonce / JWT verification]
+    Callback --> Tokens[Protected local OAuth accounts and serialized refresh]
+    Tokens --> Model
     Loop --> Read[Scoped Python connectors]
     Read <--> Services[GitHub / Jira / Jenkins REST APIs]
     Loop --> Proposal[Persist proposal and show preview]

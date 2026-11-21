@@ -16,7 +16,7 @@ OPERATIONS = {
     "jenkins": ["build_job", "abort_build"],
 }
 SECRET_KEYS = {"token", "api_key", "password", "authorization", "access_token", "secret",
-               "client_secret", "private_key", "aws_secret_access_key"}
+               "client_secret", "private_key", "aws_secret_access_key", "refresh_token", "id_token"}
 
 
 def scrub(value, config):

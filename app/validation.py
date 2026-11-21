@@ -103,8 +103,8 @@ def validate_config(raw, old):
             out[name]["url"] = valid_base(out[name]["url"])
         if name != "ai" and out[name].get("token") and not out[name].get("url"):
             raise ValueError(f"Add the {name} URL")
-    if out["ai"].get("provider", "anthropic") not in {"anthropic", "bedrock"}:
-        raise ValueError("Choose Anthropic or Bedrock")
+    if out["ai"].get("provider", "anthropic") not in {"anthropic", "bedrock", "chatgpt"}:
+        raise ValueError("Choose ChatGPT, Anthropic or Bedrock")
     if out["jira"].get("auth", "bearer") not in {"basic", "bearer"}:
         raise ValueError("Choose Jira basic or bearer authentication")
     if out["jira"].get("api_version", "2") not in {"2", "3"}:

@@ -4,7 +4,7 @@
 
 A standalone, local, single-operator app for asking questions across your GitHub
 repositories, Jira projects and Jenkins jobs. Built from scratch with FastAPI,
-Claude tool calling, SQLite and plain browser JavaScript.
+ChatGPT Responses or Claude tool calling, SQLite and plain browser JavaScript.
 
 **[Try the public demo →](https://abhijitxroy.github.io/aimate/)**
 
@@ -15,6 +15,11 @@ The live AI integration is available in the local Python application below.
 
 **[Set up real GitHub questions →](docs/live-setup.md)** — add AI access and one
 repository. Public GitHub repositories can be read without a token.
+
+For local ChatGPT access, choose **ChatGPT account → Continue with ChatGPT**
+in Settings, review permission on OpenAI's page, then select an available model.
+Plan eligibility and a real answer must be verified with your own account.
+No ChatGPT password or API key is entered in AiMate for this flow.
 
 ## Try without credentials
 
@@ -114,14 +119,15 @@ Open **Connections & settings** and add:
 
 | Connection | Required setup |
 |---|---|
-| AI | Anthropic API key + a model ID available to your account, or Bedrock Runtime + exact model/inference-profile ID + AWS region. Bedrock supports a bearer key entered here or the SDK's normal AWS credential chain. |
+| AI | Local ChatGPT account sign-in + an available model; alternatively Anthropic API key + model ID, or Bedrock Runtime + model/inference-profile ID + AWS region and credentials. |
 | GitHub | `https://api.github.com` + `OWNER/REPO` entries; public reads need no token. Private reads and writes need a PAT. Enterprise API bases require a token. |
 | Jira Data Center | HTTPS site URL, bearer PAT, API version 2, project keys. |
 | Jira Cloud | HTTPS site URL, email + API token using Basic auth, API version 3, project keys. |
 | Jenkins | HTTPS controller URL, username + API token, exact job names. Nested folders use `folder/job`. |
 
-Save, then test each connection. AI testing makes a small **billable** model
-request; service checks only read metadata. Blank token fields preserve saved
+Save, then test each connection. ChatGPT's access check reads the model catalog;
+Anthropic/Bedrock testing makes a small **billable** model request. Service checks
+only read metadata. Blank token fields preserve saved
 tokens. Use the removal checkbox to clear one. Adding scopes does not grant
 permissions: the upstream service still enforces your token's rights.
 
@@ -176,7 +182,7 @@ action outcomes as context.
 ## Architecture
 
 ```text
-Browser → authenticated FastAPI endpoint → Claude tool loop
+Browser → authenticated FastAPI endpoint → bounded AI tool loop
                                             ↓
                                  scoped service connector
                                             ↓
@@ -190,6 +196,7 @@ Model proposes write → stored card → user confirmation
 |---|---|
 | `app/main.py` | Authentication, CSRF/origin checks, settings, chat stream and confirmation routes |
 | `app/agent.py` | Provider clients, model instructions, tool loop and proposal persistence |
+| `app/chatgpt.py` | Local OpenAI OAuth, verified identity, protected account tokens, refresh and Responses streaming |
 | `app/connectors.py` | Scope validation, service authentication, read endpoints and write operations |
 | `app/validation.py` | Dependency-free URL, path, JQL and settings validators |
 | `app/store.py` | SQLite state and encrypted credentials |
@@ -249,5 +256,6 @@ If dependencies are unavailable, the input/scope checks can run independently:
 .\.venv\Scripts\python.exe -m unittest discover -s tests -p test_validation.py -v
 ```
 
-API references: [Anthropic Python SDK](https://github.com/anthropics/anthropic-sdk-python),
+API references: [ChatGPT local OAuth](https://developers.openai.com/siwc/token-sharing-open-source),
+[Anthropic Python SDK](https://github.com/anthropics/anthropic-sdk-python),
 [Jira Cloud enhanced JQL search](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-search/).
