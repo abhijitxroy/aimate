@@ -23,9 +23,8 @@ h2 { font-size: 19px; font-weight: 500; margin-bottom: 0; }
 label { display: flex; flex-direction: column; gap: 8px; font-size: 12px; }
 input, textarea, select { width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; background: #091a2b90; }
 textarea { resize: vertical; }
-.brand-mark { width: 48px; height: 48px; display: grid; place-items: center; border-radius: 14px; background: linear-gradient(135deg, #0071c5, #1e4c91); font-size: 28px; font-weight: 650; }
-.brand-mark span { display: none; }
-.brand-mark.small { width: 35px; height: 35px; font-size: 20px; border-radius: 10px; }
+.brand-mark { width: 48px; height: 48px; display: block; flex-shrink: 0; }
+.brand-mark.small { width: 35px; height: 35px; }
 .login-screen { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
 .login-card { width: min(450px, 100%); padding: 38px; border: 1px solid var(--line); border-radius: 24px; background: #1a345280; backdrop-filter: blur(24px); box-shadow: 0 24px 70px #0003; }
 .login-card .brand-mark { margin-bottom: 24px; }
