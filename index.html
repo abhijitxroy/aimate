@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="AiMate brings code, issues and builds into one conversation. Try the interactive engineering assistant demo.">
+  <meta name="theme-color" content="#f5f6f0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; base-uri 'self'; form-action 'self'">
+  <title>AiMate — less searching. More building.</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/showcase.css">
+  <script src="assets/showcase.js" defer></script>
+</head>
+<body>
+  <header class="nav wrap">
+    <a class="brand" href="./" aria-label="AiMate home"><span class="brand-icon">A<span>·</span></span>AiMate</a>
+    <nav aria-label="Main navigation">
+      <a href="#demo">Try the demo</a>
+      <a href="https://github.com/abhijitxroy/aimate">GitHub <span aria-hidden="true">↗</span></a>
+    </nav>
+  </header>
+  <main>
+    <section class="hero wrap" aria-labelledby="heroTitle">
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="dot"></span> YOUR ENGINEERING SIDEKICK</p>
+        <h1 id="heroTitle">Less searching.<br>More <span class="accent-word">building.<svg viewBox="0 0 420 25" aria-hidden="true"><path d="M4 17 Q210 -2 416 12"/></svg></span></h1>
+        <p class="intro">Your code, issues and builds.<br>One place to ask. One clear next step.</p>
+        <div class="hero-buttons">
+          <a class="button primary" href="#demo">Take it for a spin <span aria-hidden="true">↗</span></a>
+          <a class="text-link" href="https://github.com/abhijitxroy/aimate">Explore the code <span aria-hidden="true">→</span></a>
+        </div>
+        <p class="small muted">Free sample demo · No account or tokens needed</p>
+      </div>
+      <div class="hero-visual" aria-label="Example of connecting a build failure to an issue and code change">
+        <div class="visual-top"><span class="dot"></span> A LITTLE CONTEXT GOES A LONG WAY <span class="visual-dots">···</span></div>
+        <div class="sample-question"><span class="question-icon">↳</span> Why did the build fail?</div>
+        <div class="connection-stack">
+          <div class="context-card"><span class="service-icon jenkins">J</span><div><b>Build #42</b><span>Tests failed during checkout</span></div><span class="status fail">Failed</span></div>
+          <div class="connect-line" aria-hidden="true"><span></span> connecting the dots</div>
+          <div class="context-card"><span class="service-icon jira">↗</span><div><b>DEMO-123</b><span>HTTP client dependency upgrade</span></div><span class="status">In progress</span></div>
+          <div class="context-card"><span class="service-icon github">⑂</span><div><b>Pull request #7</b><span>The related code change</span></div><span class="status">Open</span></div>
+        </div>
+        <div class="visual-answer"><span class="spark" aria-hidden="true">✳</span><p><b>Found the link.</b><br>The sample log points to a dependency mismatch. Review the evidence, then the next step.</p></div>
+        <div class="visual-foot"><span>Fictional project preview</span><span>CODE → CONTEXT → ACTION</span></div>
+      </div>
+    </section>
+    <div class="value-strip wrap" aria-label="Core capabilities">
+      <span><i aria-hidden="true">⑂</i> Code meets context</span>
+      <span><i aria-hidden="true">↗</i> Answers with evidence</span>
+      <span><i aria-hidden="true">✓</i> You approve changes</span>
+    </div>
+    <section class="demo-section wrap" id="demo" aria-labelledby="demoTitle">
+      <div class="section-heading">
+        <div><p class="eyebrow">LESS TALK. TRY IT.</p><h2 id="demoTitle">Meet your next workflow.</h2></div>
+        <p class="demo-disclosure"><span class="dot"></span> Scripted demo · Fictional data<br><span>No AI calls or real changes.</span></p>
+      </div>
+      <div class="workspace">
+        <aside class="workspace-side" aria-label="Sample project">
+          <div class="project-label"><span class="project-icon">S</span><div><b>sample-service</b><span>Demo workspace</span></div></div>
+          <p class="side-label">YOUR SOURCES</p>
+          <div class="source-item"><span class="service-icon github">⑂</span>GitHub<span class="source-dot"></span></div>
+          <div class="source-item"><span class="service-icon jira">↗</span>Jira<span class="source-dot"></span></div>
+          <div class="source-item"><span class="service-icon jenkins">J</span>Jenkins<span class="source-dot"></span></div>
+          <div class="side-divider"></div>
+          <p class="side-label">IN THIS SAMPLE</p>
+          <div class="sample-item"><span class="mini-label">ISSUE</span><b>DEMO-123</b><span>Checkout tests fail</span></div>
+          <div class="sample-item"><span class="mini-label">PULL REQUEST</span><b>#7 · Client upgrade</b><span>Open for review</span></div>
+          <div class="sample-item"><span class="mini-label">BUILD</span><b>#42 <span class="failure-dot"></span></b><span>Test stage failed</span></div>
+        </aside>
+        <div class="workspace-main">
+          <div class="workspace-header"><div><span class="dot"></span><b>Ask AiMate</b></div><div class="workspace-controls"><span class="demo-chip">SAMPLE MODE</span><button class="reset-button" id="resetDemo" type="button" aria-label="Reset demo">↺</button></div></div>
+          <div class="conversation" id="conversation" role="log" aria-label="Demo conversation" aria-live="polite">
+            <div class="welcome" id="demoWelcome">
+              <span class="welcome-symbol" aria-hidden="true">✳</span>
+              <h3>Start with a question.</h3>
+              <p>Trace a failure. Connect the issue.<br>Review what happens next.</p>
+            </div>
+          </div>
+          <div class="demo-bottom">
+            <div class="suggestions" aria-label="Sample questions">
+              <button data-question="Why did the build fail?" type="button">Why did the build fail? <span aria-hidden="true">↗</span></button>
+              <button data-question="What needs attention?" type="button">What needs attention? <span aria-hidden="true">↗</span></button>
+              <button data-question="Propose a Jira comment" type="button">Draft a Jira comment <span aria-hidden="true">↗</span></button>
+            </div>
+            <form id="demoForm">
+              <label class="sr-only" for="demoQuestion">Your question</label>
+              <textarea id="demoQuestion" rows="1" maxlength="500" placeholder="Ask about the sample project…" required></textarea>
+              <button id="askButton" type="submit" aria-label="Send question">↑</button>
+            </form>
+            <p class="composer-note" id="demoStatus" role="status">Sample scenarios only. Every proposed change needs your confirmation.</p>
+          </div>
+        </div>
+      </div>
+      <p class="demo-caption">Also try “Explain the architecture”, “Create a GitHub issue” or “Trigger the demo build”.</p>
+    </section>
+    <section class="under-hood wrap" aria-labelledby="underHoodTitle">
+      <div><p class="eyebrow">BUILT TO BE UNDERSTOOD</p><h2 id="underHoodTitle">Small stack.<br>Clear boundaries.</h2></div>
+      <div class="under-hood-copy"><p>The local app uses FastAPI, Claude tool calling and SQLite to connect GitHub, Jira and Jenkins. It reads within your configured scope and previews supported changes for approval.</p><div class="stack-tags"><span>FastAPI</span><span>Claude</span><span>SQLite</span><span>REST APIs</span></div><a class="text-link" href="https://github.com/abhijitxroy/aimate/blob/main/docs/architecture.md">See the architecture <span aria-hidden="true">→</span></a></div>
+    </section>
+  </main>
+  <footer class="wrap"><a class="brand" href="./"><span class="brand-icon">A<span>·</span></span>AiMate</a><p>Built by <a href="https://github.com/abhijitxroy">Abhijit Roy</a></p><a href="https://github.com/abhijitxroy/aimate">View on GitHub ↗</a></footer>
+  <noscript><p class="wrap">Enable JavaScript to try the demo. The source code and architecture are available on GitHub.</p></noscript>
+</body>
+</html>

@@ -6,6 +6,13 @@ A standalone, local, single-operator app for asking questions across your GitHub
 repositories, Jira projects and Jenkins jobs. Built from scratch with FastAPI,
 Claude tool calling, SQLite and plain browser JavaScript.
 
+**[Try the public demo →](https://abhijitxroy.github.io/aimate/)**
+
+The public showcase runs in your browser with fictional data and scripted
+answers. You can inspect evidence, confirm or cancel sample changes, and reset
+the demo. It requires no account, tokens or AI subscription.
+The live AI integration is available in the local Python application below.
+
 ## Try without credentials
 
 After installing dependencies using the Windows setup below, run:
@@ -45,9 +52,14 @@ Stop the server and run `.\run.ps1` for live mode.
 
 ### GitHub Pages and hosting
 
-GitHub Pages can host a landing page or a browser-only scripted showcase.
-It cannot run this application's FastAPI server. Copying the app's HTML to a
-root `index.html` will not make its `/api/*` endpoints work.
+The root `index.html` and `assets/` contain the responsive landing page and
+browser-only demo. `.github/workflows/pages.yml` publishes only those files and
+the fictional `demo-data/` fixture to GitHub Pages. The browser demo uses
+in-memory state; it does not call the Python backend or exercise its validation
+and audit code. Reloading the page clears its sample changes.
+
+GitHub Pages cannot run this application's FastAPI server. Copying the local
+app's HTML to a root `index.html` will not make its `/api/*` endpoints work.
 
 For a working live assistant, host the frontend and Python backend together
 behind HTTPS after implementing the shared-deployment controls below. A Pages
