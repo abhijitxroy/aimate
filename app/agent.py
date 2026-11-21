@@ -62,6 +62,21 @@ TOOLS = [
 ]
 
 
+def action_capabilities(config):
+    enabled = bool(config.get("allow_writes"))
+    tokens = {name: bool(config.get(name, {}).get("token")) for name in OPERATIONS}
+    return ("\nCurrent action capabilities (authoritative settings):\n"
+            + json.dumps({"change_proposals_enabled": enabled, "service_token_saved": tokens})
+            + "\nWhen change proposals are disabled, propose_action is intentionally unavailable. "
+            "For a requested change, explain that the operator must open Settings, enable "
+            "'Allow the assistant to prepare changes', and Save connections. "
+            "If the requested service token is missing, also tell them to add its token in "
+            "Settings with the required write permission. Never ask for tokens in chat. "
+            "Do not describe this settings block as an unsupported integration. "
+            "A saved token does not prove write permission; the service enforces it. "
+            "Even when enabled, prepare a proposal and wait for confirmation; never claim execution.")
+
+
 def ai_client(config):
     import anthropic
     ai = config.get("ai", {})
@@ -125,7 +140,7 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
     outcomes = store.rows("SELECT id,operation,status,result FROM actions WHERE conversation=? ORDER BY created DESC LIMIT 12", (cid,))
     scope = {name: {k: v for k, v in config.get(name, {}).items() if k not in {"token", "api_key"}}
              for name in ("github", "jira", "jenkins")}
-    system = SYSTEM + "\nConfigured sources:\n" + json.dumps(scope) + "\nRecent proposal outcomes:\n" + json.dumps(outcomes)
+    system = SYSTEM + action_capabilities(config) + "\nConfigured sources:\n" + json.dumps(scope) + "\nRecent proposal outcomes:\n" + json.dumps(outcomes)
     services = services_factory(config)
     available_tools = TOOLS if config.get("allow_writes") else TOOLS[:1]
     client = client_factory(config)
@@ -228,7 +243,7 @@ async def run_chatgpt_turn(store, cid, question, connection, services_factory):
     scope = {name: {k: v for k, v in config.get(name, {}).items() if k not in {"token", "api_key"}}
              for name in ("github", "jira", "jenkins")}
     outcomes = store.rows("SELECT id,operation,status,result FROM actions WHERE conversation=? ORDER BY created DESC LIMIT 12", (cid,))
-    instructions = SYSTEM + "\nConfigured sources:\n" + json.dumps(scope) + "\nRecent proposal outcomes:\n" + json.dumps(outcomes)
+    instructions = SYSTEM + action_capabilities(config) + "\nConfigured sources:\n" + json.dumps(scope) + "\nRecent proposal outcomes:\n" + json.dumps(outcomes)
     tools = TOOLS if config.get("allow_writes") else TOOLS[:1]
     namespace = {"type": "namespace", "name": "project", "description": "Scoped engineering project tools",
                  "tools": [{"type": "function", "name": t["name"], "description": t["description"],

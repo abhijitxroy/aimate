@@ -233,6 +233,30 @@ class ChatGPTTests(unittest.TestCase):
                 asyncio.run(fail())
             self.assertEqual(self.store.history(other), [])
 
+    def test_read_mode_explains_missing_settings_without_exposing_write_tool_or_tokens(self):
+        self.connect()
+        config = fixture_config()
+        config["ai"] = {"provider": "chatgpt", "model": "test-model"}
+        config["allow_writes"] = False
+        config["github"]["token"] = ""
+        self.store.save_config(config)
+        cid = self.store.new_conversation()
+        async def run():
+            return [e async for e in run_turn(self.store, cid, "Create a GitHub issue",
+                chatgpt=self.connection)]
+        events = asyncio.run(run())
+        self.assertFalse(any(e["event"] == "action" for e in events))
+        request = next(r for r in self.requests if r.url.path == "/v1/responses")
+        payload = json.loads(request.content)
+        self.assertEqual([t["name"] for t in payload["tools"][0]["tools"]], ["api_read"])
+        instructions = payload["instructions"]
+        self.assertIn('"change_proposals_enabled": false', instructions)
+        self.assertIn('"github": false', instructions)
+        self.assertIn("Allow the assistant to prepare changes", instructions)
+        self.assertIn("add its token in Settings", instructions)
+        for secret in ("jira-private-token", "jenkins-private-token"):
+            self.assertNotIn(secret, instructions)
+
     def test_http_callback_cross_site_exception_is_narrow_and_requires_csrf_start(self):
         app = create_app(self.store, demo=False, chatgpt_transport=self.transport)
         with TestClient(app, base_url="http://127.0.0.1:8765") as client:
