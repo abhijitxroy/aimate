@@ -248,6 +248,15 @@ class ChatGPTTests(unittest.TestCase):
                 "client_id": "oaiapp_test"}, headers={"Sec-Fetch-Site": "cross-site"}, follow_redirects=False)
             self.assertEqual(callback.status_code, 303)
             self.assertEqual(callback.headers["location"], "/?chatgpt=connected")
+            navigation_headers = {"Sec-Fetch-Site": "cross-site", "Sec-Fetch-Mode": "navigate",
+                                  "Sec-Fetch-Dest": "document"}
+            landing = client.get(callback.headers["location"], headers=navigation_headers)
+            self.assertEqual(landing.status_code, 200)
+            self.assertIn('id="settingsDialog"', landing.text)
+            self.assertEqual(client.get("/api/state", headers=navigation_headers).status_code, 403)
+            self.assertEqual(client.post("/api/settings", json={}, headers=navigation_headers).status_code, 403)
+            self.assertEqual(client.get("/", headers={"Sec-Fetch-Site": "cross-site",
+                "Sec-Fetch-Mode": "no-cors", "Sec-Fetch-Dest": "image"}).status_code, 403)
             self.assertEqual(client.get("/api/state", headers={"Sec-Fetch-Site": "cross-site"}).status_code, 403)
             self.assertEqual(client.get("/auth/callback", params={"state": "bad"},
                 headers={"Sec-Fetch-Site": "cross-site"}, follow_redirects=False).headers["location"], "/?chatgpt=failed")

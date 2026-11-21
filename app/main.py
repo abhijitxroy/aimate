@@ -67,12 +67,18 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
     async def browser_boundary(request, call_next):
         oauth_callback = (request.method == "GET" and request.url.path == "/auth/callback"
                           and not public_url and not demo and request.url.hostname == "127.0.0.1")
+        # A redirect chain keeps Sec-Fetch-Site: cross-site on the final document.
+        # The public entry HTML is safe to navigate to; authenticated APIs remain
+        # protected by the origin boundary, session and CSRF checks.
+        entry_navigation = (request.method == "GET" and request.url.path == "/"
+                            and request.headers.get("sec-fetch-mode") == "navigate"
+                            and request.headers.get("sec-fetch-dest") == "document")
         origin = request.headers.get("origin")
         if origin and not oauth_callback:
             host = request.headers.get("host", "")
             if origin != (public_url or "http://" + host):
                 return Response("Cross-origin requests are refused", status_code=403)
-        if request.headers.get("sec-fetch-site") == "cross-site" and not oauth_callback:
+        if request.headers.get("sec-fetch-site") == "cross-site" and not (oauth_callback or entry_navigation):
             return Response("Cross-site requests are refused", status_code=403)
         if request.headers.get("content-length", "0").isdigit() and int(request.headers.get("content-length", "0")) > 250_000:
             return Response("Request too large", status_code=413)
