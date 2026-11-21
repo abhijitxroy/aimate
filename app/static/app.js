@@ -81,11 +81,13 @@ function addMessage(role, text = "") {
   $("#welcome").hidden = true;
   const root = element("article", `message ${role}`);
   root.append(element("div", "who", role === "user" ? "YOU" : demo ? "AIMATE · SCRIPTED DEMO" : "AIMATE"));
-  const body = element("div", "body", text);
+  const body = element("div", "body");
+  if (role === "assistant") renderAnswer(body, text);
+  else body.textContent = text;
   root.append(body);
   $("#messages").append(root);
   scrollMessages();
-  return {root, body};
+  return {root, body, text, reads: 0};
 }
 
 function scrollMessages() {
@@ -97,14 +99,46 @@ function addSource(message, url) {
   let parsed;
   try { parsed = new URL(url); } catch { return; }
   if (!["https:", "http:"].includes(parsed.protocol)) return;
-  let sources = message.root.querySelector(".sources");
-  if (!sources) { sources = element("div", "sources"); message.root.append(sources); }
+  const evidence = evidencePanel(message);
+  let sources = evidence.querySelector(".sources");
+  if (!sources) { sources = element("div", "sources"); evidence.append(sources); }
   if ([...sources.querySelectorAll("a")].some(a => a.href === parsed.href)) return;
-  const link = element("a", "", parsed.hostname + parsed.pathname);
+  const link = element("a", "", parsed.pathname.split("/").filter(Boolean).slice(-2).join("/") || parsed.hostname);
+  link.title = parsed.href;
   link.href = parsed.href;
   link.target = "_blank";
   link.rel = "noopener noreferrer";
   sources.append(link);
+  updateEvidence(message);
+}
+
+function evidencePanel(message) {
+  let panel = message.root.querySelector(".evidence");
+  if (!panel) {
+    panel = element("details", "evidence");
+    panel.append(element("summary", "", "Sources & activity"));
+    message.root.append(panel);
+  }
+  return panel;
+}
+
+function updateEvidence(message) {
+  const panel = evidencePanel(message);
+  const sources = panel.querySelectorAll(".sources a").length;
+  panel.querySelector("summary").textContent = [
+    sources ? `${sources} source${sources === 1 ? "" : "s"}` : "Activity",
+    message.reads ? `${message.reads} step${message.reads === 1 ? "" : "s"}` : ""
+  ].filter(Boolean).join(" · ");
+}
+
+function addTool(message, name, input = {}) {
+  const panel = evidencePanel(message);
+  let tools = panel.querySelector(".tool-list");
+  if (!tools) { tools = element("div", "tool-list"); panel.append(tools); }
+  const description = name === "propose_action" ? "Prepare change" : "Read";
+  tools.append(element("div", "", `${description} · ${input.service || name}${input.path ? " · " + input.path : ""}`));
+  message.reads++;
+  updateEvidence(message);
 }
 
 function drawAction(action, parent) {
@@ -159,12 +193,19 @@ async function openConversation(id, title = "Project conversation", allowBusy = 
       const text = msg.content.filter(b => b.type === "text").map(b => b.text).join("\n\n");
       if (text) {
         if (!bot) bot = addMessage("assistant", text);
-        else bot.body.textContent += "\n\n" + text;
+        else { bot.text += "\n\n" + text; renderAnswer(bot.body, bot.text); }
       }
     }
     for (const msg of turn.messages) {
       if (!Array.isArray(msg.content)) continue;
       for (const block of msg.content) {
+        if (block.type === "tool_use" && bot) addTool(bot, block.name, block.input);
+        if (block.type === "responses" && bot) {
+          for (const item of block.items || []) {
+            if (item.type !== "function_call") continue;
+            try { addTool(bot, item.name, JSON.parse(item.arguments)); } catch { /* invalid tool arguments */ }
+          }
+        }
         if (block.type === "tool_result") {
           try {
             const result = JSON.parse(block.content);
@@ -215,13 +256,17 @@ async function ask(question) {
         const line = packet.split("\n").find(l => l.startsWith("data: "));
         if (!line) continue;
         const event = JSON.parse(line.slice(6));
-        if (event.event === "text") bot.body.textContent += event.delta;
+        if (event.event === "text") {
+          bot.text += event.delta;
+          // Coalesce streamed deltas into one render per animation frame.
+          if (!bot.renderFrame) bot.renderFrame = requestAnimationFrame(() => {
+            bot.renderFrame = null; renderAnswer(bot.body, bot.text); scrollMessages();
+          });
+        }
         if (event.event === "source") addSource(bot, event.url);
         if (event.event === "tool") {
           $("#activity").textContent = event.name === "propose_action" ? "Preparing a change for review…" : `Reading ${event.input.service}: ${event.input.path}…`;
-          let tools = bot.root.querySelector(".tool-list");
-          if (!tools) { tools = element("div", "tool-list"); bot.root.append(tools); }
-          tools.append(element("div", "", `↳ ${event.name} · ${event.input.service || ""}`));
+          addTool(bot, event.name, event.input);
         }
         if (event.event === "tool_done" && !event.ok) {
           bot.root.append(element("p", "error", event.message));
@@ -229,6 +274,7 @@ async function ask(question) {
         if (event.event === "action") drawAction(event.action, bot.root);
         if (event.event === "error") throw new Error(event.message);
         if (event.event === "done") {
+          renderAnswer(bot.body, bot.text);
           $("#activity").textContent = `Answer complete · ${event.usage.input_tokens.toLocaleString()} input / ${event.usage.output_tokens.toLocaleString()} output tokens`;
         }
         scrollMessages();
@@ -239,6 +285,8 @@ async function ask(question) {
     $("#activity").textContent = error.name === "AbortError" ? "Stopped. An incomplete answer is not saved." : error.message;
     if (bot && error.name !== "AbortError") bot.root.append(element("p", "error", error.message));
   } finally {
+    if (bot?.renderFrame) cancelAnimationFrame(bot.renderFrame);
+    if (bot) renderAnswer(bot.body, bot.text);
     busy = false; $("#send").disabled = false; $("#stop").hidden = true; controller = null;
   }
 }
