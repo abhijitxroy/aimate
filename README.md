@@ -1,4 +1,4 @@
-# Project AI starter
+# AiMate
 
 A standalone, local, single-operator app for asking questions across your GitHub
 repositories, Jira projects and Jenkins jobs. Built from scratch with FastAPI,
@@ -9,7 +9,8 @@ Claude tool calling, SQLite and plain browser JavaScript.
 Python 3.11+ is required.
 
 ```powershell
-cd C:\Users\abhijit4\repo\oneAPI-CI\project-ai-starter
+git clone https://github.com/abhijitxroy/aimate.git
+cd aimate
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 .\run.ps1

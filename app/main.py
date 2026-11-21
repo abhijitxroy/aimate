@@ -22,7 +22,7 @@ from app.validation import validate_config
 
 def create_app(store=None, services_factory=Services, client_factory=ai_client):
     store = store or Store()
-    app = FastAPI(title="Project AI", docs_url=None, redoc_url=None)
+    app = FastAPI(title="AiMate", docs_url=None, redoc_url=None)
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost", "[::1]", "testserver"])
     app.state.store = store
     sessions, attempts, chat_limits, chat_locks = {}, {}, {}, {}
