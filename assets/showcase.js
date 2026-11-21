@@ -98,7 +98,7 @@ async function ask(question) {
         service: "jenkins", method: "POST", path: "/job/demo/job/build/build"
       }, () => sampleState.builds.push({ job: "demo/build", simulated: true }));
     } else if (wantsComment || /\b(fail|failed|failure|investigate|log)\b/.test(q)) {
-      block = message("assistant", diagnosis);
+      block = message("assistant", wantsComment ? "Here’s a draft for DEMO-123. Review it before confirming." : diagnosis);
       evidence(block, [["Jenkins · build #42", fixture.console], ["GitHub · requirements", fixture.requirements],
         ["Jira · DEMO-123", fixture.issue], ["GitHub · PR #7", fixture.pulls[0]]]);
       if (wantsComment) {
