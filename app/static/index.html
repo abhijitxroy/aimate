@@ -15,7 +15,7 @@
       <h1>One conversation.<br>All your project context.</h1>
       <p class="muted">Connect your repositories, issues and builds. Ask questions, investigate failures, and review changes before they run.</p>
       <form id="loginForm">
-        <label>Local app password<input id="password" type="password" autocomplete="current-password" required></label>
+        <label>Workspace password<input id="password" type="password" autocomplete="current-password" required></label>
         <button class="primary" type="submit">Open workspace <span>→</span></button>
       </form>
       <button id="demoLogin" class="primary" hidden>Try the offline demo →</button>
@@ -35,22 +35,21 @@
         <button id="openSettings">⚙ Connections & settings</button>
         <button id="openAudit">↗ Action history</button>
         <button id="logout">Sign out</button>
-        <div class="local-label"><i></i> Local, single-user workspace</div>
+        <div class="local-label"><i></i> Personal workspace</div>
       </div>
     </aside>
     <main>
-      <header><div><p class="eyebrow">PROJECT WORKSPACE</p><h2 id="chatTitle">Ask your project</h2></div><div class="header-controls"><span id="writeBadge" class="badge">Read mode</span><button id="headerSettings" aria-label="Open connections and settings">⚙</button></div></header>
+      <header><div><p class="eyebrow">PROJECT WORKSPACE</p><h2 id="chatTitle">Ask your project</h2></div><div class="header-controls"><span id="writeBadge" class="badge">Read mode</span><button id="headerSettings" aria-label="Open connections and settings">⚙</button><button id="mobileMenu" class="mobile-only" aria-label="Workspace menu">☰</button></div></header>
       <div class="source-bar" id="sourceBar"></div>
       <p id="demoBanner" class="demo-banner" hidden>DEMO MODE · Fictional data · Scripted answers · Confirmations simulate changes only</p>
       <section id="welcome" class="welcome">
         <div class="welcome-icon">✳</div>
-        <p class="eyebrow">FROM CONTEXT TO ACTION</p>
         <h1>What are we working on?</h1>
-        <p class="muted">Find the issue. Read the code. Understand the build.<br>Then review the next step, together.</p>
+        <p class="muted">Ask your repositories. Follow the evidence.</p>
         <div class="suggestions">
           <button data-question="Show the open issues and pull requests in my configured repositories. What needs attention?"><span>01 / EXPLORE</span><b>What needs attention?</b><small>Issues and pull requests across your repos →</small></button>
-          <button data-question="Inspect the last completed build of my configured Jenkins jobs. Explain any failures and cite the relevant log evidence."><span>02 / INVESTIGATE</span><b>Why did the build fail?</b><small>Read stages, logs and related changes →</small></button>
-          <button data-question="List recently updated unresolved issues in my Jira projects and look for related pull requests in my repositories."><span>03 / CONNECT</span><b>Connect issues to code</b><small>Match Jira work to GitHub changes →</small></button>
+          <button data-question="Read the README and relevant source files of my configured GitHub repository. Explain its architecture and cite the files you inspected."><b>Explain my code</b></button>
+          <button data-question="Inspect recent GitHub Actions runs in my configured repositories. Show failed runs and read their job steps. Cite your sources and explain what is known about the failures."><b>Check recent builds</b></button>
         </div>
         <p id="setupHint" class="setup-hint">Start by adding your API connections in Settings.</p>
       </section>
@@ -68,7 +67,7 @@
 
   <dialog id="settingsDialog">
     <div class="dialog-head"><div><p class="eyebrow">MAKE IT YOURS</p><h2>Connections & settings</h2></div><button class="close" data-close="settingsDialog" aria-label="Close settings">×</button></div>
-    <p class="muted">Tokens are stored encrypted on this server. Leave a token blank to keep it. Save settings before testing.</p>
+    <p class="muted">Start with AI and one GitHub repository. Save, check access, then ask.</p>
     <form id="settingsForm">
       <fieldset><legend><span class="dot violet"></span> AI provider</legend>
         <div class="fields two"><label>Provider<select name="ai.provider"><option value="anthropic">Anthropic API</option><option value="bedrock">AWS Bedrock Runtime</option></select></label><label>Exact model / inference profile ID<input name="ai.model" placeholder="Model ID available to your account" required></label></div>
@@ -78,9 +77,10 @@
       <fieldset><legend><span class="dot"></span> GitHub</legend>
         <div class="fields two"><label>API base URL<input name="github.url" placeholder="https://api.github.com"></label><label>Personal access token<input name="github.token" type="password" autocomplete="off" placeholder="Leave blank to keep saved token"></label></div>
         <label>Repositories · one OWNER/REPO per line<textarea name="github.repos" rows="3" placeholder="your-team/your-repo"></textarea></label>
-        <p class="hint">Enterprise example: https://github.company.com/api/v3. The token must have access to each added repository.</p>
+        <p class="hint">Public GitHub repositories work without a token, within GitHub's public rate limit. Private repositories and changes need a token. Enterprise: https://github.company.com/api/v3.</p>
         <div class="test-row"><label class="check"><input name="github.clear_token" type="checkbox">Remove saved token</label><button type="button" data-test="github">Check repository access</button><span id="test-github"></span></div>
       </fieldset>
+      <details class="optional-connections"><summary>Jira & Jenkins <span>Optional</span></summary>
       <fieldset><legend><span class="dot amber"></span> Jira</legend>
         <div class="fields two"><label>Site URL<input name="jira.url" placeholder="https://your-team.atlassian.net"></label><label>API token / personal access token<input name="jira.token" type="password" autocomplete="off" placeholder="Leave blank to keep saved token"></label></div>
         <div class="fields three"><label>Authentication<select name="jira.auth"><option value="bearer">Bearer · Data Center PAT</option><option value="basic">Basic · email + Cloud token</option></select></label><label>Username / email<input name="jira.username" autocomplete="off"></label><label>API version<select name="jira.api_version"><option value="2">2 · Data Center</option><option value="3">3 · Cloud</option></select></label></div>
@@ -93,10 +93,16 @@
         <label>Job names · one per line; use folder/job for nested jobs<textarea name="jenkins.jobs" rows="2" placeholder="team/build"></textarea></label>
         <div class="test-row"><label class="check"><input name="jenkins.clear_token" type="checkbox">Remove saved token</label><button type="button" data-test="jenkins">Check job access</button><span id="test-jenkins"></span></div>
       </fieldset>
+      </details>
       <fieldset class="write-setting"><legend>Change proposals</legend><label class="check"><input name="allow_writes" type="checkbox">Allow the assistant to prepare changes</label><p class="hint">Every change still requires Confirm. File edits use a working branch; pull requests start as drafts. Proposals expire after 30 minutes.</p></fieldset>
       <div class="dialog-footer"><span id="settingsStatus" role="status"></span><button class="primary" type="submit">Save connections</button></div>
     </form>
   </dialog>
   <dialog id="auditDialog"><div class="dialog-head"><h2>Action history</h2><button class="close" data-close="auditDialog" aria-label="Close history">×</button></div><pre id="auditContent"></pre></dialog>
+  <dialog id="menuDialog">
+    <div class="dialog-head"><h2>Workspace</h2><button class="close" data-close="menuDialog" aria-label="Close menu">×</button></div>
+    <div class="menu-actions"><button data-menu-action="newChat">New conversation</button><button data-menu-action="openSettings">Connections & settings</button><button data-menu-action="openAudit">Action history</button><button data-menu-action="logout">Sign out</button></div>
+    <nav id="mobileConversations" aria-label="Saved conversations"></nav>
+  </dialog>
 </body>
 </html>

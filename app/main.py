@@ -19,6 +19,15 @@ from app.store import Store
 from app.validation import validate_config
 
 def create_app(store=None, services_factory=Services, client_factory=ai_client, demo=None):
+    public_url = os.environ.get("APP_PUBLIC_URL", "").strip().rstrip("/")
+    if public_url:
+        parsed_public = urlsplit(public_url)
+        if (parsed_public.scheme != "https" or not parsed_public.hostname or
+                parsed_public.username or parsed_public.password or parsed_public.path or
+                parsed_public.query or parsed_public.fragment):
+            raise ValueError("APP_PUBLIC_URL must be an HTTPS origin, e.g. https://aimate.example.com")
+        if len(os.environ.get("APP_PASSWORD", "")) < 12:
+            raise ValueError("Hosted mode requires APP_PASSWORD with at least 12 characters")
     demo = os.environ.get("AIMATE_DEMO", "").lower() in {"1", "true"} if demo is None else demo
     store = store or Store(os.environ.get("AIMATE_DEMO_DATA_DIR", ".demo-data") if demo else None)
     backend = None
@@ -28,7 +37,10 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
         store.save_config(demo_config())
         services_factory = backend.services
     app = FastAPI(title="AiMate", docs_url=None, redoc_url=None)
-    app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost", "[::1]", "testserver"])
+    allowed_hosts = ["127.0.0.1", "localhost", "[::1]", "testserver"]
+    if public_url:
+        allowed_hosts.append(parsed_public.hostname)
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
     app.state.store = store
     app.state.demo_backend = backend
     sessions, attempts, chat_limits, chat_locks = {}, {}, {}, {}
@@ -41,9 +53,8 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
     async def browser_boundary(request, call_next):
         origin = request.headers.get("origin")
         if origin:
-            parsed = urlsplit(origin)
             host = request.headers.get("host", "")
-            if parsed.scheme != "http" or parsed.netloc != host:
+            if origin != (public_url or "http://" + host):
                 return Response("Cross-origin requests are refused", status_code=403)
         if request.headers.get("sec-fetch-site") == "cross-site":
             return Response("Cross-site requests are refused", status_code=403)
@@ -79,12 +90,17 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
 
     @app.get("/api/mode")
     def mode():
-        return {"demo": bool(demo)}
+        return {"demo": bool(demo), "hosted": bool(public_url)}
+
+    @app.get("/healthz")
+    def health():
+        return {"status": "ok"}
 
     def issue_session(response):
         token, csrf = secrets.token_urlsafe(32), secrets.token_urlsafe(32)
         sessions[token] = {"csrf": csrf, "created": time.time(), "token": token}
-        response.set_cookie("project_session", token, httponly=True, samesite="strict", max_age=12 * 3600, path="/")
+        response.set_cookie("project_session", token, httponly=True, secure=bool(public_url),
+                            samesite="strict", max_age=12 * 3600, path="/")
         return {"csrf": csrf}
 
     @app.post("/api/demo/login")

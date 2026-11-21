@@ -25,7 +25,7 @@ function element(tag, className, text) {
 
 function sourceBadge(name, ready) {
   const chip = element("span", `source-chip ${ready ? "" : "off"}`);
-  chip.append(element("i", "dot"), document.createTextNode(name + (ready ? " connected" : " not configured")));
+  chip.append(element("i", "dot"), document.createTextNode(name + (ready ? " configured" : " · Add")));
   return chip;
 }
 
@@ -41,17 +41,31 @@ async function refreshState() {
   const bar = $("#sourceBar");
   bar.replaceChildren();
   for (const [key, label] of [["github", "GitHub"], ["jira", "Jira"], ["jenkins", "Jenkins"]]) {
-    bar.append(sourceBadge(demo ? `${label} (sample)` : label, Boolean(config[key]?.token_configured)));
+    const publicGitHub = key === "github" && config.github?.url === "https://api.github.com" && config.github?.repos?.length;
+    if (["jira", "jenkins"].includes(key) && !config[key]?.token_configured) continue;
+    bar.append(sourceBadge(demo ? `${label} (sample)` : label, Boolean(config[key]?.token_configured || publicGitHub)));
   }
   bar.append(sourceBadge(demo ? "Scripted demo" : "AI", demo || Boolean(config.ai?.model && (config.ai.api_key_configured || config.ai.provider === "bedrock"))));
-  $("#setupHint").hidden = Boolean(config.ai?.model);
+  const ready = config.ai?.model && (config.ai?.api_key_configured || config.ai?.provider === "bedrock") && config.github?.repos?.length;
+  $("#setupHint").hidden = Boolean(demo || ready);
+  $("#setupHint").textContent = "Connect AI + GitHub to start →";
+  $("#setupHint").onclick = openSettings;
   const nav = $("#conversations");
   nav.replaceChildren();
+  const mobileNav = $("#mobileConversations");
+  mobileNav.replaceChildren();
   for (const thread of state.conversations) {
     const button = element("button", thread.id === cid ? "active" : "", thread.title);
     button.title = thread.title;
     button.onclick = () => !busy && openConversation(thread.id, thread.title);
     nav.append(button);
+    const mobileButton = element("button", "", thread.title);
+    mobileButton.onclick = () => {
+      if (busy) return;
+      $("#menuDialog").close();
+      openConversation(thread.id, thread.title);
+    };
+    mobileNav.append(mobileButton);
   }
   return state;
 }
@@ -164,7 +178,9 @@ async function openConversation(id, title = "Project conversation", allowBusy = 
 
 async function ask(question) {
   if (busy || !question.trim()) return;
-  if (!config.ai?.model) { openSettings(); return; }
+  if (!config.ai?.model || (!demo && !config.ai?.api_key_configured && config.ai?.provider !== "bedrock")) {
+    openSettings(); $("#settingsStatus").textContent = "Add your AI credentials and model ID to start."; return;
+  }
   busy = true;
   $("#send").disabled = true;
   $("#stop").hidden = false;
@@ -272,6 +288,13 @@ $("#newChat").onclick = async () => {
 };
 $("#openSettings").onclick = openSettings;
 $("#headerSettings").onclick = openSettings;
+$("#mobileMenu").onclick = () => $("#menuDialog").showModal();
+document.querySelectorAll("[data-menu-action]").forEach(button => {
+  button.onclick = () => {
+    $("#menuDialog").close();
+    document.getElementById(button.dataset.menuAction).click();
+  };
+});
 $("#sourceBar").onclick = openSettings;
 $("#logout").onclick = async () => {
   controller?.abort();
@@ -334,7 +357,7 @@ async function initialize() {
   $("#demoLogin").hidden = !demo;
   $("#demoLoginHint").hidden = !demo;
   $("#loginForm").hidden = demo;
-  $("#localPasswordHint").hidden = demo;
+  $("#localPasswordHint").hidden = demo || Boolean(mode.hosted);
   await refreshState().catch(() => {});
 }
 initialize().catch(error => { $("#loginError").textContent = error.message; });

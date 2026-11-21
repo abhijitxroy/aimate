@@ -56,7 +56,9 @@ class Services:
         if service not in OPERATIONS:
             raise ValueError("Unknown service")
         cfg = self.config.get(service, {})
-        if not cfg.get("token"):
+        public_github = (service == "github" and cfg.get("url", "").rstrip("/") == "https://api.github.com"
+                         and bool(cfg.get("repos")))
+        if not cfg.get("token") and not public_github:
             raise ValueError(f"Configure the {service} token first")
         return cfg
 
@@ -79,12 +81,16 @@ class Services:
 
     async def request(self, service, method, path, *, params=None, body=None, form=None):
         cfg = self.section(service)
+        if method != "GET" and not cfg.get("token"):
+            raise ValueError("Add a GitHub token with write access before preparing or executing changes")
         path = clean_path(path)
         base = valid_base(cfg["url"])
         headers = {"Accept": "application/json"}
         auth = None
         if service == "github":
-            headers["Authorization"] = "Bearer " + cfg["token"]
+            headers["User-Agent"] = "AiMate"
+            if cfg.get("token"):
+                headers["Authorization"] = "Bearer " + cfg["token"]
         elif service == "jira" and cfg.get("auth", "bearer") == "bearer":
             headers["Authorization"] = "Bearer " + cfg["token"]
         else:
@@ -207,6 +213,8 @@ class Services:
     def plan(self, service, operation, payload):
         """Validate and materialize exactly the request displayed on the confirmation card."""
         cfg = self.section(service)
+        if not cfg.get("token"):
+            raise ValueError("Add a GitHub token with write access before preparing changes")
         if operation not in OPERATIONS[service]:
             raise ValueError("Unsupported operation")
         p = dict(payload)

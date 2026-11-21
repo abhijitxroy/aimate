@@ -13,6 +13,9 @@ answers. You can inspect evidence, confirm or cancel sample changes, and reset
 the demo. It requires no account, tokens or AI subscription.
 The live AI integration is available in the local Python application below.
 
+**[Set up real GitHub questions →](docs/live-setup.md)** — add AI access and one
+repository. Public GitHub repositories can be read without a token.
+
 ## Try without credentials
 
 After installing dependencies using the Windows setup below, run:
@@ -61,8 +64,8 @@ and audit code. Reloading the page clears its sample changes.
 GitHub Pages cannot run this application's FastAPI server. Copying the local
 app's HTML to a root `index.html` will not make its `/api/*` endpoints work.
 
-For a working live assistant, host the frontend and Python backend together
-behind HTTPS after implementing the shared-deployment controls below. A Pages
+For a private, single-owner live assistant, host the frontend and Python backend
+together behind HTTPS using [the live setup](docs/live-setup.md). A Pages
 landing page can then link to that hosted app. Keep service and AI tokens in the
 backend; never embed them in a public HTML file.
 
@@ -112,7 +115,7 @@ Open **Connections & settings** and add:
 | Connection | Required setup |
 |---|---|
 | AI | Anthropic API key + a model ID available to your account, or Bedrock Runtime + exact model/inference-profile ID + AWS region. Bedrock supports a bearer key entered here or the SDK's normal AWS credential chain. |
-| GitHub | `https://api.github.com`, or your Enterprise API base such as `https://github.company.com/api/v3`; PAT; `OWNER/REPO` entries. |
+| GitHub | `https://api.github.com` + `OWNER/REPO` entries; public reads need no token. Private reads and writes need a PAT. Enterprise API bases require a token. |
 | Jira Data Center | HTTPS site URL, bearer PAT, API version 2, project keys. |
 | Jira Cloud | HTTPS site URL, email + API token using Basic auth, API version 3, project keys. |
 | Jenkins | HTTPS controller URL, username + API token, exact job names. Nested folders use `folder/job`. |
@@ -207,10 +210,12 @@ Source payloads and log excerpts are limited to control model cost; paginate or
 narrow the question when data is truncated. GitHub/Jira search visibility and
 Jenkins job access depend on actual service permissions.
 
-The app has a local password, HTTP-only session cookie, same-origin checks and
-CSRF protection. It must remain bound to loopback. For a shared deployment,
-add HTTPS, real user accounts/SSO, per-user credentials and scopes, persistent
-sessions, production rate limiting and deployment controls.
+The app has a workspace password, HTTP-only session cookie, same-origin checks
+and CSRF protection. Local startup binds to loopback. Private HTTPS hosting uses
+`APP_PUBLIC_URL`, secure cookies and a required `APP_PASSWORD`; see
+[live setup](docs/live-setup.md). For a shared multi-user deployment, add real
+user accounts/SSO, per-user credentials and scopes, persistent sessions and
+production rate limiting.
 
 Tokens are encrypted with a locally generated key. Both key and database are
 under `.data/`; restrict access to that directory and your OS account. This

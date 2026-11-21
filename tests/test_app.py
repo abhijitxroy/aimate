@@ -8,6 +8,7 @@ import time
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
 import httpx
 from fastapi.testclient import TestClient
@@ -148,6 +149,51 @@ class WorkflowTests(unittest.TestCase):
             **self.csrf, "Origin": "https://evil.example"}).status_code, 403)
         self.assertEqual(self.client.get("/api/state", headers={"Host": "evil.example"}).status_code, 400)
         anonymous.close()
+
+    def test_hosted_https_origin_cookie_and_csrf(self):
+        with patch.dict(os.environ, {"APP_PUBLIC_URL": "https://aimate.example",
+                                     "APP_PASSWORD": "test-host-password"}):
+            hosted = create_app(self.store, services_factory=self.services, client_factory=FakeAI)
+        with TestClient(hosted, base_url="https://aimate.example") as client:
+            result = client.post("/api/login", json={"password": self.store.password},
+                                 headers={"Origin": "https://aimate.example"})
+            self.assertEqual(result.status_code, 200)
+            cookie = result.headers["set-cookie"].lower()
+            self.assertIn("secure", cookie)
+            self.assertIn("httponly", cookie)
+            self.assertIn("samesite=strict", cookie)
+            headers = {"Origin": "https://aimate.example", "X-CSRF-Token": result.json()["csrf"]}
+            self.assertEqual(client.post("/api/conversations", headers=headers).status_code, 200)
+            self.assertEqual(client.post("/api/conversations", headers={"Origin": "https://aimate.example"}).status_code, 403)
+            self.assertEqual(client.post("/api/conversations", headers={**headers, "Origin": "http://aimate.example"}).status_code, 403)
+            self.assertEqual(client.post("/api/conversations", headers={**headers, "Origin": "https://evil.example"}).status_code, 403)
+            self.assertEqual(client.get("/healthz").json(), {"status": "ok"})
+            self.assertTrue(client.get("/api/mode").json()["hosted"])
+
+    def test_hosted_mode_requires_password_and_origin(self):
+        for url, password in [("http://aimate.example", "long-password"),
+                              ("https://aimate.example/path", "long-password"),
+                              ("https://aimate.example", "")]:
+            with patch.dict(os.environ, {"APP_PUBLIC_URL": url, "APP_PASSWORD": password}):
+                with self.assertRaises(ValueError):
+                    create_app(self.store)
+
+    def test_public_github_reads_without_token_stay_scoped(self):
+        config = fixture_config()
+        config["github"] = {"url": "https://api.github.com", "repos": ["team/repo"], "token": ""}
+        service = Services(config, self.transport)
+        result = asyncio.run(service.read("github", "/repos/team/repo/contents/app.py"))
+        self.assertEqual(result["data"]["text"], "old code\n")
+        self.assertNotIn("authorization", self.requests[-1].headers)
+        with self.assertRaises(ValueError):
+            asyncio.run(service.read("github", "/repos/other/repo"))
+        with self.assertRaises(ValueError):
+            service.plan("github", "create_issue", {"repo": "team/repo", "title": "No token"})
+        with self.assertRaises(ValueError):
+            asyncio.run(service.request("github", "POST", "/repos/team/repo/issues", body={"title": "No token"}))
+        config["github"]["url"] = "https://github.example/api/v3"
+        with self.assertRaises(ValueError):
+            service.section("github")
 
     def test_tokens_encrypted_and_not_returned(self):
         raw = (Path(self.directory.name) / "app.sqlite3").read_bytes()

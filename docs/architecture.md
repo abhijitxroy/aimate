@@ -52,7 +52,8 @@ There is no LLM inference, network retrieval or live write in this mode.
 
 ## Limits
 
-This is a local single-operator application. In-memory sessions and rate limits
+This is a single-operator application, run locally or privately behind HTTPS
+with `APP_PUBLIC_URL` and `APP_PASSWORD`. In-memory sessions and rate limits
 are process-local. Demo login is available only when demo mode is explicitly
 enabled. A shared deployment requires real authentication, per-user credentials,
 durable sessions/rate limits, HTTPS and deployment controls. SQLite data and its
