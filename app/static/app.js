@@ -1,5 +1,6 @@
 const $ = selector => document.querySelector(selector);
 let csrf = "", config = {}, cid = null, controller = null, busy = false;
+let demo = false;
 
 async function api(path, options = {}) {
   const headers = {"Content-Type": "application/json", "X-CSRF-Token": csrf, ...options.headers};
@@ -32,15 +33,17 @@ async function refreshState() {
   const state = await api("/api/state");
   csrf = state.csrf;
   config = state.config;
+  demo = Boolean(state.demo);
+  $("#demoBanner").hidden = !demo;
   $("#workspace").hidden = false;
   $("#loginScreen").hidden = true;
   $("#writeBadge").textContent = config.allow_writes ? "Changes need confirmation" : "Read mode";
   const bar = $("#sourceBar");
   bar.replaceChildren();
   for (const [key, label] of [["github", "GitHub"], ["jira", "Jira"], ["jenkins", "Jenkins"]]) {
-    bar.append(sourceBadge(label, Boolean(config[key]?.token_configured)));
+    bar.append(sourceBadge(demo ? `${label} (sample)` : label, Boolean(config[key]?.token_configured)));
   }
-  bar.append(sourceBadge("AI", Boolean(config.ai?.model && (config.ai.api_key_configured || config.ai.provider === "bedrock"))));
+  bar.append(sourceBadge(demo ? "Scripted demo" : "AI", demo || Boolean(config.ai?.model && (config.ai.api_key_configured || config.ai.provider === "bedrock"))));
   $("#setupHint").hidden = Boolean(config.ai?.model);
   const nav = $("#conversations");
   nav.replaceChildren();
@@ -56,7 +59,7 @@ async function refreshState() {
 function addMessage(role, text = "") {
   $("#welcome").hidden = true;
   const root = element("article", `message ${role}`);
-  root.append(element("div", "who", role === "user" ? "YOU" : "PROJECT AI"));
+  root.append(element("div", "who", role === "user" ? "YOU" : demo ? "AIMATE · SCRIPTED DEMO" : "AIMATE"));
   const body = element("div", "body", text);
   root.append(body);
   $("#messages").append(root);
@@ -86,7 +89,7 @@ function addSource(message, url) {
 function drawAction(action, parent) {
   const card = element("section", "action-card");
   card.dataset.action = action.id;
-  const label = action.operation.replaceAll("_", " ");
+  const label = action.operation.replaceAll("_", " ") + (demo ? " (simulated)" : "");
   card.append(element("h3", "", `${action.service} · ${label}`),
     element("p", "", `Status: ${action.status} · proposals expire after 30 minutes`),
     element("pre", "", JSON.stringify(action.preview, null, 2)));
@@ -97,14 +100,14 @@ function drawAction(action, parent) {
   if (action.status === "pending") {
     const buttons = element("div", "action-buttons");
     for (const decision of ["confirm", "cancel"]) {
-      const button = element("button", decision === "confirm" ? "primary" : "", decision === "confirm" ? "Confirm change" : "Cancel");
+      const button = element("button", decision === "confirm" ? "primary" : "", decision === "confirm" ? (demo ? "Confirm simulated change" : "Confirm change") : "Cancel");
       button.onclick = async () => {
         for (const b of buttons.children) b.disabled = true;
         try {
           const next = await api(`/api/actions/${action.id}/${decision}`, {method: "POST"});
           const replacement = drawAction(next);
           card.replaceWith(replacement);
-          $("#activity").textContent = next.status === "completed" ? "Change completed. Ask a follow-up to continue." : `Action ${next.status}.`;
+          $("#activity").textContent = next.status === "completed" ? (demo ? "Simulated change completed. No external service was changed." : "Change completed. Ask a follow-up to continue.") : `Action ${next.status}.`;
         } catch (error) {
           card.append(element("p", "error", error.message));
           // A failed response can mean the operation ran. Reload its recorded state.
@@ -219,6 +222,7 @@ async function ask(question) {
 
 function openSettings() {
   const form = $("#settingsForm");
+  for (const input of form.elements) input.disabled = demo;
   form.reset();
   for (const input of form.elements) {
     if (!input.name) continue;
@@ -234,7 +238,7 @@ function openSettings() {
     if (value !== undefined) input.value = Array.isArray(value) ? value.join("\n") : value;
   }
   if (!form.elements["github.url"].value) form.elements["github.url"].value = "https://api.github.com";
-  $("#settingsStatus").textContent = "";
+  $("#settingsStatus").textContent = demo ? "Fixed fictional connections. Restart in live mode to configure real services." : "";
   $("#settingsDialog").showModal();
 }
 
@@ -245,6 +249,13 @@ $("#loginForm").onsubmit = async event => {
     csrf = data.csrf;
     $("#password").value = "";
     $("#loginError").textContent = "";
+    await refreshState();
+  } catch (error) { $("#loginError").textContent = error.message; }
+};
+$("#demoLogin").onclick = async () => {
+  try {
+    const data = await api("/api/demo/login", {method: "POST"});
+    csrf = data.csrf;
     await refreshState();
   } catch (error) { $("#loginError").textContent = error.message; }
 };
@@ -317,4 +328,13 @@ $("#openAudit").onclick = async () => {
     $("#auditContent").textContent = data.entries.length ? JSON.stringify(data.entries, null, 2) : "No confirmed actions yet.";
   } catch (error) { $("#auditContent").textContent = error.message; }
 };
-refreshState().catch(() => {});
+async function initialize() {
+  const mode = await api("/api/mode");
+  demo = Boolean(mode.demo);
+  $("#demoLogin").hidden = !demo;
+  $("#demoLoginHint").hidden = !demo;
+  $("#loginForm").hidden = demo;
+  $("#localPasswordHint").hidden = demo;
+  await refreshState().catch(() => {});
+}
+initialize().catch(error => { $("#loginError").textContent = error.message; });

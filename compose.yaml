@@ -1,0 +1,12 @@
+services:
+  aimate:
+    build: .
+    ports:
+      - "127.0.0.1:8765:8765"
+    environment:
+      AIMATE_DEMO: "1"
+    volumes:
+      - demo-state:/app/.demo-data
+
+volumes:
+  demo-state:

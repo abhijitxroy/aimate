@@ -1,6 +1,7 @@
 import asyncio
 import hmac
 import json
+import os
 import re
 import secrets
 import time
@@ -17,14 +18,19 @@ from app.connectors import Services, plan_fingerprint, scrub, valid_base
 from app.store import Store
 from app.validation import validate_config
 
-
-
-
-def create_app(store=None, services_factory=Services, client_factory=ai_client):
-    store = store or Store()
+def create_app(store=None, services_factory=Services, client_factory=ai_client, demo=None):
+    demo = os.environ.get("AIMATE_DEMO", "").lower() in {"1", "true"} if demo is None else demo
+    store = store or Store(os.environ.get("AIMATE_DEMO_DATA_DIR", ".demo-data") if demo else None)
+    backend = None
+    if demo:
+        from app.demo import DemoBackend, demo_config
+        backend = DemoBackend()
+        store.save_config(demo_config())
+        services_factory = backend.services
     app = FastAPI(title="AiMate", docs_url=None, redoc_url=None)
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost", "[::1]", "testserver"])
     app.state.store = store
+    app.state.demo_backend = backend
     sessions, attempts, chat_limits, chat_locks = {}, {}, {}, {}
     config_lock = asyncio.Lock()
     # A process dying during a write leaves its outcome uncertain; never auto-replay it.
@@ -71,6 +77,22 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client):
     def index():
         return FileResponse(static / "index.html")
 
+    @app.get("/api/mode")
+    def mode():
+        return {"demo": bool(demo)}
+
+    def issue_session(response):
+        token, csrf = secrets.token_urlsafe(32), secrets.token_urlsafe(32)
+        sessions[token] = {"csrf": csrf, "created": time.time(), "token": token}
+        response.set_cookie("project_session", token, httponly=True, samesite="strict", max_age=12 * 3600, path="/")
+        return {"csrf": csrf}
+
+    @app.post("/api/demo/login")
+    def demo_login(response: Response):
+        if not demo:
+            raise HTTPException(404, "Demo mode is disabled")
+        return issue_session(response)
+
     @app.post("/api/login")
     async def login(request: Request, response: Response):
         ip = request.client.host if request.client else "local"
@@ -83,10 +105,7 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client):
         password = body.get("password", "") if isinstance(body, dict) else ""
         if not isinstance(password, str) or not hmac.compare_digest(password.encode(), store.password.encode()):
             raise HTTPException(401, "Incorrect local app password")
-        token, csrf = secrets.token_urlsafe(32), secrets.token_urlsafe(32)
-        sessions[token] = {"csrf": csrf, "created": now, "token": token}
-        response.set_cookie("project_session", token, httponly=True, samesite="strict", max_age=12 * 3600, path="/")
-        return {"csrf": csrf}
+        return issue_session(response)
 
     @app.post("/api/logout")
     def logout(response: Response, session=Depends(auth)):
@@ -96,11 +115,13 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client):
 
     @app.get("/api/state")
     def state(session=Depends(auth)):
-        return {"csrf": session["csrf"], "config": store.public_config(),
+        return {"csrf": session["csrf"], "config": store.public_config(), "demo": bool(demo),
                 "conversations": store.rows("SELECT * FROM conversations ORDER BY created DESC")}
 
     @app.put("/api/settings")
     async def settings(request: Request, session=Depends(auth)):
+        if demo:
+            raise HTTPException(409, "Demo uses fixed fictional connections. Restart without AIMATE_DEMO for real connections.")
         async with config_lock:
             config = validate_config(await request.json(), store.config())
             store.save_config(config)
@@ -108,6 +129,10 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client):
 
     @app.post("/api/connections/{service}/test")
     async def connection_test(service: str, session=Depends(auth)):
+        if demo:
+            if service not in {"ai", "github", "jira", "jenkins"}:
+                raise HTTPException(404, "Unknown demo connection")
+            return {"ok": True, "message": "Offline simulation only; no real connection was tested", "simulated": True}
         cfg = store.config()
         services = services_factory(cfg)
         if service == "ai":
@@ -172,7 +197,12 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client):
 
         async def events():
             try:
-                async for event in run_turn(store, cid, question, client_factory=client_factory, services_factory=services_factory):
+                if demo:
+                    from app.demo import run_demo_turn
+                    turn = run_demo_turn(store, cid, question, backend=backend)
+                else:
+                    turn = run_turn(store, cid, question, client_factory=client_factory, services_factory=services_factory)
+                async for event in turn:
                     yield "data: " + json.dumps(event, ensure_ascii=False) + "\n\n"
             except asyncio.CancelledError:
                 raise

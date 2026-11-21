@@ -1,0 +1,37 @@
+{
+  "repository": {
+    "name": "sample-service",
+    "full_name": "demo/sample-service",
+    "default_branch": "main",
+    "description": "Fictional FastAPI order service used by the AiMate demo"
+  },
+  "issue": {
+    "key": "DEMO-123",
+    "fields": {
+      "summary": "Checkout tests fail after the HTTP client upgrade",
+      "status": {"name": "In Progress"},
+      "description": "Jenkins build 42 fails in the test stage. Investigate the dependency change and record the evidence."
+    }
+  },
+  "pulls": [
+    {
+      "number": 7,
+      "title": "DEMO-123: upgrade the HTTP client",
+      "state": "open",
+      "head": {"ref": "feature/http-client", "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+      "base": {"ref": "main"},
+      "html_url": "https://github.demo.invalid/demo/sample-service/pull/7"
+    }
+  ],
+  "build": {
+    "number": 42,
+    "result": "FAILURE",
+    "building": false,
+    "duration": 183000,
+    "displayName": "#42",
+    "url": "https://jenkins.demo.invalid/job/demo/job/build/42/"
+  },
+  "console": "Started by a simulated commit on feature/http-client\n[Pipeline] stage: Install\nInstalled httpx==0.28.1 and starlette==0.36.3\n[Pipeline] stage: Test\nFAILED tests/test_checkout.py::test_create_order\nTypeError: Client.__init__() got an unexpected keyword argument 'app'\nCheckout TestClient initialization failed before the request was sent.\nFinished: FAILURE\n",
+  "readme": "# Sample Service\n\nA fictional FastAPI order service.\n\nRoutes: POST /orders and GET /health.\nThe test suite uses Starlette TestClient. Jenkins runs install, test and package stages.\n",
+  "requirements": "fastapi==0.110.0\nstarlette==0.36.3\nhttpx==0.28.1\n"
+}

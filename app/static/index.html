@@ -10,7 +10,7 @@
 <body>
   <section id="loginScreen" class="login-screen">
     <div class="login-card">
-      <div class="brand-mark">P<span>·</span></div>
+      <div class="brand-mark">A<span>·</span></div>
       <p class="eyebrow">YOUR ENGINEERING WORKSPACE</p>
       <h1>One conversation.<br>All your project context.</h1>
       <p class="muted">Connect your repositories, issues and builds. Ask questions, investigate failures, and review changes before they run.</p>
@@ -18,8 +18,10 @@
         <label>Local app password<input id="password" type="password" autocomplete="current-password" required></label>
         <button class="primary" type="submit">Open workspace <span>→</span></button>
       </form>
+      <button id="demoLogin" class="primary" hidden>Try the offline demo →</button>
+      <p id="demoLoginHint" class="hint" hidden>Fictional project data and scripted answers. No tokens, AI charges or external changes.</p>
       <p id="loginError" class="error" role="alert"></p>
-      <p class="hint">Your password is in <code>.data/access-password.txt</code> inside the app folder, unless you set APP_PASSWORD.</p>
+      <p id="localPasswordHint" class="hint">Your password is in <code>.data/access-password.txt</code> inside the app folder, unless you set APP_PASSWORD.</p>
     </div>
   </section>
 
@@ -39,6 +41,7 @@
     <main>
       <header><div><p class="eyebrow">PROJECT WORKSPACE</p><h2 id="chatTitle">Ask your project</h2></div><div class="header-controls"><span id="writeBadge" class="badge">Read mode</span><button id="headerSettings" aria-label="Open connections and settings">⚙</button></div></header>
       <div class="source-bar" id="sourceBar"></div>
+      <p id="demoBanner" class="demo-banner" hidden>DEMO MODE · Fictional data · Scripted answers · Confirmations simulate changes only</p>
       <section id="welcome" class="welcome">
         <div class="welcome-icon">✳</div>
         <p class="eyebrow">FROM CONTEXT TO ACTION</p>
