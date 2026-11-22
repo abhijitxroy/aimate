@@ -30,11 +30,13 @@
 
   <div id="workspace" class="workspace" hidden>
     <aside class="sidebar">
-      <div class="brand"><img class="brand-mark small" src="/static/favicon.svg?v=am2" alt=""><div>AiMate<small>ENGINEERING ASSISTANT</small></div></div>
+      <div class="brand"><img class="brand-mark small" src="/static/favicon.svg?v=am2" alt=""><div>AiMate<small>At Your Service</small></div></div>
       <button id="newChat" class="new-chat">＋ New conversation</button>
-      <p class="eyebrow section-label">CONVERSATIONS</p>
+      <div class="conversation-section-head"><p class="eyebrow section-label">CONVERSATIONS</p><button id="newGroup" type="button" title="New project, module or group" aria-label="New project, module or group">＋</button></div>
       <nav id="conversations" aria-label="Conversations"></nav>
       <div class="sidebar-bottom">
+        <button id="openKnowledge">◇ Knowledge</button>
+        <button id="openUsage">◷ Usage &amp; billing</button>
         <button id="openSettings">⚙ Connections & settings</button>
         <button id="openAudit">↗ Action history</button>
         <button id="logout">Sign out</button>
@@ -42,7 +44,7 @@
       </div>
     </aside>
     <main>
-      <header><div><p class="eyebrow">PROJECT WORKSPACE</p><h2 id="chatTitle">Ask your project</h2></div><div class="header-controls"><span id="writeBadge" class="badge">Read mode</span><details id="chatMenu" class="chat-menu" hidden><summary aria-label="Conversation actions" title="Conversation actions">⋯</summary><div><button type="button" id="renameChat">Rename</button><button type="button" id="copyChat">Copy chat</button><button type="button" id="deleteChat" class="error">Delete</button></div></details><button id="headerSettings" aria-label="Open connections and settings">⚙</button><button id="mobileMenu" class="mobile-only" aria-label="Workspace menu">☰</button></div></header>
+      <header><div><p class="eyebrow">PROJECT WORKSPACE</p><h2 id="chatTitle">Ask your project</h2><p id="chatLocation" class="chat-location" hidden></p></div><div class="header-controls"><span id="writeBadge" class="badge">Read mode</span><details id="chatMenu" class="chat-menu" hidden><summary aria-label="Conversation actions" title="Conversation actions">⋯</summary><div><button type="button" id="continueChat">Continue in new chat</button><button type="button" id="pinChat">Pin chat</button><button type="button" id="renameChat">Rename</button><button type="button" id="moveChat">Move to group</button><button type="button" id="copyChat">Copy chat</button><button type="button" id="exportChat">Export Markdown</button><button type="button" id="deleteChat" class="error">Delete</button></div></details><button id="headerSettings" aria-label="Open connections and settings">⚙</button><button id="mobileMenu" class="mobile-only" aria-label="Workspace menu">☰</button></div></header>
       <div class="source-bar" id="sourceBar"></div>
       <p id="demoBanner" class="demo-banner" hidden>DEMO MODE · Fictional data · Scripted answers · Confirmations simulate changes only</p>
       <section id="welcome" class="welcome">
@@ -73,10 +75,37 @@
     <div class="dialog-head"><h2 id="conversationDialogTitle">Rename conversation</h2><button class="close" data-close="conversationDialog" aria-label="Close conversation action">×</button></div>
     <form id="conversationActionForm">
       <label id="conversationNameLabel">Name<input id="conversationName" maxlength="100" autocomplete="off"></label>
+      <label id="conversationGroupLabel" hidden>Project / module / group<select id="conversationGroup"></select></label>
       <p id="conversationDeleteHint" class="muted" hidden>This deletes this conversation and its saved messages. Completed actions remain in Action history.</p>
       <p id="conversationActionError" class="error" role="alert"></p>
       <div class="conversation-action-buttons"><button type="button" data-close="conversationDialog">Cancel</button><button id="conversationActionSubmit" class="primary" type="submit">Save name</button></div>
     </form>
+  </dialog>
+  <dialog id="groupDialog" class="compact-dialog">
+    <div class="dialog-head"><h2 id="groupDialogTitle">New group</h2><button class="close" data-close="groupDialog" aria-label="Close group settings">×</button></div>
+    <form id="groupForm">
+      <label>Name<input id="groupName" maxlength="80" autocomplete="off" required></label>
+      <div id="groupPlacement"><label>Type<select id="groupKind"><option value="project">Project</option><option value="module">Module</option><option value="group">Group</option></select></label><label>Inside<select id="groupParent"></select></label></div>
+      <p id="groupError" class="error" role="alert"></p>
+      <div class="conversation-action-buttons"><button id="removeGroup" type="button" class="error" hidden>Delete empty group</button><button type="button" data-close="groupDialog">Cancel</button><button id="saveGroup" class="primary" type="submit">Create</button></div>
+    </form>
+  </dialog>
+  <dialog id="knowledgeDialog">
+    <div class="dialog-head"><div><p class="eyebrow">YOUR REUSABLE RECORDS</p><h2>Knowledge</h2></div><button class="close" data-close="knowledgeDialog" aria-label="Close knowledge">×</button></div>
+    <p class="hint">Save facts, links and preferences. AiMate searches relevant records when needed. Use Connections for secret tokens.</p>
+    <div class="knowledge-layout">
+      <div><input id="knowledgeSearch" placeholder="Find a record…" aria-label="Search knowledge"><div id="knowledgeList"></div><button id="newRecord" type="button">＋ New record</button></div>
+      <form id="knowledgeForm"><label>Key<input id="recordKey" maxlength="100" required placeholder="release_branch"></label><label>Value<textarea id="recordValue" rows="6" maxlength="6000" required placeholder="main · release notes and links…"></textarea></label><label>Area<select id="recordGroup"></select></label><p id="knowledgeError" class="error" role="alert"></p><div class="conversation-action-buttons"><button id="deleteRecord" type="button" class="error" hidden>Delete record</button><button class="primary" type="submit">Save record</button></div></form>
+    </div>
+  </dialog>
+  <dialog id="usageDialog">
+    <div class="dialog-head"><div><p class="eyebrow">YOUR AIMATE ACTIVITY</p><h2>Usage &amp; billing</h2></div><button class="close" data-close="usageDialog" aria-label="Close usage">×</button></div>
+    <div class="usage-controls"><select id="usageDays" aria-label="Usage period"><option value="7">Last 7 days</option><option value="30" selected>Last 30 days</option><option value="90">Last 90 days</option><option value="366">Last year</option></select><select id="usageMetric" aria-label="Chart metric"><option value="tokens">Tokens by day</option><option value="cost">Estimated USD by day</option></select><button id="exportUsage" type="button">Export CSV</button></div>
+    <div id="usageSummary" class="usage-summary"></div>
+    <div class="usage-card"><h3>Daily activity</h3><div id="usageChart" class="usage-chart"></div></div>
+    <div class="usage-card"><h3>By model</h3><div id="usageModels" class="usage-table"></div></div>
+    <details class="usage-card"><summary>Cost estimate rates</summary><p class="hint">Enter your provider or organization's USD rates per million tokens. Updating a rate recalculates estimates for the selected period.</p><form id="usageRateForm"><label>Model ID<input id="rateModel" list="usageModelOptions" required maxlength="200"><datalist id="usageModelOptions"></datalist></label><div class="fields two"><label>Input<input id="rateInput" type="number" min="0" max="100000" step="any" required></label><label>Output<input id="rateOutput" type="number" min="0" max="100000" step="any" required></label><label>Cache read<input id="rateRead" type="number" min="0" max="100000" step="any" required></label><label>Cache write<input id="rateWrite" type="number" min="0" max="100000" step="any" required></label></div><button class="primary" type="submit">Save rates</button></form></details>
+    <p id="usageCoverage" class="hint"></p><p id="usageError" class="error" role="alert"></p>
   </dialog>
   <dialog id="settingsDialog">
     <div class="dialog-head"><div><p class="eyebrow">MAKE IT YOURS</p><h2>Connections & settings</h2></div><button class="close" data-close="settingsDialog" aria-label="Close settings">×</button></div>
@@ -174,7 +203,7 @@
   <dialog id="auditDialog"><div class="dialog-head"><h2>Action history</h2><button class="close" data-close="auditDialog" aria-label="Close history">×</button></div><pre id="auditContent"></pre></dialog>
   <dialog id="menuDialog">
     <div class="dialog-head"><h2>Workspace</h2><button class="close" data-close="menuDialog" aria-label="Close menu">×</button></div>
-    <div class="menu-actions"><button data-menu-action="newChat">New conversation</button><button data-menu-action="openSettings">Connections & settings</button><button data-menu-action="openAudit">Action history</button><button data-menu-action="logout">Sign out</button></div>
+    <div class="menu-actions"><button data-menu-action="newChat">New conversation</button><button data-menu-action="newGroup">New project / group</button><button data-menu-action="openKnowledge">Knowledge</button><button data-menu-action="openUsage">Usage &amp; billing</button><button data-menu-action="openSettings">Connections & settings</button><button data-menu-action="openAudit">Action history</button><button data-menu-action="logout">Sign out</button></div>
     <nav id="mobileConversations" aria-label="Saved conversations"></nav>
   </dialog>
 </body>

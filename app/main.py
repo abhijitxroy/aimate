@@ -162,7 +162,8 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
                 "connection_defaults": {"jenkins": {"username": getpass.getuser() if not public_url and not demo else "",
                                                       "url": os.environ.get("JENKINS_URL", "")}},
                 "chatgpt": {**chatgpt.status(), "available": not demo and not public_url},
-                "conversations": store.rows("SELECT * FROM conversations ORDER BY created DESC")}
+                "groups": store.rows("SELECT * FROM conversation_groups ORDER BY created"),
+                "conversations": store.rows("SELECT c.*,l.group_id,COALESCE(f.pinned,0) AS pinned FROM conversations c LEFT JOIN conversation_locations l ON l.conversation=c.id LEFT JOIN conversation_flags f ON f.conversation=c.id ORDER BY pinned DESC,c.created DESC")}
 
     def require_local_chatgpt():
         if demo or public_url:
@@ -291,14 +292,103 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
         return {"connection_checks": store.connection_checks()}
 
     @app.post("/api/conversations")
-    def create_conversation(session=Depends(auth)):
-        return {"id": store.new_conversation()}
+    async def create_conversation(request: Request, session=Depends(auth)):
+        body = await request.json() if await request.body() else {}
+        if not isinstance(body, dict):
+            raise ValueError("Expected conversation options.")
+        group_id = body.get("group_id")
+        async with config_lock:
+            if group_id is not None:
+                store.require_group(group_id)
+            return {"id": store.new_conversation(group_id=group_id)}
+
+    @app.post("/api/groups")
+    async def create_group(request: Request, session=Depends(auth)):
+        body = await request.json()
+        if not isinstance(body, dict):
+            raise ValueError("Expected group details.")
+        async with config_lock:
+            return {"id": store.create_group(body.get("name"), body.get("kind", "group"), body.get("parent"))}
+
+    @app.get("/api/knowledge")
+    def knowledge(session=Depends(auth)):
+        return {"records": store.rows("SELECT * FROM knowledge ORDER BY updated DESC")}
+
+    @app.get("/api/usage")
+    def usage(days: int = 30, offset: int = 0, session=Depends(auth)):
+        from app.usage import report
+        return report(store, days, offset)
+
+    @app.post("/api/usage/rates")
+    async def usage_rate(request: Request, session=Depends(auth)):
+        from app.usage import save_rate
+        body = await request.json()
+        async with config_lock:
+            return save_rate(store, body)
+
+    @app.post("/api/knowledge")
+    async def add_knowledge(request: Request, session=Depends(auth)):
+        from app.memory import save_record
+        body = await request.json()
+        async with config_lock:
+            return save_record(store, body)
+
+    @app.patch("/api/knowledge/{record_id}")
+    async def update_knowledge(record_id: str, request: Request, session=Depends(auth)):
+        from app.memory import save_record
+        body = await request.json()
+        async with config_lock:
+            return save_record(store, body, record_id)
+
+    @app.delete("/api/knowledge/{record_id}")
+    async def delete_knowledge(record_id: str, session=Depends(auth)):
+        async with config_lock:
+            if not store.rows("SELECT id FROM knowledge WHERE id=?", (record_id,)):
+                raise ValueError("Record not found.")
+            store.execute("DELETE FROM knowledge WHERE id=?", (record_id,))
+            return {"deleted": record_id}
+
+    @app.post("/api/conversations/{cid}/continue")
+    async def continue_conversation(cid: str, session=Depends(auth)):
+        async with config_lock:
+            store.require_conversation(cid)
+            title = store.rows("SELECT title FROM conversations WHERE id=?", (cid,))[0]["title"]
+            new_id = store.new_conversation("Continue · " + title, store.conversation_group(cid))
+            store.execute("INSERT INTO conversation_references VALUES (?,?)", (new_id, cid))
+            return {"id": new_id}
+
+    @app.patch("/api/groups/{gid}")
+    async def rename_group(gid: str, request: Request, session=Depends(auth)):
+        store.require_group(gid)
+        body = await request.json()
+        name = body.get("name") if isinstance(body, dict) else None
+        if not isinstance(name, str) or not name.strip() or len(name.strip()) > 80:
+            raise ValueError("Use a group name with 1–80 characters.")
+        async with config_lock:
+            store.require_group(gid)
+            parent = store.rows("SELECT parent FROM conversation_groups WHERE id=?", (gid,))[0]["parent"]
+            if store.rows("SELECT id FROM conversation_groups WHERE parent IS ? AND lower(name)=lower(?) AND id<>?",
+                          (parent, name.strip(), gid)):
+                raise ValueError("A group with that name already exists here.")
+            store.execute("UPDATE conversation_groups SET name=? WHERE id=?", (name.strip(), gid))
+        return {"id": gid, "name": name.strip()}
+
+    @app.delete("/api/groups/{gid}")
+    async def delete_group(gid: str, session=Depends(auth)):
+        async with config_lock:
+            store.require_group(gid)
+            if store.rows("SELECT id FROM conversation_groups WHERE parent=?", (gid,)) or store.rows(
+                    "SELECT conversation FROM conversation_locations WHERE group_id=?", (gid,)) or store.rows(
+                    "SELECT id FROM knowledge WHERE group_id=?", (gid,)):
+                raise HTTPException(409, "Move its chats and records and remove empty subgroups before deleting this group.")
+            store.execute("DELETE FROM conversation_groups WHERE id=?", (gid,))
+            return {"deleted": gid}
 
     @app.get("/api/conversations/{cid}")
     def conversation(cid: str, session=Depends(auth)):
         store.require_conversation(cid)
         turns = store.rows("SELECT t.id,t.messages,t.created,u.metadata FROM turns t LEFT JOIN turn_usage u ON u.turn=t.id WHERE conversation=? ORDER BY t.id", (cid,))
-        return {"id": cid, "title": store.rows("SELECT title FROM conversations WHERE id=?", (cid,))[0]["title"], "turns": [{"id": t["id"], "messages": json.loads(t["messages"]), "created": t["created"],
+        return {"id": cid, "group_id": store.conversation_group(cid), "title": store.rows("SELECT title FROM conversations WHERE id=?", (cid,))[0]["title"], "turns": [{"id": t["id"], "messages": json.loads(t["messages"]), "created": t["created"],
                                     "usage": json.loads(t["metadata"]) if t["metadata"] else None} for t in turns],
                 "actions": [public_action(store.action(r["id"])) for r in store.rows("SELECT id FROM actions WHERE conversation=? ORDER BY created", (cid,))]}
 
@@ -306,11 +396,25 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
     async def rename_conversation(cid: str, request: Request, session=Depends(auth)):
         store.require_conversation(cid)
         body = await request.json()
-        title = body.get("title") if isinstance(body, dict) else None
-        if not isinstance(title, str) or not title.strip() or len(title.strip()) > 100:
+        if not isinstance(body, dict) or not body or set(body) - {"title", "group_id", "pinned"}:
+            raise ValueError("Provide a title or a group to move this chat to.")
+        title = body.get("title")
+        if "title" in body and (not isinstance(title, str) or not title.strip() or len(title.strip()) > 100):
             raise ValueError("Use a conversation name with 1–100 characters.")
-        store.execute("UPDATE conversations SET title=? WHERE id=?", (title.strip(), cid))
-        return {"id": cid, "title": title.strip()}
+        if body.get("group_id") is not None:
+            store.require_group(body["group_id"])
+        if "pinned" in body and not isinstance(body["pinned"], bool):
+            raise ValueError("Pinned must be true or false.")
+        async with config_lock:
+            store.require_conversation(cid)
+            if "title" in body:
+                store.execute("UPDATE conversations SET title=? WHERE id=?", (title.strip(), cid))
+            if "group_id" in body:
+                store.move_conversation(cid, body["group_id"])
+            if "pinned" in body:
+                store.execute("INSERT OR REPLACE INTO conversation_flags VALUES (?,?)", (cid, int(body["pinned"])))
+        return {"id": cid, "title": store.rows("SELECT title FROM conversations WHERE id=?", (cid,))[0]["title"],
+                "group_id": store.conversation_group(cid)}
 
     @app.delete("/api/conversations/{cid}")
     async def delete_conversation(cid: str, session=Depends(auth)):
@@ -323,6 +427,10 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
                 store.db.execute("DELETE FROM turn_usage WHERE turn IN (SELECT id FROM turns WHERE conversation=?)", (cid,))
                 store.db.execute("DELETE FROM turns WHERE conversation=?", (cid,))
                 store.db.execute("DELETE FROM actions WHERE conversation=?", (cid,))
+                store.db.execute("DELETE FROM conversation_locations WHERE conversation=?", (cid,))
+                store.db.execute("DELETE FROM conversation_flags WHERE conversation=?", (cid,))
+                store.db.execute("DELETE FROM conversation_references WHERE conversation=? OR source=?", (cid, cid))
+                store.db.execute("DELETE FROM memory_index WHERE conversation=?", (cid,))
                 store.db.execute("DELETE FROM conversations WHERE id=?", (cid,))
             chat_locks.pop(cid, None)
             return {"deleted": cid}
@@ -344,7 +452,7 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
         if not selected:
             raise HTTPException(404, "Message not found in this conversation")
         # Preserve the original conversation and its reviewed actions as a separate version.
-        edited = store.new_conversation(question.strip())
+        edited = store.new_conversation(question.strip(), store.conversation_group(cid))
         for turn in store.rows("SELECT t.messages,u.metadata FROM turns t LEFT JOIN turn_usage u ON u.turn=t.id WHERE conversation=? AND t.id<? ORDER BY t.id", (cid, turn_id)):
             store.save_turn(edited, json.loads(turn["messages"]), json.loads(turn["metadata"]) if turn["metadata"] else None)
         return {"id": edited}

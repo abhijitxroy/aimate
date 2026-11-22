@@ -47,7 +47,33 @@ class Store:
             CREATE TABLE IF NOT EXISTS audit (id INTEGER PRIMARY KEY, action TEXT, status TEXT, result TEXT, created REAL);
             CREATE TABLE IF NOT EXISTS connection_checks (service TEXT PRIMARY KEY, fingerprint TEXT, report TEXT);
             CREATE TABLE IF NOT EXISTS turn_usage (turn INTEGER PRIMARY KEY, metadata TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS conversation_groups (id TEXT PRIMARY KEY, name TEXT NOT NULL,
+                kind TEXT NOT NULL, parent TEXT, created REAL NOT NULL);
+            CREATE TABLE IF NOT EXISTS conversation_locations (conversation TEXT PRIMARY KEY, group_id TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS conversation_flags (conversation TEXT PRIMARY KEY, pinned INTEGER NOT NULL);
+            CREATE TABLE IF NOT EXISTS conversation_references (conversation TEXT PRIMARY KEY, source TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS knowledge (id TEXT PRIMARY KEY, key TEXT NOT NULL,
+                value TEXT NOT NULL, group_id TEXT, updated REAL NOT NULL);
+            CREATE VIRTUAL TABLE IF NOT EXISTS memory_index USING fts5(content, conversation UNINDEXED, turn UNINDEXED);
+            CREATE TABLE IF NOT EXISTS usage_events (id TEXT PRIMARY KEY, created REAL NOT NULL,
+                provider TEXT NOT NULL, model TEXT NOT NULL, tokens TEXT NOT NULL, origin TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS usage_rates (model TEXT PRIMARY KEY, input REAL NOT NULL,
+                output REAL NOT NULL, cache_read REAL NOT NULL, cache_write REAL NOT NULL);
+            CREATE TABLE IF NOT EXISTS migrations (name TEXT PRIMARY KEY);
         """)
+        from app.memory import readable_text
+        for row in self.db.execute("SELECT id,conversation,messages FROM turns WHERE id NOT IN (SELECT turn FROM memory_index)").fetchall():
+            self.db.execute("INSERT INTO memory_index VALUES (?,?,?)",
+                            (readable_text(json.loads(row["messages"])), row["conversation"], row["id"]))
+        if not self.db.execute("SELECT name FROM migrations WHERE name='usage_backfill'").fetchone():
+            for row in self.db.execute("SELECT t.id,t.created,u.metadata FROM turns t JOIN turn_usage u ON u.turn=t.id").fetchall():
+                metadata = json.loads(row["metadata"])
+                for model, tokens in metadata.get("by_model", {metadata.get("model", "unknown"): metadata.get("usage", {})}).items():
+                    if any(tokens.values()):
+                        self.db.execute("INSERT OR IGNORE INTO usage_events VALUES (?,?,?,?,?,?)",
+                                        (str(row["id"]) + ":" + model, row["created"], "historical", model,
+                                         json.dumps(tokens), "Imported saved turn"))
+            self.db.execute("INSERT INTO migrations VALUES ('usage_backfill')")
         self.db.commit()
 
     def execute(self, sql, args=()):
@@ -127,10 +153,49 @@ class Store:
                       "counts": {"passed": passed, "total": len(models), "unit": "models"}}
             self.save_connection_check("ai", config, report)
 
-    def new_conversation(self, title="New conversation"):
+    def new_conversation(self, title="New conversation", group_id=None):
+        if group_id:
+            self.require_group(group_id)
         cid = secrets.token_hex(16)
         self.execute("INSERT INTO conversations VALUES (?, ?, ?)", (cid, title[:100], time.time()))
+        if group_id:
+            self.execute("INSERT INTO conversation_locations VALUES (?, ?)", (cid, group_id))
         return cid
+
+    def require_group(self, group_id):
+        if not isinstance(group_id, str) or not self.rows("SELECT id FROM conversation_groups WHERE id=?", (group_id,)):
+            raise ValueError("Choose an existing project, module or group.")
+
+    def create_group(self, name, kind="group", parent=None):
+        if not isinstance(name, str) or not name.strip() or len(name.strip()) > 80:
+            raise ValueError("Use a group name with 1–80 characters.")
+        if not isinstance(kind, str) or kind not in {"project", "module", "group"}:
+            raise ValueError("Choose Project, Module or Group.")
+        if parent is not None:
+            self.require_group(parent)
+            depth, ancestor = 1, parent
+            while ancestor:
+                depth += 1
+                ancestor = self.rows("SELECT parent FROM conversation_groups WHERE id=?", (ancestor,))[0]["parent"]
+                if depth > 8:
+                    raise ValueError("Use at most eight levels of groups.")
+        if self.rows("SELECT id FROM conversation_groups WHERE lower(name)=lower(?) AND parent IS ?", (name.strip(), parent)):
+            raise ValueError("A group with that name already exists here.")
+        gid = secrets.token_hex(16)
+        self.execute("INSERT INTO conversation_groups VALUES (?, ?, ?, ?, ?)", (gid, name.strip(), kind, parent, time.time()))
+        return gid
+
+    def move_conversation(self, cid, group_id):
+        self.require_conversation(cid)
+        if group_id is not None:
+            self.require_group(group_id)
+            self.execute("INSERT OR REPLACE INTO conversation_locations VALUES (?, ?)", (cid, group_id))
+        else:
+            self.execute("DELETE FROM conversation_locations WHERE conversation=?", (cid,))
+
+    def conversation_group(self, cid):
+        rows = self.rows("SELECT group_id FROM conversation_locations WHERE conversation=?", (cid,))
+        return rows[0]["group_id"] if rows else None
 
     def require_conversation(self, cid):
         if not self.rows("SELECT id FROM conversations WHERE id=?", (cid,)):
@@ -176,9 +241,12 @@ class Store:
         return [message for turn in messages for message in turn]
 
     def save_turn(self, cid, messages, metadata=None):
+        from app.memory import readable_text
         with self.lock:
             cur = self.db.execute("INSERT INTO turns (conversation,messages,created) VALUES (?,?,?)",
                                   (cid, json.dumps(messages), time.time()))
+            self.db.execute("INSERT INTO memory_index VALUES (?,?,?)",
+                            (readable_text(messages), cid, cur.lastrowid))
             if metadata:
                 self.db.execute("INSERT INTO turn_usage VALUES (?,?)", (cur.lastrowid, json.dumps(metadata)))
             self.db.commit()

@@ -6,6 +6,9 @@ let activeSettings = "ai", checkingConnection = false;
 let connectionReports = {}, connectionDefaults = {};
 let connectionSync = null;
 let bedrockCatalog = [], bedrockPresetEndpoint = "", bedrockCatalogLoad = 0;
+let conversationGroups = [], conversationList = [], editingGroup = null;
+let expandedGroups = new Set();
+try { expandedGroups = new Set(JSON.parse(localStorage.getItem("aimate.groups") || "[]")); } catch {}
 const dirtyConnections = new Set();
 const aiSecretFields = ["api_key", "aws_access_key", "aws_secret_key", "aws_session_token"];
 
@@ -103,16 +106,19 @@ async function refreshState() {
   $("#setupHint").onclick = openSettings;
   const nav = $("#conversations");
   $("#chatMenu").hidden = !cid;
-  for (const button of $("#chatMenu").querySelectorAll("button")) button.disabled = busy;
+  for (const button of $("#chatMenu").querySelectorAll("button")) button.disabled = busy && button.id !== "continueChat";
   nav.replaceChildren();
+  conversationGroups = state.groups || []; conversationList = state.conversations;
+  $("#pinChat").textContent = conversationList.find(thread => thread.id === cid)?.pinned ? "Unpin chat" : "Pin chat";
+  const activeGroup = state.conversations.find(thread => thread.id === cid)?.group_id || null;
+  $("#chatLocation").hidden = !activeGroup;
+  $("#chatLocation").textContent = activeGroup ? groupPath(activeGroup) : "";
+  renderConversationTree(nav, activeGroup);
   const mobileNav = $("#mobileConversations");
   mobileNav.replaceChildren();
   for (const thread of state.conversations) {
-    const button = element("button", thread.id === cid ? "active" : "", thread.title);
-    button.title = thread.title;
-    button.onclick = () => !busy && openConversation(thread.id, thread.title);
-    nav.append(button);
-    const mobileButton = element("button", "", thread.title);
+    const mobileButton = element("button", "", (thread.pinned ? "★ " : "") + thread.title);
+    mobileButton.title = thread.group_id ? groupPath(thread.group_id) : "Standalone chat";
     mobileButton.onclick = () => {
       if (busy) return;
       $("#menuDialog").close();
@@ -122,6 +128,95 @@ async function refreshState() {
   }
   return state;
 }
+
+function groupPath(id) {
+  const parts = [];
+  for (let group = conversationGroups.find(g => g.id === id); group && parts.length < 8;
+       group = conversationGroups.find(g => g.id === group.parent)) parts.unshift(group.name);
+  return parts.join(" / ");
+}
+function groupOptions(select, rootLabel) {
+  select.replaceChildren();
+  const root = element("option", "", rootLabel); root.value = ""; select.append(root);
+  for (const group of [...conversationGroups].sort((a,b) => groupPath(a.id).localeCompare(groupPath(b.id)))) {
+    const option = element("option", "", groupPath(group.id)); option.value = group.id; select.append(option);
+  }
+}
+function renderConversationTree(nav, activeGroup) {
+  const ancestors = new Set();
+  for (let group = conversationGroups.find(g => g.id === activeGroup); group;
+       group = conversationGroups.find(g => g.id === group.parent)) ancestors.add(group.id);
+  function fill(parent, node) {
+    for (const group of conversationGroups.filter(g => g.parent === parent)) {
+      const folder = element("details", "conversation-group"); folder.dataset.group = group.id;
+      folder.open = expandedGroups.has(group.id) || ancestors.has(group.id);
+      const summary = element("summary", "");
+      summary.append(element("span", "group-name", group.name));
+      summary.title = `${group.kind}: ${groupPath(group.id)}`;
+      const add = element("button", "group-action", "＋"); add.type = "button";
+      add.setAttribute("aria-label", "New chat in " + group.name);
+      add.onclick = async event => {
+        event.preventDefault(); event.stopPropagation();
+        if (busy) return;
+        try {
+          const created = await api("/api/conversations", {method:"POST",body:JSON.stringify({group_id:group.id})});
+          await openConversation(created.id);
+        } catch (error) { $("#activity").textContent = error.message; }
+      };
+      const manage = element("button", "group-action", "⋯"); manage.type = "button";
+      manage.setAttribute("aria-label", "Manage " + group.name);
+      manage.onclick = event => { event.preventDefault(); event.stopPropagation(); openGroupDialog(group.id); };
+      summary.append(add, manage); folder.append(summary);
+      const children = element("div", "group-children"); fill(group.id, children);
+      if (!children.children.length) children.append(element("p", "group-empty", "No chats yet"));
+      folder.append(children);
+      folder.ontoggle = () => {
+        if (folder.open) expandedGroups.add(group.id); else expandedGroups.delete(group.id);
+        try { localStorage.setItem("aimate.groups", JSON.stringify([...expandedGroups])); } catch {}
+      };
+      node.append(folder);
+    }
+    for (const thread of conversationList.filter(t => (t.group_id || null) === parent)) {
+      const button = element("button", thread.id === cid ? "active" : "", (thread.pinned ? "★ " : "") + thread.title);
+      button.title = thread.title;
+      button.onclick = () => !busy && openConversation(thread.id, thread.title);
+      node.append(button);
+    }
+  }
+  fill(null, nav);
+}
+function openGroupDialog(id = null) {
+  if (busy) return;
+  editingGroup = id;
+  const group = conversationGroups.find(g => g.id === id);
+  $("#groupDialogTitle").textContent = group ? "Group settings" : "New project / group";
+  $("#groupName").value = group?.name || "";
+  $("#groupPlacement").hidden = Boolean(group);
+  groupOptions($("#groupParent"), "Top level");
+  $("#groupParent").value = "";
+  $("#groupKind").value = "project";
+  $("#removeGroup").hidden = !group;
+  $("#saveGroup").textContent = group ? "Save name" : "Create";
+  $("#groupError").textContent = "";
+  $("#groupDialog").showModal(); $("#groupName").focus();
+}
+$("#newGroup").onclick = () => openGroupDialog();
+$("#groupForm").onsubmit = async event => {
+  event.preventDefault(); $("#saveGroup").disabled = true;
+  try {
+    const payload = {name: $("#groupName").value.trim()};
+    if (!editingGroup) Object.assign(payload, {kind: $("#groupKind").value, parent: $("#groupParent").value || null});
+    const result = await api(editingGroup ? `/api/groups/${editingGroup}` : "/api/groups", {
+      method: editingGroup ? "PATCH" : "POST", body: JSON.stringify(payload)});
+    expandedGroups.add(result.id); $("#groupDialog").close(); await refreshState();
+  } catch (error) { $("#groupError").textContent = error.message; }
+  finally { $("#saveGroup").disabled = false; }
+};
+$("#removeGroup").onclick = async () => {
+  if (!editingGroup || busy) return;
+  try { await api(`/api/groups/${editingGroup}`, {method:"DELETE"}); $("#groupDialog").close(); await refreshState(); }
+  catch (error) { $("#groupError").textContent = error.message; }
+};
 
 function addMessage(role, text = "", turnId = null) {
   $("#welcome").hidden = true;
@@ -688,18 +783,23 @@ function openConversationAction(action) {
   $("#chatMenu").open = false;
   conversationAction = action; conversationActionId = cid;
   const removing = action === "delete";
-  $("#conversationDialogTitle").textContent = removing ? "Delete conversation?" : "Rename conversation";
-  $("#conversationNameLabel").hidden = removing;
+  const moving = action === "move";
+  $("#conversationDialogTitle").textContent = removing ? "Delete conversation?" : moving ? "Move conversation" : "Rename conversation";
+  $("#conversationNameLabel").hidden = removing || moving;
+  $("#conversationGroupLabel").hidden = !moving;
+  groupOptions($("#conversationGroup"), "Standalone chat");
+  $("#conversationGroup").value = conversationList.find(thread => thread.id === cid)?.group_id || "";
   $("#conversationName").value = $("#chatTitle").textContent;
-  $("#conversationName").required = !removing;
+  $("#conversationName").required = !removing && !moving;
   $("#conversationDeleteHint").hidden = !removing;
-  $("#conversationActionSubmit").textContent = removing ? "Delete conversation" : "Save name";
+  $("#conversationActionSubmit").textContent = removing ? "Delete conversation" : moving ? "Move chat" : "Save name";
   $("#conversationActionSubmit").className = removing ? "danger-button" : "primary";
   $("#conversationActionError").textContent = "";
   $("#conversationDialog").showModal();
-  if (!removing) { $("#conversationName").focus(); $("#conversationName").select(); }
+  if (!removing && !moving) { $("#conversationName").focus(); $("#conversationName").select(); }
 }
 $("#renameChat").onclick = () => openConversationAction("rename");
+$("#moveChat").onclick = () => openConversationAction("move");
 $("#deleteChat").onclick = () => openConversationAction("delete");
 $("#conversationActionForm").onsubmit = async event => {
   event.preventDefault();
@@ -714,6 +814,10 @@ $("#conversationActionForm").onsubmit = async event => {
         try { localStorage.removeItem("aimate.conversation"); } catch {}
       }
       $("#activity").textContent = "Conversation deleted.";
+    } else if (conversationAction === "move") {
+      await api(`/api/conversations/${conversationActionId}`, {method:"PATCH",
+        body:JSON.stringify({group_id:$("#conversationGroup").value || null})});
+      $("#activity").textContent = "Conversation moved.";
     } else {
       const result = await api(`/api/conversations/${conversationActionId}`, {method: "PATCH",
         body: JSON.stringify({title: $("#conversationName").value.trim()})});
@@ -725,11 +829,7 @@ $("#conversationActionForm").onsubmit = async event => {
   } catch (error) { $("#conversationActionError").textContent = error.message; }
   finally { $("#conversationActionSubmit").disabled = false; }
 };
-$("#copyChat").onclick = async () => {
-  if (!cid || busy) return;
-  $("#chatMenu").open = false;
-  try {
-    const conversation = await api(`/api/conversations/${cid}`);
+function conversationMarkdown(conversation) {
     const lines = ["# " + conversation.title.replace(/([\\`*_{}[\]<>#+.!|])/g, "\\$1"), ""];
     for (const turn of conversation.turns) {
       const user = turn.messages.find(m => m.role === "user" && typeof m.content === "string");
@@ -751,9 +851,180 @@ $("#copyChat").onclick = async () => {
       lines.push("## Reviewed actions", "");
       for (const action of conversation.actions) lines.push(`- ${action.service}: ${action.operation} — ${action.status}`);
     }
-    await copyFormatted(lines.join("\n"));
+    return lines.join("\n");
+}
+$("#copyChat").onclick = async () => {
+  if (!cid || busy) return;
+  $("#chatMenu").open = false;
+  try {
+    await copyFormatted(conversationMarkdown(await api(`/api/conversations/${cid}`)));
     $("#activity").textContent = "Chat copied with formatting. Plain-text paste includes Markdown.";
   } catch (error) { $("#activity").textContent = "Copy failed: " + error.message; }
+};
+function downloadFile(content, filename, type) {
+  const url = URL.createObjectURL(new Blob([content], {type}));
+  const link = element("a"); link.href = url; link.download = filename;
+  document.body.append(link); link.click(); link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+$("#exportChat").onclick = async () => {
+  if (!cid) return;
+  $("#chatMenu").open = false;
+  try {
+    const chat = await api(`/api/conversations/${cid}`);
+    downloadFile(conversationMarkdown(chat), "AiMate-" + chat.id.slice(0,8) + ".md", "text/markdown;charset=utf-8");
+    $("#activity").textContent = "Chat exported as Markdown.";
+  } catch (error) { $("#activity").textContent = error.message; }
+};
+$("#pinChat").onclick = async () => {
+  if (!cid) return;
+  $("#chatMenu").open = false;
+  try {
+    const pinned = Boolean(conversationList.find(thread => thread.id === cid)?.pinned);
+    await api(`/api/conversations/${cid}`, {method:"PATCH",body:JSON.stringify({pinned:!pinned})});
+    await refreshState();
+  } catch (error) { $("#activity").textContent = error.message; }
+};
+$("#continueChat").onclick = async () => {
+  if (!cid) return;
+  $("#chatMenu").open = false;
+  try {
+    controller?.abort();
+    for (let attempt=0; busy && attempt<100; attempt++) await new Promise(resolve=>setTimeout(resolve,30));
+    if (busy) throw new Error("Stop the current answer before continuing.");
+    const chat = await api(`/api/conversations/${cid}/continue`, {method:"POST"});
+    await openConversation(chat.id);
+    $("#activity").textContent = "Continued in a new chat. Relevant saved context can be recalled.";
+    $("#question").focus();
+  } catch (error) { $("#activity").textContent = error.message; }
+};
+let knowledgeRecords = [], recordId = null;
+function renderKnowledge() {
+  const list = $("#knowledgeList"); list.replaceChildren();
+  const query = $("#knowledgeSearch").value.toLowerCase();
+  for (const record of knowledgeRecords.filter(r => (r.key + " " + r.value).toLowerCase().includes(query))) {
+    const button = element("button", record.id === recordId ? "active" : "");
+    button.append(element("b", "", record.key), element("small", "", record.group_id ? groupPath(record.group_id) : "Workspace"));
+    button.onclick = () => editRecord(record); list.append(button);
+  }
+  if (!list.children.length) list.append(element("p", "hint", "No records yet."));
+}
+function editRecord(record = null) {
+  recordId = record?.id || null;
+  $("#recordKey").value = record?.key || "";
+  $("#recordValue").value = record?.value || "";
+  groupOptions($("#recordGroup"), "Workspace");
+  $("#recordGroup").value = record ? record.group_id || "" : conversationList.find(c => c.id === cid)?.group_id || "";
+  $("#deleteRecord").hidden = !record;
+  $("#knowledgeError").textContent = ""; renderKnowledge();
+}
+async function loadKnowledge() {
+  knowledgeRecords = (await api("/api/knowledge")).records; renderKnowledge();
+}
+$("#openKnowledge").onclick = async () => {
+  $("#knowledgeDialog").showModal();
+  try { await loadKnowledge(); editRecord(); } catch (error) { $("#knowledgeError").textContent = error.message; }
+};
+$("#knowledgeSearch").oninput = renderKnowledge;
+$("#newRecord").onclick = () => { editRecord(); $("#recordKey").focus(); };
+$("#knowledgeForm").onsubmit = async event => {
+  event.preventDefault();
+  try {
+    const result = await api(recordId ? `/api/knowledge/${recordId}` : "/api/knowledge", {
+      method:recordId ? "PATCH" : "POST", body:JSON.stringify({
+        key:$("#recordKey").value,value:$("#recordValue").value,group_id:$("#recordGroup").value || null})});
+    await loadKnowledge(); editRecord(knowledgeRecords.find(r => r.id === result.id));
+  } catch (error) { $("#knowledgeError").textContent = error.message; }
+};
+$("#deleteRecord").onclick = async () => {
+  if (!recordId) return;
+  try { await api(`/api/knowledge/${recordId}`, {method:"DELETE"}); await loadKnowledge(); editRecord(); }
+  catch (error) { $("#knowledgeError").textContent = error.message; }
+};
+let usageReport = null;
+const tokenTotal = row => row.input_tokens + row.output_tokens + row.cache_read_input_tokens + row.cache_creation_input_tokens;
+const usd = value => new Intl.NumberFormat(undefined,{style:"currency",currency:"USD",maximumFractionDigits:4}).format(value);
+const numberLabel = value => value.toLocaleString();
+async function loadUsage() {
+  try {
+    $("#usageError").textContent = "";
+    usageReport = await api(`/api/usage?days=${$("#usageDays").value}&offset=${-new Date().getTimezoneOffset()}`);
+    const totals = usageReport.totals, summary = $("#usageSummary"); summary.replaceChildren();
+    const cards = [["Reported tokens",numberLabel(tokenTotal(totals))],["Usage entries",numberLabel(totals.requests)],
+      ["Estimated cost", totals.requests && !totals.unpriced_requests ? usd(totals.estimated_usd) : totals.requests > totals.unpriced_requests ? usd(totals.estimated_usd) + " + unpriced" : "Rates not set"]];
+    for (const [label,value] of cards) {
+      const card = element("div"); card.append(element("small","",label),element("strong","",value)); summary.append(card);
+    }
+    const table = element("table"), head = element("tr");
+    for (const label of ["Model","Entries","Input","Output","Cached / written","Est. USD"]) head.append(element("th","",label));
+    table.append(head);
+    for (const row of usageReport.models) {
+      const tr = element("tr");
+      for (const value of [row.model,numberLabel(row.requests),numberLabel(row.input_tokens),numberLabel(row.output_tokens),
+        numberLabel(row.cache_read_input_tokens) + " / " + numberLabel(row.cache_creation_input_tokens),
+        row.unpriced_requests ? "Unpriced" + (row.requests > row.unpriced_requests ? " + " + usd(row.estimated_usd) : "") : usd(row.estimated_usd)]) tr.append(element("td","",value));
+      tr.onclick = () => { $("#rateModel").value = row.model; setRateFields(); }; table.append(tr);
+    }
+    $("#usageModels").replaceChildren(table);
+    if (!usageReport.models.length) $("#usageModels").append(element("p","hint","No reported usage in this period."));
+    const options = $("#usageModelOptions"); options.replaceChildren();
+    for (const model of new Set([...usageReport.models.map(r=>r.model),config.ai?.model,config.ai?.analysis_model].filter(Boolean))) {
+      const option = element("option"); option.value=model; options.append(option);
+    }
+    $("#usageCoverage").textContent = usageReport.coverage + " Days use your device timezone.";
+    renderUsageChart();
+  } catch (error) { $("#usageError").textContent = error.message; }
+}
+function renderUsageChart() {
+  if (!usageReport) return;
+  const chart = $("#usageChart"); chart.replaceChildren();
+  const cost = $("#usageMetric").value === "cost";
+  if (cost && usageReport.totals.unpriced_requests === usageReport.totals.requests) {
+    chart.append(element("p","hint","Add model rates to show cost estimates.")); return;
+  }
+  const rows = [];
+  for (let i=usageReport.days-1;i>=0;i--) {
+    const date = new Date(); date.setDate(date.getDate()-i);
+    const key = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
+    rows.push(usageReport.daily.find(r=>r.date===key) || {date:key,input_tokens:0,output_tokens:0,
+      cache_read_input_tokens:0,cache_creation_input_tokens:0,estimated_usd:0,unpriced_requests:0});
+  }
+  const maximum = Math.max(1e-8,...rows.map(r=>cost ? r.estimated_usd : tokenTotal(r)));
+  for (const row of rows) {
+    const column = element("div","usage-column"), bar = element("i");
+    const value = cost ? row.estimated_usd : tokenTotal(row);
+    bar.style.height = Math.max(1,value/maximum*130)+"px";
+    column.title = row.date + ": " + (cost ? usd(value) + (row.unpriced_requests ? " · includes unpriced requests" : "") : numberLabel(value)+" tokens");
+    column.append(bar,element("small","",row.date.slice(5))); chart.append(column);
+  }
+  if (!rows.length) chart.append(element("p","hint","Your activity will appear here."));
+}
+function setRateFields() {
+  const rate = usageReport?.rates.find(r=>r.model===$("#rateModel").value);
+  for (const [id,key] of [["rateInput","input"],["rateOutput","output"],["rateRead","cache_read"],["rateWrite","cache_write"]]) $("#"+id).value=rate ? rate[key] : "";
+}
+$("#openUsage").onclick = () => { $("#usageDialog").showModal(); void loadUsage(); };
+$("#usageDays").onchange = loadUsage;
+$("#usageMetric").onchange = renderUsageChart;
+$("#rateModel").oninput = setRateFields;
+$("#usageRateForm").onsubmit = async event => {
+  event.preventDefault();
+  try {
+    await api("/api/usage/rates",{method:"POST",body:JSON.stringify({model:$("#rateModel").value,
+      input:Number($("#rateInput").value),output:Number($("#rateOutput").value),
+      cache_read:Number($("#rateRead").value),cache_write:Number($("#rateWrite").value)})});
+    await loadUsage();
+  } catch (error) { $("#usageError").textContent=error.message; }
+};
+$("#exportUsage").onclick = () => {
+  if (!usageReport) return;
+  const csv = [["Day","Input tokens","Output tokens","Cache read tokens","Cache write tokens","Usage entries","Estimated USD","Unpriced entries"],
+    ...usageReport.daily.map(r=>[r.date,r.input_tokens,r.output_tokens,r.cache_read_input_tokens,r.cache_creation_input_tokens,r.requests,r.estimated_usd,r.unpriced_requests])];
+  downloadFile(csv.map(row=>row.join(",")).join("\r\n"),"AiMate-usage.csv","text/csv;charset=utf-8");
+  const modelCsv = [["Model","Input tokens","Output tokens","Cache read tokens","Cache write tokens","Usage entries","Estimated USD","Unpriced entries"],
+    ...usageReport.models.map(r=>[r.model,r.input_tokens,r.output_tokens,r.cache_read_input_tokens,r.cache_creation_input_tokens,r.requests,r.estimated_usd,r.unpriced_requests])];
+  const cell = value => '"' + String(value).replace(/^[=+@-]/,"'$&").replaceAll('"','""') + '"';
+  downloadFile(modelCsv.map(row=>row.map(cell).join(",")).join("\r\n"),"AiMate-usage-models.csv","text/csv;charset=utf-8");
 };
 document.addEventListener("aimate:choice", event => {
   if (busy) return;

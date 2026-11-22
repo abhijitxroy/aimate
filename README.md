@@ -288,6 +288,25 @@ For corporate certificates, set `SSL_CERT_FILE` to a trusted PEM CA bundle
 before starting the app. Standard HTTPS proxy environment variables are
 respected; TLS verification remains enabled.
 
+## Chats, knowledge and usage
+
+Chats can be standalone or organized under projects, modules and nested groups.
+Use the chat menu to rename, move, pin, copy, export Markdown, or continue in a new
+chat. Continuing keeps a reference and a bounded excerpt; it does not duplicate
+the entire transcript. AiMate can search relevant past user/assistant messages
+and saved Knowledge key/value records. Internal tool bodies are excluded from
+cross-chat recall. Recalled facts may be stale, so current status needs a fresh
+service read. Knowledge records are user-managed reference data, not a password vault.
+
+**Usage & billing** tracks reported chat and Auto-routing requests by local day
+and model, including cache tokens when reported. Its independent ledger survives
+chat deletion. Enter your provider's USD rates per million tokens for estimates;
+unpriced requests remain marked unpriced. Changing rates recalculates historical
+estimates. ChatGPT subscription limits and organization invoices remain with the
+provider. Connection checks and calls without reported usage are excluded.
+Export daily and model breakdowns as CSV. Imported historical usage lacks provider
+and cache details that were not previously saved.
+
 ## Tests
 
 The test suite uses local HTTP mocks and a fake AI client; it never spends AI
