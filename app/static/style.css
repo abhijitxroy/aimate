@@ -56,7 +56,8 @@ header .eyebrow { margin-bottom: 7px; }
 #mobileConversations button { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
 .badge { font-size: 10px; color: var(--accent); border: 1px solid var(--line); padding: 7px 10px; border-radius: 20px; }
 .source-bar { display: flex; flex-wrap: wrap; gap: 14px; padding: 0 32px 16px; cursor: pointer; }
-.source-chip { font-size: 11px; color: var(--muted); }
+.source-chip { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; background: transparent; font-size: 11px; color: var(--muted); }
+.source-chip:hover { background: transparent; text-decoration: underline; text-underline-offset: 3px; }
 .source-chip.off { opacity: .6; }
 .source-chip.off .dot { background: var(--muted); }
 .welcome { margin: auto; width: min(900px, 100%); text-align: center; padding: 24px; }
@@ -145,6 +146,7 @@ fieldset > label { margin-bottom: 12px; }
 .connection-dot { width: 7px; height: 7px; border-radius: 50%; background: #8292a8; flex-shrink: 0; }
 [data-state="passed"] { --signal: #76e3b0; }
 [data-state="failed"] { --signal: #ff8e9e; }
+[data-state="partial"] { --signal: #ffbc66; }
 [data-state="checking"] { --signal: #79baff; }
 [data-state="unchecked"], [data-state="simulated"] { --signal: #a8b8cc; }
 .connection-dot[data-state] { background: var(--signal); }

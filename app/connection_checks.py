@@ -132,7 +132,7 @@ async def check_connection(service, config, services, client_factory, chatgpt):
                     return await services.read(service, path, params)
 
             async def target_check(target):
-                row = {"target": target, "ok": False, "checks": [], "details": []}
+                row = {"target": target, "ok": False, "status": "failed", "checks": [], "details": []}
                 try:
                     path = ("/repos/" + target if service == "github" else
                             "/rest/api/" + section.get("api_version", "2") + "/project/" + target if service == "jira" else
@@ -141,6 +141,7 @@ async def check_connection(service, config, services, client_factory, chatgpt):
                     row["url"] = result["source"]
                     data = result["data"]
                     row["ok"] = True
+                    row["status"] = "passed"
                     row["message"] = "Accessible"
                     if service == "github":
                         row["details"] = [
@@ -163,6 +164,7 @@ async def check_connection(service, config, services, client_factory, chatgpt):
                             capability("Pull requests", "/pulls"), capability("Actions", "/actions/runs"))
                         row["ok"] = all(c["ok"] for c in row["checks"])
                         if not row["ok"]:
+                            row["status"] = "partial"
                             row["message"] = "Repository connected; some features are unavailable"
                     elif service == "jira":
                         row["details"] = ["Project: " + str(data.get("name", target)),
@@ -179,8 +181,17 @@ async def check_connection(service, config, services, client_factory, chatgpt):
             report["targets"] = await asyncio.gather(*(target_check(t) for t in targets))
             passed = sum(t["ok"] for t in report["targets"])
             report["ok"] = passed == len(targets)
+            report["status"] = "passed" if report["ok"] else (
+                "partial" if passed or any(t["status"] == "partial" for t in report["targets"]) else "failed")
+            report["counts"] = {"passed": passed, "total": len(targets),
+                                "unit": {"github": "repos", "jira": "projects", "jenkins": "jobs"}[service]}
             report["message"] = f"{passed} of {len(targets)} targets passed all read checks."
+            if report["status"] == "partial" and len(targets) == 1:
+                checks = report["targets"][0]["checks"]
+                report["counts"] = {"passed": sum(c["ok"] for c in checks), "total": len(checks), "unit": "checks"}
+                report["message"] = f"Repository accessible; {report['counts']['passed']} of {len(checks)} feature checks passed."
         except Exception as exc:
             report["message"] = failure(exc)
-    report["status"] = "passed" if report["ok"] else "failed"
+    if report["status"] != "partial":
+        report["status"] = "passed" if report["ok"] else "failed"
     return report

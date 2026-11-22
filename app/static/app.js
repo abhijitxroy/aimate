@@ -38,10 +38,15 @@ function element(tag, className, text) {
 function sourceBadge(name, service) {
   const report = connectionReports[service] || {};
   const status = demo ? "simulated" : report.status || "unchecked";
-  const chip = element("span", "source-chip");
+  const chip = element("button", "source-chip");
+  chip.type = "button";
   chip.dataset.state = status;
   const dot = element("i", "connection-dot"); dot.dataset.state = status;
-  chip.append(dot, document.createTextNode(name + " · " + (demo ? "Sample" : status === "passed" ? "Connected" : status === "failed" ? "Failed" : "Not checked")));
+  const counts = report.counts;
+  const partial = "Partial" + (counts ? ` · ${counts.passed}/${counts.total} ${counts.unit}` : "");
+  chip.append(dot, document.createTextNode(name + " · " + (demo ? "Sample" : status === "passed" ? "Connected" : status === "partial" ? partial : status === "failed" ? "Failed" : "Not checked")));
+  chip.title = report.message || "Open connection details";
+  chip.onclick = event => { event.stopPropagation(); activeSettings = service; openSettings(); };
   return chip;
 }
 
@@ -616,7 +621,7 @@ function renderConnection(service, override) {
   summary.dataset.state = status;
   summary.replaceChildren();
   const light = element("span", "connection-dot"); light.dataset.state = status;
-  const label = {passed: "✓ Connected · Pass", failed: "✕ Failed", checking: "Checking…", unchecked: "Not verified", simulated: "Sample only"}[status];
+  const label = {passed: "✓ Connected · Pass", partial: "◐ Partial access", failed: "✕ Failed", checking: "Checking…", unchecked: "Not verified", simulated: "Sample only"}[status];
   summary.append(light, document.createTextNode(label));
   const output = $(`#test-${service}`);
   output.replaceChildren(element("p", status === "failed" ? "error" : "muted", report.message));
@@ -636,9 +641,10 @@ function renderConnection(service, override) {
   }
   for (const target of report.targets || []) {
     const card = element("div", "connection-target");
-    card.dataset.state = target.ok ? "passed" : "failed";
-    card.append(element("h3", "", (target.ok ? "✓ " : "✕ ") + target.target),
-                element("p", target.ok ? "" : "error", target.message));
+    const targetStatus = target.status || (target.ok ? "passed" : "failed");
+    card.dataset.state = targetStatus;
+    card.append(element("h3", "", (targetStatus === "partial" ? "◐ " : target.ok ? "✓ " : "✕ ") + target.target),
+                element("p", targetStatus === "failed" ? "error" : "", target.message));
     if (target.details?.length) {
       const list = element("ul"); target.details.forEach(text => list.append(element("li", "", text))); card.append(list);
     }
@@ -747,7 +753,7 @@ document.querySelectorAll("[data-test]").forEach(button => {
       await refreshState();
       renderConnection(service, dirtyConnections.has(service)
         ? {status: "unchecked", message: "Inputs changed during the check. Save & check again."} : result);
-      $("#settingsStatus").textContent = result.ok ? "Access check passed." : "Fix the failed checks shown above.";
+      $("#settingsStatus").textContent = result.status === "partial" ? "Partially connected. See which targets or features need attention." : result.ok ? "Access check passed." : "Fix the failed checks shown above.";
     } catch (error) {
       renderConnection(service, {status: "failed", message: error.message});
       $("#settingsStatus").textContent = "Check failed. See the correction above.";

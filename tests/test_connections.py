@@ -54,14 +54,39 @@ class ConnectionTests(unittest.TestCase):
         for token in ("github-private-token", "ai-private-token"):
             self.assertNotIn(token, str(state))
 
-    def test_partial_access_is_red_and_does_not_leak_error_body(self):
+    def test_partial_feature_access_is_orange_and_does_not_leak_error_body(self):
         self.denied = "/actions/runs"
         report = self.client.post("/api/connections/github/test", headers=self.headers).json()
         self.assertFalse(report["ok"])
-        self.assertEqual(report["status"], "failed")
+        self.assertEqual(report["status"], "partial")
+        self.assertEqual(report["targets"][0]["status"], "partial")
+        self.assertEqual(report["counts"], {"passed": 3, "total": 4, "unit": "checks"})
         self.assertEqual(report["targets"][0]["checks"][-1]["name"], "Actions")
         self.assertIn("HTTP 403", report["targets"][0]["checks"][-1]["message"])
         self.assertNotIn("NEVER RETURN THIS BODY", str(report))
+
+    def test_mixed_targets_are_partial_for_each_service(self):
+        for service, field, target, denied, unit in [
+            ("github", "repos", "team/blocked", "/repos/team/blocked", "repos"),
+            ("jira", "projects", "OTHER", "/project/OTHER", "projects"),
+            ("jenkins", "jobs", "team/blocked", "/job/team/job/blocked", "jobs"),
+        ]:
+            with self.subTest(service=service):
+                cfg = fixture_config()
+                cfg[service][field].append(target)
+                self.store.save_config(cfg)
+                self.denied = denied
+                report = self.client.post(f"/api/connections/{service}/test", headers=self.headers).json()
+                self.assertEqual(report["status"], "partial")
+                self.assertEqual(report["counts"], {"passed": 1, "total": 2, "unit": unit})
+                self.assertFalse(report["ok"])
+                self.assertEqual(self.client.get("/api/state").json()["connection_checks"][service]["status"], "partial")
+
+    def test_no_accessible_targets_remains_failed(self):
+        self.denied = "/repos/"
+        report = self.client.post("/api/connections/github/test", headers=self.headers).json()
+        self.assertEqual(report["status"], "failed")
+        self.assertEqual(report["counts"]["passed"], 0)
 
     def test_missing_connection_is_failed_with_remedy(self):
         self.store.save_config({"ai": {}, "github": {}, "jira": {}, "jenkins": {}})
