@@ -3,6 +3,8 @@ import base64
 import hashlib
 import json
 import re
+import os
+import ssl
 from urllib.parse import quote
 
 import httpx
@@ -71,7 +73,7 @@ class Services:
     def issue(self, value):
         if not isinstance(value, str) or not re.fullmatch(r"[A-Z][A-Z0-9_]*-[1-9][0-9]*", value):
             raise ValueError("Use a Jira issue key, for example DEMO-123")
-        if value.rsplit("-", 1)[0] not in self.section("jira").get("projects", []):
+        if self.section("jira").get("access") != "all" and value.rsplit("-", 1)[0] not in self.section("jira").get("projects", []):
             raise ValueError("Jira issue is outside your configured projects")
         return value
 
@@ -97,7 +99,8 @@ class Services:
         else:
             auth = httpx.BasicAuth(cfg.get("username", ""), cfg["token"])
         async with httpx.AsyncClient(timeout=30, follow_redirects=False, transport=self.transport,
-                                     headers=headers, auth=auth) as client:
+                                     headers=headers, auth=auth,
+                                     verify=ssl.create_default_context() if os.name == "nt" else True) as client:
             if service == "jenkins" and method != "GET":
                 crumb = await client.get(base + "/crumbIssuer/api/json")
                 if crumb.is_success:
@@ -111,7 +114,12 @@ class Services:
             async with client.stream(method, base + path, params=params, json=body, data=form, headers=headers) as r:
                 if r.status_code >= 300:
                     # Do not echo response bodies: provider errors can contain credentials.
-                    hint = {401: "token is invalid or expired",
+                    hint = {301: "API redirected; check the site URL and corporate network/proxy routing",
+                            302: "API redirected to another page; check VPN/proxy routing and use the Jira API site URL",
+                            303: "API redirected to sign-in; check the site URL and authentication method",
+                            307: "API redirected; check the site URL and corporate network/proxy routing",
+                            308: "API redirected; check the site URL and corporate network/proxy routing",
+                            401: "token is invalid or expired",
                             403: "check token permissions, organization SSO approval and service access",
                             404: "target was not found or your token cannot see it",
                             429: "service rate limit reached; retry later"}.get(r.status_code, "check service availability and target")
@@ -173,12 +181,14 @@ class Services:
                 self.issue(m[2])
             elif re.fullmatch(r"/rest/api/(2|3)/search(?:/jql)?", path):
                 projects = cfg.get("projects", [])
-                if not projects:
+                if not projects and cfg.get("access") != "all":
                     raise ValueError("Add Jira projects first")
-                params["jql"] = scoped_jql(params.pop("jql", ""), projects)
+                params["jql"] = scoped_jql(params.pop("jql", ""), [] if cfg.get("access") == "all" else projects)
                 params["maxResults"] = max(1, min(50, int(params.get("maxResults", 20))))
+            elif re.fullmatch(r"/rest/api/(2|3)/project(?:/search)?", path) and cfg.get("access") == "all":
+                params["maxResults"] = max(1, min(100, int(params.get("maxResults", 50))))
             elif re.fullmatch(r"/rest/api/(2|3)/project/([A-Z][A-Z0-9_]*)", path):
-                if path.rsplit("/", 1)[1] not in cfg.get("projects", []):
+                if cfg.get("access") != "all" and path.rsplit("/", 1)[1] not in cfg.get("projects", []):
                     raise ValueError("Jira project is outside your configured scope")
             else:
                 raise ValueError("Use Jira issue, project, transitions, comments or search endpoints")
@@ -201,7 +211,7 @@ class Services:
         else:
             raise ValueError("Unknown service")
         result = await self.request(service, "GET", path, params=params)
-        if service == "jira" and isinstance(result, dict) and isinstance(result.get("issues"), list):
+        if service == "jira" and self.section("jira").get("access") != "all" and isinstance(result, dict) and isinstance(result.get("issues"), list):
             # Defence in depth against an upstream JQL parser behaving differently.
             projects = set(self.section("jira").get("projects", []))
             result = {**result, "issues": [issue for issue in result["issues"] if
@@ -282,7 +292,9 @@ class Services:
             base = "/rest/api/" + version
             if operation == "create_issue":
                 project = p.get("project")
-                if project not in cfg.get("projects", []):
+                if not isinstance(project, str) or not re.fullmatch(r"[A-Z][A-Z0-9_]*", project):
+                    raise ValueError("Use a Jira project key, for example DEMO")
+                if cfg.get("access") != "all" and project not in cfg.get("projects", []):
                     raise ValueError("Jira project is outside your configured scope")
                 fields = {"project": {"key": project}, "summary": self.text(p.get("summary")),
                           "issuetype": {"name": self.text(p.get("issue_type", "Task"))}}

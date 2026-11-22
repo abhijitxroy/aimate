@@ -64,7 +64,7 @@ async function refreshState() {
     bar.append(sourceBadge(label, key));
   }
   bar.append(sourceBadge(demo ? "Scripted demo" : config.ai?.provider === "chatgpt" ? "ChatGPT" : config.ai?.provider === "bedrock" ? "Claude · Bedrock" : "Claude", "ai"));
-  const ready = aiReady() && (config.github?.repos?.length || config.jira?.projects?.length || config.jenkins?.jobs?.length);
+  const ready = aiReady() && (config.github?.repos?.length || (config.jira?.projects?.length || (config.jira?.access === "all" && config.jira?.token_configured)) || config.jenkins?.jobs?.length);
   $("#setupHint").hidden = Boolean(demo || ready);
   $("#setupHint").textContent = "Connect AI + your project sources →";
   $("#setupHint").onclick = openSettings;
@@ -323,6 +323,9 @@ function openSettings() {
   if (!form.elements["github.url"].value) form.elements["github.url"].value = "https://api.github.com";
   if (!config.ai?.provider && !demo) form.elements["ai.provider"].value = "chatgpt";
   $("#settingsStatus").textContent = demo ? "Fixed fictional connections. Restart in live mode to configure real services." : "";
+  form.elements["jira.mode"].value = config.jira?.mode || (config.jira?.auth === "basic" ? "advanced" : "simple");
+  form.elements["jira.access"].value = config.jira?.access || "selected";
+  updateJiraSetup();
   updateProvider();
   selectSettingsTab(activeSettings);
   for (const service of ["ai", "github", "jira", "jenkins"]) renderConnection(service);
@@ -488,6 +491,7 @@ function selectSettingsTab(service) {
   document.querySelectorAll("[data-settings-panel]").forEach(panel => {
     panel.hidden = panel.dataset.settingsPanel !== service;
   });
+  $("#saveConnection").hidden = ["github", "jira", "jenkins"].includes(service);
   $("#saveConnection").textContent = service === "changes" ? "Save change settings" : `Save ${connectionLabels[service]} connection`;
   $("#settingsStatus").textContent = demo ? "Offline sample. Real credentials cannot be added here." : "Only this tab is saved.";
 }
@@ -525,7 +529,17 @@ function renderConnection(service, override) {
   output.replaceChildren(element("p", status === "failed" ? "error" : "muted", report.message));
   if (report.checked_at) output.append(element("p", "hint", "Last checked: " + new Date(report.checked_at * 1000).toLocaleString() + " · valid for up to 1 hour"));
   if (report.details?.length) {
-    const list = element("ul"); report.details.forEach(text => list.append(element("li", "", text))); output.append(list);
+    const list = element("ul"); report.details.forEach(text => list.append(element("li", "", text)));
+    if (service === "jira") {
+      const details = element("details");
+      details.append(element("summary", "", "Connection details"), list); output.append(details);
+    } else output.append(list);
+  }
+  let targetsOutput = output;
+  if (service === "jira" && report.targets?.length) {
+    targetsOutput = element("details", "accessible-projects");
+    targetsOutput.append(element("summary", "", `Accessible projects (${report.targets.length} shown)`));
+    output.append(targetsOutput);
   }
   for (const target of report.targets || []) {
     const card = element("div", "connection-target");
@@ -539,9 +553,23 @@ function renderConnection(service, override) {
       const row = element("p", "capability-check", `${check.ok ? "✓" : "✕"} ${check.name}: ${check.message}`);
       row.dataset.state = check.ok ? "passed" : "failed"; card.append(row);
     }
-    output.append(card);
+    targetsOutput.append(card);
   }
 }
+
+function updateJiraSetup() {
+  const form = $("#settingsForm");
+  const simple = form.elements["jira.mode"].value === "simple";
+  $("#jiraAdvanced").hidden = simple;
+  $("#jiraSimpleHint").hidden = !simple;
+  $("#jiraProjectKeys").hidden = form.elements["jira.access"].value === "all";
+}
+$("#settingsForm").elements["jira.mode"].addEventListener("change", updateJiraSetup);
+$("#settingsForm").elements["jira.access"].addEventListener("change", updateJiraSetup);
+$("#settingsForm").elements["jira.auth"].addEventListener("change", () => {
+  const form = $("#settingsForm");
+  form.elements["jira.api_version"].value = form.elements["jira.auth"].value === "basic" ? "3" : "2";
+});
 
 function settingsData() {
   const data = {ai: {}, github: {}, jira: {}, jenkins: {}};
@@ -553,6 +581,7 @@ function settingsData() {
     if (["repos", "projects", "jobs"].includes(key)) value = value.split(/\r?\n/).map(x => x.trim()).filter(Boolean);
     data[section][key] = value;
   }
+  if (data.jira.mode === "simple") Object.assign(data.jira, {auth: "bearer", api_version: "2", access: "all", projects: [], username: ""});
   if (data.ai.provider === "chatgpt") data.ai.model = $("#chatgptModel").value;
   return data;
 }

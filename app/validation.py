@@ -74,8 +74,8 @@ def scoped_jql(query, projects):
     # ORDER BY inside a subexpression is not valid JQL, and cannot escape the outer scope.
     if any(c in ordering for c in "()"):
         raise ValueError("Invalid JQL ordering")
-    scope = "project IN (" + ",".join(projects) + ")"
-    return scope + (" AND (" + condition + ")" if condition else "") + (" " + ordering if ordering else "")
+    scope = "project IN (" + ",".join(projects) + ")" if projects else ""
+    return (scope + (" AND (" + condition + ")" if condition else "") if scope else condition) + (" " + ordering if ordering else "")
 
 
 def validate_config(raw, old):
@@ -86,7 +86,7 @@ def validate_config(raw, old):
         "ai": {"provider", "model", "region", "api_key", "bedrock_auth", "bedrock_endpoint",
                "aws_access_key", "aws_secret_key", "aws_session_token"},
         "github": {"url", "repos", "token"},
-        "jira": {"url", "projects", "auth", "username", "api_version", "token"},
+        "jira": {"url", "projects", "auth", "username", "api_version", "token", "mode", "access"},
         "jenkins": {"url", "jobs", "username", "token"},
     }
     for name, fields in allowed_fields.items():
@@ -122,6 +122,13 @@ def validate_config(raw, old):
         raise ValueError("Add both the AWS access key ID and secret access key, or remove saved AWS credentials")
     if ai.get("provider") == "bedrock" and ai.get("bedrock_endpoint") == "mantle" and ai.get("bedrock_auth") == "iam":
         raise ValueError("Use a Bedrock bearer key with Mantle in this app")
+    jira = out["jira"]
+    if jira.get("mode", "advanced") not in {"simple", "advanced"}:
+        raise ValueError("Choose Simple or Advanced Jira setup")
+    if jira.get("mode") == "simple":
+        jira.update(auth="bearer", api_version="2", access="all", projects=[], username="")
+    if jira.get("access", "selected") not in {"all", "selected"}:
+        raise ValueError("Choose all accessible Jira projects or selected projects")
     if out["jira"].get("auth", "bearer") not in {"basic", "bearer"}:
         raise ValueError("Choose Jira basic or bearer authentication")
     if out["jira"].get("api_version", "2") not in {"2", "3"}:
@@ -143,7 +150,7 @@ def validate_config(raw, old):
                               "projects": "Use Jira project keys such as DEMO, one per line; not issue keys or URLs.",
                               "jobs": "Use Jenkins job names such as team/build, one per line; not job URLs."}[key])
         out[name][key] = items
-        if out[name].get("token") and not items:
+        if out[name].get("token") and not items and not (name == "jira" and out[name].get("access") == "all"):
             raise ValueError(f"Add at least one {key} entry for {name}")
     for name in ("jenkins", "jira"):
         if out[name].get("token") and (name == "jenkins" or out[name].get("auth") == "basic") and not out[name].get("username"):

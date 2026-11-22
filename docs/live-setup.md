@@ -125,3 +125,7 @@ AWS IAM, model availability, token permissions and API quotas still apply.
 References: [AWS bearer-key permissions](https://docs.aws.amazon.com/bedrock/latest/userguide/api-keys-permissions.html),
 [Claude on Bedrock Runtime](https://platform.claude.com/docs/en/build-with-claude/claude-on-amazon-bedrock-legacy),
 [Claude on Bedrock Mantle](https://platform.claude.com/docs/en/build-with-claude/claude-in-amazon-bedrock).
+
+Jira Simple setup needs only the site URL and a Data Center PAT. Save & connect verifies the account and discovers visible project keys and names. The assistant can access projects/issues permitted by that account; Jira permissions still apply. Advanced setup supports Cloud email + API token and optional selected-project restrictions. Restrictions use keys (for example ONEAPICI), not display names. Existing API configurations without an access setting remain restricted to their project list.
+
+On Windows, service connections validate TLS against the Windows certificate store. The launcher preserves direct routes for saved intranet URLs while using the Windows proxy for external sites. Restart run.ps1 after adding a new intranet host so its proxy route is refreshed.

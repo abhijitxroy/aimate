@@ -170,3 +170,7 @@ fieldset > label { margin-bottom: 12px; }
   .composer-bottom > span { font-size: 9px; } .badge { font-size: 9px; }
   .header-controls { gap: 2px; } .header-controls button { padding: 8px; }
 }
+
+#jiraAdvanced { display: grid; gap: 14px; }
+#settings-jira details summary { cursor: pointer; color: var(--muted); padding: 10px 0; }
+.accessible-projects .connection-target { padding: 10px 14px; }

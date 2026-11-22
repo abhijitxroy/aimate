@@ -52,10 +52,12 @@ async def check_connection(service, config, services, client_factory, chatgpt):
     else:
         try:
             fields = {"github": [("url", "API base URL"), ("repos", "OWNER/REPO entries")],
-                      "jira": [("url", "site URL"), ("token", "PAT / API token"), ("projects", "project keys")],
+                      "jira": [("url", "site URL"), ("token", "PAT / API token")],
                       "jenkins": [("url", "controller URL"), ("username", "username"),
                                   ("token", "API token"), ("jobs", "job names")]}[service]
             configured = config.get(service, {})
+            if service == "jira" and configured.get("access") != "all":
+                fields = fields + [("projects", "project keys")]
             if service == "jira" and configured.get("auth") == "basic":
                 fields = fields + [("username", "Cloud email")]
             missing = [label for key, label in fields if not configured.get(key)]
@@ -63,7 +65,7 @@ async def check_connection(service, config, services, client_factory, chatgpt):
                 raise ValueError("Add " + ", ".join(missing) + " for " + service + ", then save & check again.")
             section = services.section(service)
             targets = section.get({"github": "repos", "jira": "projects", "jenkins": "jobs"}[service], [])
-            if not targets:
+            if not targets and not (service == "jira" and section.get("access") == "all"):
                 raise ValueError({"github": "Add at least one repository as OWNER/REPO.",
                                   "jira": "Add at least one Jira project key.",
                                   "jenkins": "Add at least one Jenkins job name."}[service])
@@ -81,6 +83,21 @@ async def check_connection(service, config, services, client_factory, chatgpt):
                                      "Only read access is tested. No changes were made."]
             else:
                 report["details"] = ["Public access without a PAT. Token and write access are not verified."]
+            if service == "jira" and section.get("access") == "all":
+                version = section.get("api_version", "2")
+                path = "/rest/api/" + version + ("/project/search" if version == "3" else "/project")
+                data = await services.request(service, "GET", path, params={"maxResults": 50} if version == "3" else None)
+                projects = data if isinstance(data, list) else data.get("values")
+                if not isinstance(projects, list):
+                    raise ValueError("Jira did not return a project list. Check the site URL and authentication method.")
+                rows = [{"target": str(p.get("key", "")), "ok": True, "message": str(p.get("name", "Accessible")), "details": [], "checks": []}
+                        for p in projects if isinstance(p, dict) and p.get("key")]
+                report.update(ok=True, targets=rows[:15], message="Connected. " + str(len(rows)) + " accessible projects found" + (" on this page." if version == "3" else "."))
+                report["details"].append("All projects and issues permitted by your Jira account are available to the assistant.")
+                if len(rows) > 15 or (isinstance(data, dict) and not data.get("isLast", True)):
+                    report["details"].append("Showing the first 15 projects; the assistant can " + ("fetch additional pages." if version == "3" else "list all accessible projects."))
+                report["status"] = "passed"
+                return report
             limit = asyncio.Semaphore(4)
 
             async def read(path, params=None):

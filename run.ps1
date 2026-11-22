@@ -12,10 +12,23 @@ try {
     # HTTPX uses proxy environment variables, not Windows' automatic proxy settings.
     if (-not $env:HTTPS_PROXY -and -not $env:ALL_PROXY) {
         $githubUri = [uri]"https://api.github.com"
-        $systemProxy = [System.Net.WebRequest]::GetSystemWebProxy().GetProxy($githubUri)
-        if ($systemProxy.AbsoluteUri -ne $githubUri.AbsoluteUri) {
+        $proxyResolver = [System.Net.WebRequest]::GetSystemWebProxy()
+        $systemProxy = $proxyResolver.GetProxy($githubUri)
+        if ($systemProxy -and $systemProxy.AbsoluteUri -ne $githubUri.AbsoluteUri) {
             $env:HTTPS_PROXY = $systemProxy.AbsoluteUri
-            $env:NO_PROXY = (@($previousNoProxy, "127.0.0.1", "localhost") | Where-Object { $_ }) -join ","
+            # Preserve the system PAC's direct route for configured intranet services.
+            $directHosts = @("127.0.0.1", "localhost")
+            $connectionUrls = & $pythonPath -c 'import json; from app.store import Store; print(json.dumps([s.get("url", "") for s in Store().config().values() if isinstance(s, dict)]))'
+            if ($LASTEXITCODE -ne 0) { throw "Cannot read saved connection URLs for proxy routing." }
+            foreach ($connectionUrl in ($connectionUrls | ConvertFrom-Json)) {
+                if (-not $connectionUrl) { continue }
+                $connectionUri = [uri]$connectionUrl
+                $connectionProxy = $proxyResolver.GetProxy($connectionUri)
+                if (-not $connectionProxy -or $connectionProxy.AbsoluteUri -eq $connectionUri.AbsoluteUri) {
+                    $directHosts += $connectionUri.Host
+                }
+            }
+            $env:NO_PROXY = (@($previousNoProxy) + $directHosts | Where-Object { $_ } | Select-Object -Unique) -join ","
             Write-Host "Using the Windows-configured HTTPS proxy."
         }
     }

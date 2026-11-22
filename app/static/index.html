@@ -114,11 +114,16 @@
       </fieldset>
       <fieldset id="settings-jira" data-settings-panel="jira" role="tabpanel" aria-labelledby="tab-jira" hidden><legend>Jira connection</legend>
         <div class="connection-summary" data-connection-summary="jira" role="status"></div>
-        <div class="fields two"><label>Site URL<input name="jira.url" placeholder="https://your-team.atlassian.net"></label><label>API token / personal access token<input name="jira.token" type="password" autocomplete="off" placeholder="Leave blank to keep saved token"></label></div>
-        <div class="fields three"><label>Authentication<select name="jira.auth"><option value="bearer">Bearer · Data Center PAT</option><option value="basic">Basic · email + Cloud token</option></select></label><label>Username / email<input name="jira.username" autocomplete="off"></label><label>API version<select name="jira.api_version"><option value="2">2 · Data Center</option><option value="3">3 · Cloud</option></select></label></div>
-        <label>Project keys · one per line<textarea name="jira.projects" rows="2" placeholder="DEMO"></textarea></label>
-        <p class="hint">Data Center: bearer PAT + API 2. Cloud: email + API token + API 3. The assistant reads only the projects you add.</p>
-        <div class="test-row"><label class="check"><input name="jira.clear_token" type="checkbox">Remove saved token</label><button type="button" data-test="jira">Save & check projects</button></div>
+        <div class="fields two"><label>Site URL<input name="jira.url" placeholder="https://jira.devtools.intel.com"></label><label>API token / personal access token<input name="jira.token" type="password" autocomplete="off" placeholder="Leave blank to keep saved token"></label></div>
+        <label>Setup<select name="jira.mode"><option value="simple">Simple · PAT access</option><option value="advanced">Advanced · Cloud or selected projects</option></select></label>
+        <p class="hint" id="jiraSimpleHint">Site URL + PAT is enough. AiMate discovers the projects your account can access.</p>
+        <div id="jiraAdvanced" hidden>
+          <div class="fields two"><label>Authentication<select name="jira.auth"><option value="bearer">Data Center · PAT</option><option value="basic">Cloud · email + API token</option></select></label><label>Username / email<input name="jira.username" autocomplete="off"></label></div>
+          <div class="fields two"><label>API version<select name="jira.api_version"><option value="2">2 · Data Center</option><option value="3">3 · Cloud</option></select></label><label>Project access<select name="jira.access"><option value="all">All accessible projects</option><option value="selected">Selected projects only</option></select></label></div>
+          <label id="jiraProjectKeys">Project keys · one per line<textarea name="jira.projects" rows="2" placeholder="ONEAPICI"></textarea><span class="hint">Use the key, such as ONEAPICI, rather than the project name.</span></label>
+        </div>
+        <details><summary>Manage saved token</summary><label class="check"><input name="jira.clear_token" type="checkbox">Remove saved token</label></details>
+        <div class="test-row"><button type="button" data-test="jira">Save & connect</button></div>
         <div id="test-jira" class="connection-result" aria-live="polite"></div>
       </fieldset>
       <fieldset id="settings-jenkins" data-settings-panel="jenkins" role="tabpanel" aria-labelledby="tab-jenkins" hidden><legend>Jenkins connection</legend>
