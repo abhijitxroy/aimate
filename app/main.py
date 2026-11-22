@@ -256,9 +256,31 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
     @app.get("/api/conversations/{cid}")
     def conversation(cid: str, session=Depends(auth)):
         store.require_conversation(cid)
-        turns = store.rows("SELECT messages,created FROM turns WHERE conversation=? ORDER BY id", (cid,))
-        return {"id": cid, "turns": [{"messages": json.loads(t["messages"]), "created": t["created"]} for t in turns],
+        turns = store.rows("SELECT id,messages,created FROM turns WHERE conversation=? ORDER BY id", (cid,))
+        return {"id": cid, "turns": [{"id": t["id"], "messages": json.loads(t["messages"]), "created": t["created"]} for t in turns],
                 "actions": [public_action(store.action(r["id"])) for r in store.rows("SELECT id FROM actions WHERE conversation=? ORDER BY created", (cid,))]}
+
+    @app.post("/api/conversations/{cid}/edit")
+    async def edit_message(cid: str, request: Request, session=Depends(auth)):
+        store.require_conversation(cid)
+        if chat_locks.get(cid) and chat_locks[cid].locked():
+            raise HTTPException(409, "Wait until the current answer finishes before editing")
+        body = await request.json()
+        if not isinstance(body, dict):
+            raise ValueError("Expected an edited message")
+        turn_id, question = body.get("turn_id"), body.get("question")
+        if isinstance(turn_id, bool) or not isinstance(turn_id, int) or turn_id < 1:
+            raise ValueError("Choose a saved message to edit")
+        if not isinstance(question, str) or not question.strip() or len(question) > 30_000:
+            raise ValueError("Question must have 1–30,000 characters")
+        selected = store.rows("SELECT id FROM turns WHERE conversation=? AND id=?", (cid, turn_id))
+        if not selected:
+            raise HTTPException(404, "Message not found in this conversation")
+        # Preserve the original conversation and its reviewed actions as a separate version.
+        edited = store.new_conversation(question.strip())
+        for turn in store.rows("SELECT messages FROM turns WHERE conversation=? AND id<? ORDER BY id", (cid, turn_id)):
+            store.save_turn(edited, json.loads(turn["messages"]))
+        return {"id": edited}
 
     @app.post("/api/chat")
     async def chat(request: Request, session=Depends(auth)):

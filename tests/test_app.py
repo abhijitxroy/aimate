@@ -16,7 +16,7 @@ from fastapi.testclient import TestClient
 # Avoid creating a real user workspace while importing the ASGI entrypoint.
 _import_directory = tempfile.TemporaryDirectory()
 os.environ["APP_DATA_DIR"] = _import_directory.name
-from app.agent import propose
+from app.agent import propose, run_turn
 from app.connectors import Services, clean_path, scrub, scoped_jql
 from app.main import app as entrypoint, create_app, validate_config
 from app.store import Store
@@ -283,6 +283,101 @@ class WorkflowTests(unittest.TestCase):
         self.file_sha = "b" * 40
         self.assertEqual(self.client.post(f"/api/actions/{card['id']}/confirm", headers=self.csrf).status_code, 400)
         self.assertTrue(all(r.method == "GET" for r in self.requests))
+
+    def test_edit_message_preserves_original_and_excludes_later_context(self):
+        self.store.save_turn(self.cid, [{"role": "user", "content": "First question"}])
+        self.store.save_turn(self.cid, [{"role": "user", "content": "Question to edit"},
+                                       {"role": "assistant", "content": [{"type": "text", "text": "Old answer"}]}])
+        self.store.save_turn(self.cid, [{"role": "user", "content": "Later follow-up"}])
+        original = self.client.get(f"/api/conversations/{self.cid}").json()["turns"]
+        result = self.client.post(f"/api/conversations/{self.cid}/edit", headers=self.csrf,
+                                 json={"turn_id": original[1]["id"], "question": "Corrected question"})
+        self.assertEqual(result.status_code, 200)
+        edited_id = result.json()["id"]
+        self.assertNotEqual(edited_id, self.cid)
+        copied = self.client.get(f"/api/conversations/{edited_id}").json()["turns"]
+        self.assertEqual([t["messages"] for t in copied], [original[0]["messages"]])
+        self.assertEqual(self.client.get(f"/api/conversations/{self.cid}").json()["turns"], original)
+        self.assertEqual(self.requests, [])
+
+    def test_large_saved_turn_keeps_context_after_store_reopens(self):
+        self.store.save_turn(self.cid, [{"role": "user", "content": "Read PR #1257 in team/repo."},
+                                       {"role": "assistant", "content": [{"type": "text", "text": "PR #1257 is open."}]}])
+        latest = [
+            {"role": "user", "content": "Read its Jenkins log."},
+            {"role": "assistant", "content": [{"type": "tool_use", "id": "log1", "name": "api_read",
+                                               "input": {"service": "jenkins", "path": "/job/team/job/build/11/consoleText"}}]},
+            {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "log1", "content": "log line\n" * 25000}]},
+            {"role": "assistant", "content": [{"type": "text", "text": "Build #11 finished SUCCESS."}]},
+        ]
+        self.store.save_turn(self.cid, latest)
+        reopened = Store(self.directory.name)
+        try:
+            history = reopened.history(self.cid)
+            packed = json.dumps(history)
+            self.assertIn("Read PR #1257", packed)
+            self.assertIn("Build #11 finished SUCCESS", packed)
+            self.assertIn("Historical result excerpt", packed)
+            self.assertLess(len(packed), 140000)
+            self.assertEqual(history[-2]["content"][0]["tool_use_id"], "log1")
+            saved = reopened.rows("SELECT messages FROM turns WHERE conversation=? ORDER BY id DESC LIMIT 1", (self.cid,))
+            self.assertEqual(json.loads(saved[0]["messages"]), latest)
+        finally:
+            reopened.db.close()
+
+    def test_huge_tool_batch_retains_questions_and_answer_without_orphan_tools(self):
+        messages = [{"role": "user", "content": "Investigate Jira DEMO-123."}]
+        for index in range(30):
+            messages.extend([
+                {"role": "assistant", "content": [{"type": "tool_use", "id": f"read{index}", "name": "api_read", "input": {}}]},
+                {"role": "user", "content": [{"type": "tool_result", "tool_use_id": f"read{index}", "content": "x" * 24000}]},
+            ])
+        messages.append({"role": "assistant", "content": [{"type": "text", "text": "DEMO-123 links PR #1257."}]})
+        self.store.save_turn(self.cid, messages)
+        self.assertEqual(self.store.history(self.cid), [
+            {"role": "user", "content": "Investigate Jira DEMO-123."},
+            {"role": "assistant", "content": "DEMO-123 links PR #1257."},
+        ])
+
+    def test_model_receives_log_paging_metadata_after_full_page(self):
+        captured = []
+        class LogStream(FakeStream):
+            async def get_final_message(self):
+                if self.stage == 0:
+                    return SimpleNamespace(content=[FakeBlock(type="tool_use", id="log1", name="api_read",
+                        input={"service": "jenkins", "path": "/job/team/job/build/11/logText/progressiveText", "params": {"start": 0}})],
+                        usage=SimpleNamespace(input_tokens=1, output_tokens=1))
+                return await super().get_final_message()
+        class LogAI(FakeAI):
+            def stream(self, **kwargs):
+                if self.stage:
+                    captured.append(json.loads(kwargs["messages"][-1]["content"][0]["content"]))
+                stage = 0 if self.stage == 0 else 2
+                self.stage += 1
+                return LogStream(stage)
+        transport = httpx.MockTransport(lambda request: httpx.Response(200, content=b"x" * 48000,
+            headers={"Content-Type": "text/plain", "X-Text-Size": "48000", "X-More-Data": "false"}))
+        async def collect():
+            return [e async for e in run_turn(self.store, self.cid, "Read the full log",
+                client_factory=LogAI, services_factory=lambda cfg: Services(cfg, transport))]
+        asyncio.run(collect())
+        self.assertEqual(captured[0]["data"]["next_start"], "24000")
+        self.assertTrue(captured[0]["data"]["more_data"])
+        self.assertEqual(len(captured[0]["data"]["text"]), 24000)
+
+    def test_edit_requires_matching_saved_message_and_csrf(self):
+        other = self.store.new_conversation("Other conversation")
+        self.store.save_turn(other, [{"role": "user", "content": "Other question"}])
+        turn_id = self.client.get(f"/api/conversations/{other}").json()["turns"][0]["id"]
+        endpoint = f"/api/conversations/{self.cid}/edit"
+        payload = {"turn_id": turn_id, "question": "Edited"}
+        self.assertEqual(self.client.post(endpoint, json=payload).status_code, 403)
+        self.assertEqual(self.client.post(endpoint, headers=self.csrf, json=payload).status_code, 404)
+        for value in (True, -1, "1"):
+            self.assertEqual(self.client.post(endpoint, headers=self.csrf,
+                                             json={**payload, "turn_id": value}).status_code, 400)
+        self.assertEqual(self.client.post(endpoint, headers=self.csrf,
+                                         json={**payload, "question": " "}).status_code, 400)
 
     def test_default_branch_write_blocked(self):
         with self.assertRaisesRegex(ValueError, "default branch"):

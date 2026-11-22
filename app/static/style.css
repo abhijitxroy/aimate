@@ -70,6 +70,13 @@ header .eyebrow { margin-bottom: 7px; }
 .messages { flex: 1; overflow: auto; padding: 20px max(28px, calc((100% - 860px)/2)); scroll-behavior: smooth; }
 .messages:empty { display: none; }
 .message { margin-bottom: 28px; }
+.message-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; gap: 12px; }
+.message-heading .who { margin-bottom: 0; }
+.message-action { padding: 4px 10px; font-size: 11px; color: var(--muted); background: transparent; border-color: transparent; }
+.message-action:hover, .message-action:focus-visible { color: var(--accent); border-color: var(--line); }
+.message-editor textarea { width: 100%; resize: vertical; font: inherit; line-height: 1.6; }
+.message-edit-controls { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+.message-edit-controls button { padding: 7px 13px; font-size: 12px; }
 .who { color: var(--accent); font-size: 10px; letter-spacing: 1px; margin-bottom: 10px; }
 .user .who { color: var(--muted); }
 .body { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 1.75; }

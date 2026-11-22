@@ -111,10 +111,38 @@ class Store:
         # Keep complete tool/result groups together when limiting context.
         messages, size = [], 0
         for row in rows:
-            if size + len(row["messages"]) > 140_000:
+            turn = json.loads(row["messages"])
+            if len(row["messages"]) > 40_000:
+                for message in turn:
+                    if not isinstance(message.get("content"), list):
+                        continue
+                    for block in message["content"]:
+                        if block.get("type") == "tool_result" and isinstance(block.get("content"), str):
+                            value = block["content"]
+                            if len(value) > 3000:
+                                block["content"] = value[:2300] + "\n[Historical result excerpt; re-read the source for full evidence.]\n" + value[-500:]
+                        if block.get("type") == "responses":
+                            for item in block.get("items", []):
+                                value = item.get("output")
+                                if isinstance(value, str) and len(value) > 3000:
+                                    item["output"] = value[:2300] + "\n[Historical result excerpt; re-read the source for full evidence.]\n" + value[-500:]
+                if len(json.dumps(turn)) > 40_000:
+                    # A very large tool round must not erase the conversational context.
+                    compact = []
+                    for message in turn:
+                        content = message.get("content")
+                        if isinstance(content, str):
+                            compact.append({"role": message["role"], "content": content[:12000]})
+                        elif message["role"] == "assistant":
+                            text = "\n\n".join(b.get("text", "") for b in content if b.get("type") == "text")
+                            if text:
+                                compact.append({"role": "assistant", "content": text[:12000]})
+                    turn = compact
+            length = len(json.dumps(turn))
+            if messages and size + length > 140_000:
                 break
-            messages.insert(0, json.loads(row["messages"]))
-            size += len(row["messages"])
+            messages.insert(0, turn)
+            size += length
         return [message for turn in messages for message in turn]
 
     def save_turn(self, cid, messages):

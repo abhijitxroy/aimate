@@ -89,17 +89,77 @@ async function refreshState() {
   return state;
 }
 
-function addMessage(role, text = "") {
+function addMessage(role, text = "", turnId = null) {
   $("#welcome").hidden = true;
   const root = element("article", `message ${role}`);
-  root.append(element("div", "who", role === "user" ? "YOU" : demo ? "AIMATE · SCRIPTED DEMO" : "AIMATE"));
+  const heading = element("div", "message-heading");
+  heading.append(element("div", "who", role === "user" ? "YOU" : demo ? "AiMate · Scripted demo" : "AiMate"));
   const body = element("div", "body");
   if (role === "assistant") renderAnswer(body, text);
   else body.textContent = text;
-  root.append(body);
+  const message = {root, body, text, turnId, reads: 0};
+  const action = element("button", "message-action", role === "user" ? "Edit" : "Copy");
+  action.type = "button";
+  action.setAttribute("aria-label", role === "user" ? "Edit your message" : "Copy AiMate reply");
+  if (role === "user") {
+    action.dataset.editMessage = "";
+    action.disabled = busy;
+    action.onclick = () => editMessage(message, action);
+  } else action.onclick = async () => {
+    if (!message.text) return;
+    try {
+      await navigator.clipboard.writeText(message.text);
+      action.textContent = "Copied";
+    } catch {
+      action.textContent = "Copy failed";
+    }
+    setTimeout(() => { action.textContent = "Copy"; }, 1800);
+  };
+  heading.append(action);
+  root.append(heading, body);
   $("#messages").append(root);
   scrollMessages();
-  return {root, body, text, reads: 0};
+  return message;
+}
+
+function editMessage(message, action) {
+  if (busy || message.root.querySelector(".message-editor")) return;
+  const editor = element("div", "message-editor");
+  const input = element("textarea");
+  input.value = message.text;
+  input.maxLength = 30000;
+  input.rows = Math.min(10, Math.max(3, message.text.split("\n").length));
+  input.setAttribute("aria-label", "Edit message");
+  const controls = element("div", "message-edit-controls");
+  const cancel = element("button", "", "Cancel");
+  const send = element("button", "primary", "Save & resend");
+  cancel.type = send.type = "button";
+  const close = () => { editor.remove(); message.body.hidden = false; action.hidden = false; };
+  cancel.onclick = close;
+  input.onkeydown = event => { if (event.key === "Escape") close(); };
+  send.onclick = async () => {
+    const question = input.value.trim();
+    if (busy || !question) { input.focus(); return; }
+    send.disabled = cancel.disabled = true;
+    try {
+      if (message.turnId) {
+        const branch = await api(`/api/conversations/${cid}/edit`, {method: "POST",
+          body: JSON.stringify({turn_id: message.turnId, question})});
+        await openConversation(branch.id, question.slice(0, 100));
+      } else close();
+      await ask(question);
+    } catch (error) {
+      $("#activity").textContent = error.message;
+      send.disabled = cancel.disabled = false;
+    }
+  };
+  controls.append(cancel, send);
+  editor.append(input, controls);
+  message.body.hidden = true;
+  action.hidden = true;
+  message.body.after(editor);
+  input.focus();
+  input.setSelectionRange(input.value.length, input.value.length);
 }
 
 function scrollMessages() {
@@ -191,14 +251,15 @@ function drawAction(action, parent) {
 
 async function openConversation(id, title = "Project conversation", allowBusy = false) {
   if (busy && !allowBusy) return;
-  cid = id;
   const conversation = await api(`/api/conversations/${id}`);
+  cid = id;
+  try { localStorage.setItem("aimate.conversation", id); } catch { /* storage may be unavailable */ }
   $("#messages").replaceChildren();
   $("#chatTitle").textContent = title;
   $("#welcome").hidden = Boolean(conversation.turns.length || conversation.actions.length);
   for (const turn of conversation.turns) {
     const user = turn.messages.find(m => m.role === "user" && typeof m.content === "string");
-    if (user) addMessage("user", user.content);
+    if (user) addMessage("user", user.content, turn.id);
     let bot;
     for (const msg of turn.messages) {
       if (msg.role !== "assistant" || !Array.isArray(msg.content)) continue;
@@ -242,13 +303,17 @@ async function ask(question) {
     openSettings(); $("#settingsStatus").textContent = "Add your AI credentials and model ID to start."; return;
   }
   busy = true;
+  document.querySelectorAll("[data-edit-message]").forEach(button => { button.disabled = true; });
   $("#send").disabled = true;
   $("#stop").hidden = false;
   controller = new AbortController();
   let bot;
   try {
-    if (!cid) cid = (await api("/api/conversations", {method: "POST"})).id;
-    addMessage("user", question);
+    if (!cid) {
+      cid = (await api("/api/conversations", {method: "POST"})).id;
+      try { localStorage.setItem("aimate.conversation", cid); } catch { /* optional browser persistence */ }
+    }
+    const userMessage = addMessage("user", question);
     bot = addMessage("assistant");
     $("#question").value = "";
     $("#activity").textContent = "Reading your question…";
@@ -292,6 +357,8 @@ async function ask(question) {
         scrollMessages();
       }
     }
+    const saved = await api(`/api/conversations/${cid}`);
+    userMessage.turnId = saved.turns.at(-1)?.id || null;
     await refreshState();
   } catch (error) {
     $("#activity").textContent = error.name === "AbortError" ? "Stopped. An incomplete answer is not saved." : error.message;
@@ -300,6 +367,7 @@ async function ask(question) {
     if (bot?.renderFrame) cancelAnimationFrame(bot.renderFrame);
     if (bot) renderAnswer(bot.body, bot.text);
     busy = false; $("#send").disabled = false; $("#stop").hidden = true; controller = null;
+    document.querySelectorAll("[data-edit-message]").forEach(button => { button.disabled = false; });
   }
 }
 
@@ -458,6 +526,7 @@ $("#loginForm").onsubmit = async event => {
     $("#password").value = "";
     $("#loginError").textContent = "";
     await refreshState();
+    await restoreConversation();
   } catch (error) { $("#loginError").textContent = error.message; }
 };
 $("#demoLogin").onclick = async () => {
@@ -465,6 +534,7 @@ $("#demoLogin").onclick = async () => {
     const data = await api("/api/demo/login", {method: "POST"});
     csrf = data.csrf;
     await refreshState();
+    await restoreConversation();
   } catch (error) { $("#loginError").textContent = error.message; }
 };
 $("#chatForm").onsubmit = event => { event.preventDefault(); ask($("#question").value); };
@@ -475,6 +545,7 @@ $("#stop").onclick = () => controller?.abort();
 $("#newChat").onclick = async () => {
   if (busy) return;
   cid = null; $("#messages").replaceChildren(); $("#welcome").hidden = false;
+  try { localStorage.removeItem("aimate.conversation"); } catch { /* optional browser persistence */ }
   $("#chatTitle").textContent = "Ask your project"; $("#activity").textContent = "";
   await refreshState();
 };
@@ -695,6 +766,16 @@ $("#openAudit").onclick = async () => {
     $("#auditContent").textContent = data.entries.length ? JSON.stringify(data.entries, null, 2) : "No confirmed actions yet.";
   } catch (error) { $("#auditContent").textContent = error.message; }
 };
+async function restoreConversation() {
+  if (cid || $("#workspace").hidden) return;
+  let previous;
+  try { previous = localStorage.getItem("aimate.conversation"); } catch { return; }
+  if (!previous) return;
+  const state = await api("/api/state");
+  const conversation = state.conversations.find(item => item.id === previous);
+  if (conversation) await openConversation(previous, conversation.title);
+}
+
 async function initialize() {
   const mode = await api("/api/mode");
   demo = Boolean(mode.demo);
@@ -703,6 +784,7 @@ async function initialize() {
   $("#loginForm").hidden = demo;
   $("#localPasswordHint").hidden = demo || Boolean(mode.hosted);
   await refreshState().catch(() => {});
+  await restoreConversation();
   const outcome = new URLSearchParams(location.search).get("chatgpt");
   if (outcome) {
     history.replaceState(null, "", "/");

@@ -242,7 +242,8 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
                     else:
                         raise ValueError("Unknown tool")
                     text = json.dumps(scrub(result, config), ensure_ascii=False)
-                    if len(text) > 24_000:
+                    log_page = args.get("service") == "jenkins" and isinstance(result.get("data"), dict) and "next_start" in result["data"]
+                    if len(text) > 24_000 and not log_page:
                         text = text[:24_000] + "\n[truncated; narrow the query or paginate]"
                     results.append({"type": "tool_result", "tool_use_id": call["id"], "content": text})
                     yield {"event": "tool_done", "name": call["name"], "ok": True}
@@ -357,7 +358,8 @@ async def run_chatgpt_turn(store, cid, question, connection, services_factory):
                     result = {"proposal": card["id"], "status": "pending", "note": "User must confirm; not executed."}
                     yield {"event": "action", "action": card}
                 value = json.dumps(scrub(result, config), ensure_ascii=False)
-                if len(value) > 24_000:
+                log_page = args.get("service") == "jenkins" and isinstance(result.get("data"), dict) and "next_start" in result["data"]
+                if len(value) > 24_000 and not log_page:
                     value = value[:24_000] + "\n[truncated; narrow the query or paginate]"
                 yield {"event": "tool_done", "name": name, "ok": True}
             except (ValueError, KeyError, TypeError, httpx.HTTPError) as exc:
