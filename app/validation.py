@@ -116,7 +116,7 @@ def validate_config(raw, old):
         raise ValueError("Choose Simple or Advanced Bedrock setup")
     if ai.get("provider") == "bedrock" and ai.get("bedrock_mode") == "simple":
         ai.update(region="us-east-2", bedrock_auth="bearer", bedrock_endpoint="runtime",
-                  model="us.anthropic.claude-sonnet-4-5-20250929-v1:0")
+                  model="us.anthropic.claude-haiku-5-5")
     if ai.get("bedrock_auth", "bearer") not in {"bearer", "iam"}:
         raise ValueError("Choose a Bedrock API key or AWS credentials")
     if ai.get("bedrock_endpoint", "runtime") not in {"runtime", "mantle"}:

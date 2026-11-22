@@ -418,7 +418,7 @@ $("#settingsForm").elements["ai.bedrock_auth"].onchange = updateBedrock;
 $("#settingsForm").elements["ai.bedrock_mode"].onchange = () => {
   const form = $("#settingsForm");
   if (form.elements["ai.bedrock_mode"].value === "advanced" && !form.elements["ai.model"].value) {
-    form.elements["ai.model"].value = "us.anthropic.claude-sonnet-4-5-20250929-v1:0";
+    form.elements["ai.model"].value = "us.anthropic.claude-haiku-5-5";
   }
   updateBedrock();
 };
@@ -552,7 +552,7 @@ function renderConnection(service, override) {
   if (report.checked_at) output.append(element("p", "hint", "Last checked: " + new Date(report.checked_at * 1000).toLocaleString() + " · valid for up to 1 hour"));
   if (report.details?.length) {
     const list = element("ul"); report.details.forEach(text => list.append(element("li", "", text)));
-    if (["jira", "jenkins"].includes(service)) {
+    if (["ai", "jira", "jenkins"].includes(service)) {
       const details = element("details");
       details.append(element("summary", "", "Connection details"), list); output.append(details);
     } else output.append(list);
@@ -623,7 +623,7 @@ function settingsData() {
   if (data.jenkins.mode === "simple") Object.assign(data.jenkins, {access: "all", jobs: []});
   if (data.ai.provider === "bedrock" && data.ai.bedrock_mode === "simple") Object.assign(data.ai, {
     region: "us-east-2", bedrock_auth: "bearer", bedrock_endpoint: "runtime",
-    model: "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+    model: "us.anthropic.claude-haiku-5-5"
   });
   if (data.ai.provider === "chatgpt") data.ai.model = $("#chatgptModel").value;
   return data;

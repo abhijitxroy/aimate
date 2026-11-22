@@ -82,6 +82,10 @@
     <form id="settingsForm">
       <fieldset id="settings-ai" data-settings-panel="ai" role="tabpanel" aria-labelledby="tab-ai"><legend>AI model connection</legend>
         <div class="connection-summary" data-connection-summary="ai" role="status"></div>
+          <div id="bedrockSetup" hidden>
+            <label>Setup<select name="ai.bedrock_mode"><option value="simple">Simple · token access</option><option value="advanced">Advanced · model &amp; AWS settings</option></select></label>
+            <p id="bedrockSimpleHint" class="hint">Claude Haiku 5.5 · us-east-2 · Bedrock API key. Just add your token.</p>
+          </div>
         <div class="fields two"><label>Provider<select name="ai.provider"><option value="chatgpt">ChatGPT account</option><option value="anthropic">Anthropic API</option><option value="bedrock">AWS Bedrock Runtime</option></select></label><label id="apiModelLabel">Exact model / inference profile ID<input name="ai.model" placeholder="Model ID available to your account"></label><label id="chatgptModelLabel" hidden>Available model<select id="chatgptModel"><option value="">Connect your account first</option></select></label></div>
         <div id="chatgptConnection" hidden>
           <div class="test-row"><label>Account<select id="chatgptAccount"><option value="">Add a ChatGPT account</option></select></label><button id="connectChatGPT" type="button" data-oai-siwc-button>Continue with ChatGPT</button><button id="disconnectChatGPT" type="button" hidden>Disconnect</button></div>
@@ -89,10 +93,6 @@
           <p class="hint">Uses your eligible ChatGPT plan. Go access will be checked after sign-in. <a href="https://chatgpt.com/settings/usage" target="_blank" rel="noopener noreferrer">Manage usage</a></p>
         </div>
         <div id="apiCredentials"><label id="aiKeyLabel">API key / Bedrock bearer key<input name="ai.api_key" type="password" autocomplete="off" placeholder="Leave blank to keep saved key"></label>
-          <div id="bedrockSetup" hidden>
-            <label>Setup<select name="ai.bedrock_mode"><option value="simple">Simple · token access</option><option value="advanced">Advanced · model &amp; AWS settings</option></select></label>
-            <p id="bedrockSimpleHint" class="hint">Claude Sonnet 4.5 · us-east-2 · Bedrock API key. Just add your token.</p>
-          </div>
           <div id="bedrockSettings" hidden>
             <div class="fields two"><label>AWS region<input name="ai.region" placeholder="us-east-2"></label><label>Authentication<select name="ai.bedrock_auth"><option value="bearer">Bedrock API key</option><option value="iam">AWS credentials / server role</option></select></label></div>
             <label>Claude endpoint<select name="ai.bedrock_endpoint"><option value="runtime">Bedrock Runtime · model / inference profile</option><option value="mantle">Bedrock Mantle · native Claude model ID</option></select></label>
@@ -118,8 +118,8 @@
       </fieldset>
       <fieldset id="settings-jira" data-settings-panel="jira" role="tabpanel" aria-labelledby="tab-jira" hidden><legend>Jira connection</legend>
         <div class="connection-summary" data-connection-summary="jira" role="status"></div>
-        <div class="fields two"><label>Site URL<input name="jira.url" placeholder="https://jira.devtools.intel.com"></label><label>API token / personal access token<input name="jira.token" type="password" autocomplete="off" placeholder="Leave blank to keep saved token"></label></div>
         <label>Setup<select name="jira.mode"><option value="simple">Simple · PAT access</option><option value="advanced">Advanced · Cloud or selected projects</option></select></label>
+        <div class="fields two"><label>Site URL<input name="jira.url" placeholder="https://jira.devtools.intel.com"></label><label>API token / personal access token<input name="jira.token" type="password" autocomplete="off" placeholder="Leave blank to keep saved token"></label></div>
         <p class="hint" id="jiraSimpleHint">Site URL + PAT is enough. AiMate discovers the projects your account can access.</p>
         <div id="jiraAdvanced" hidden>
           <div class="fields two"><label>Authentication<select name="jira.auth"><option value="bearer">Data Center · PAT</option><option value="basic">Cloud · email + API token</option></select></label><label>Username / email<input name="jira.username" autocomplete="off"></label></div>
@@ -132,8 +132,8 @@
       </fieldset>
       <fieldset id="settings-jenkins" data-settings-panel="jenkins" role="tabpanel" aria-labelledby="tab-jenkins" hidden><legend>Jenkins connection</legend>
         <div class="connection-summary" data-connection-summary="jenkins" role="status"></div>
-        <label>API token<input name="jenkins.token" type="password" autocomplete="off" placeholder="Leave blank to keep saved token"></label>
         <label>Setup<select name="jenkins.mode"><option value="simple">Simple · token access</option><option value="advanced">Advanced · selected jobs</option></select></label>
+        <label>API token<input name="jenkins.token" type="password" autocomplete="off" placeholder="Leave blank to keep saved token"></label>
         <p class="hint">Keep your controller and account saved. Replace only the token when it changes.</p>
         <details id="jenkinsAccount"><summary>Controller &amp; account <span id="jenkinsAccountSummary"></span></summary>
           <div class="fields two"><label>Controller URL<input name="jenkins.url" placeholder="https://jenkins.company.com"></label><label>Username / email<input name="jenkins.username" autocomplete="off"></label></div>

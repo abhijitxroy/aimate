@@ -22,7 +22,7 @@ class BedrockTests(unittest.TestCase):
         self.assertEqual(ai["region"], "us-east-2")
         self.assertEqual(ai["bedrock_auth"], "bearer")
         self.assertEqual(ai["bedrock_endpoint"], "runtime")
-        self.assertEqual(ai["model"], "us.anthropic.claude-sonnet-4-5-20250929-v1:0")
+        self.assertEqual(ai["model"], "us.anthropic.claude-haiku-5-5")
         with patch("anthropic.AsyncAnthropicBedrock") as factory:
             ai_client(config)
             self.assertEqual(factory.call_args.kwargs["aws_region"], "us-east-2")
@@ -67,10 +67,10 @@ class BedrockTests(unittest.TestCase):
                 ai_client(self.config(bedrock_auth="iam"))
 
     def test_mantle_routes_to_native_messages(self):
-        with patch("anthropic.AsyncAnthropic") as factory:
+        with patch("anthropic.AsyncAnthropicBedrockMantle") as factory:
             ai_client(self.config(bedrock_endpoint="mantle", api_key="bedrock-secret"))
-            self.assertEqual(factory.call_args.kwargs["base_url"],
-                             "https://bedrock-mantle.us-east-1.api.aws/anthropic")
+            self.assertEqual(factory.call_args.kwargs["aws_region"], "us-east-1")
+            self.assertEqual(factory.call_args.kwargs["api_key"], "bedrock-secret")
 
     def test_secrets_preserved_removed_and_never_exposed(self):
         old = self.config(aws_access_key="access", aws_secret_key="secret", aws_session_token="session")
@@ -100,6 +100,13 @@ class BedrockTests(unittest.TestCase):
     def test_provider_switch_does_not_reuse_another_providers_key(self):
         new = validate_config(self.config(), {"ai": {"provider": "anthropic", "api_key": "old-secret"}})
         self.assertEqual(new["ai"]["api_key"], "")
+
+    def test_aws_authentication_error_is_specific_without_echoing_body(self):
+        error = SimpleNamespace(status_code=403, body={"Message": "Authentication failed: Please make sure your API Key is valid. secret-token"})
+        message = ai_error(error)
+        self.assertIn("could not authenticate", message)
+        self.assertNotIn("secret-token", message)
+        self.assertNotIn("model access", message)
 
     def test_errors_do_not_echo_upstream_body(self):
         error = SimpleNamespace(status_code=403, body="secret-token")

@@ -91,9 +91,8 @@ def ai_client(config):
         if ai.get("bedrock_endpoint", "runtime") == "mantle":
             if not ai.get("api_key"):
                 raise ValueError("Add your Bedrock bearer key for Mantle")
-            return anthropic.AsyncAnthropic(
-                api_key=ai["api_key"],
-                base_url=f"https://bedrock-mantle.{ai['region']}.api.aws/anthropic",
+            return anthropic.AsyncAnthropicBedrockMantle(
+                api_key=ai["api_key"], aws_region=ai["region"],
                 timeout=90, max_retries=1)
         if ai.get("bedrock_auth", "bearer") == "bearer":
             if not ai.get("api_key"):
@@ -117,6 +116,14 @@ def ai_error(exc):
     if isinstance(exc, ValueError):
         return str(exc)
     status = getattr(exc, "status_code", None)
+    # AWS uses capitalized Message, unlike the first-party Anthropic error body.
+    # Classify it locally and return fixed text; never echo a provider body.
+    body = getattr(exc, "body", None)
+    message = str(body.get("Message", "")) if isinstance(body, dict) else ""
+    if status in {401, 403} and "authentication failed" in message.lower():
+        return ("AWS could not authenticate the Bedrock API key. Check that the key is active "
+                "and copied completely. Replace it if expired or revoked; if it works in the "
+                "dashboard, match its AWS region and bearer-key permissions.")
     return {
         400: "AI rejected the request. Check the model ID, inference profile and selected Bedrock endpoint.",
         401: "AI credentials are invalid or expired. Update the saved key or AWS session.",

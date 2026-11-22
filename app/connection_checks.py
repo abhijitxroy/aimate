@@ -25,6 +25,10 @@ async def check_connection(service, config, services, client_factory, chatgpt):
         client = None
         try:
             ai = config.get("ai", {})
+            if ai.get("provider") == "bedrock":
+                report["details"] = ["Region: " + str(ai.get("region", "")),
+                                     "Endpoint: Bedrock " + str(ai.get("bedrock_endpoint", "runtime")),
+                                     "Requested model: " + str(ai.get("model", ""))]
             model = ai.get("model")
             if not model:
                 raise ValueError("Choose an AI model before checking access.")
@@ -47,7 +51,7 @@ async def check_connection(service, config, services, client_factory, chatgpt):
         except Exception as exc:
             report["message"] = ai_error(exc)
             if config.get("ai", {}).get("provider") == "bedrock" and config["ai"].get("bedrock_mode") == "simple":
-                if getattr(exc, "status_code", None) in {400, 403, 404}:
+                if getattr(exc, "status_code", None) in {400, 403, 404} and not report["message"].startswith("AWS could not authenticate"):
                     report["message"] += " Open Advanced to select a model/profile and region allowed by your AWS account."
         finally:
             if client:
