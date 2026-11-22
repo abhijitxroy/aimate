@@ -135,6 +135,13 @@ Your questions and selected source data are sent to the configured AI provider.
 Use a provider/account approved for your project's data. No credentials are
 included in the model's system prompt or tool definitions.
 
+Connection badges retain their last verified state across restarts. While the app
+is open, GitHub, Jira and Jenkins checks refresh automatically at most every five
+minutes and when the tab regains focus. Settings changes invalidate the previous
+result. Individual missing PRs/builds do not invalidate a service connection.
+AI verification updates after real answers or explicit checks; automatic refresh
+does not invoke a billable model. Hover a badge to see its last verification time.
+
 ### Auto and manual models
 
 The ask bar offers **Auto**, **Standard** and **Analysis**. Your existing AI model

@@ -4,6 +4,7 @@ let demo = false;
 let chatgpt = {}, modelLoad = 0;
 let activeSettings = "ai", checkingConnection = false;
 let connectionReports = {}, connectionDefaults = {};
+let connectionSync = null;
 const dirtyConnections = new Set();
 const aiSecretFields = ["api_key", "aws_access_key", "aws_secret_key", "aws_session_token"];
 
@@ -47,9 +48,36 @@ function sourceBadge(name, service) {
   const statusLabel = demo ? "Sample" : status === "passed" ? "Connected" : status === "partial" ? partial : status === "failed" ? "Failed" : "Not checked";
   chip.append(dot, document.createTextNode(name));
   chip.title = statusLabel + (report.message ? " · " + report.message : "");
+  if (report.checked_at) chip.title += " · Last verified " + new Date(report.checked_at * 1000).toLocaleString();
+  if (report.stale && service !== "ai") chip.title += " · Refreshing automatically";
   chip.setAttribute("aria-label", `${name}: ${statusLabel}. Open connection details`);
   chip.onclick = event => { event.stopPropagation(); activeSettings = service; openSettings(); };
   return chip;
+}
+
+function renderSourceBar() {
+  const bar = $("#sourceBar");
+  bar.replaceChildren();
+  for (const [key, label] of [["github", "GitHub"], ["jira", "Jira"], ["jenkins", "Jenkins"]]) {
+    if (["jira", "jenkins"].includes(key) && !config[key]?.token_configured) continue;
+    bar.append(sourceBadge(label, key));
+  }
+  bar.append(sourceBadge(demo ? "Scripted demo" : config.ai?.provider === "chatgpt" ? "ChatGPT" : config.ai?.provider === "bedrock" ? "Claude · Bedrock" : "Claude", "ai"));
+}
+
+async function syncConnections() {
+  if (demo || $("#workspace").hidden || document.hidden) return;
+  if (connectionSync) return connectionSync;
+  connectionSync = (async () => {
+    try {
+      const result = await api("/api/connections/sync", {method: "POST"});
+      connectionReports = result.connection_checks || {};
+      renderSourceBar();
+      for (const service of ["ai", "github", "jira", "jenkins"]) renderConnection(service);
+    } catch { /* Keep last verified evidence while the local server is unavailable. */ }
+    finally { connectionSync = null; }
+  })();
+  return connectionSync;
 }
 
 async function refreshState() {
@@ -66,14 +94,8 @@ async function refreshState() {
   $("#workspace").hidden = false;
   $("#loginScreen").hidden = true;
   $("#writeBadge").textContent = config.allow_writes ? "Changes need confirmation" : "Read mode";
-  const bar = $("#sourceBar");
-  bar.replaceChildren();
-  for (const [key, label] of [["github", "GitHub"], ["jira", "Jira"], ["jenkins", "Jenkins"]]) {
-    const publicGitHub = key === "github" && config.github?.url === "https://api.github.com" && config.github?.repos?.length;
-    if (["jira", "jenkins"].includes(key) && !config[key]?.token_configured) continue;
-    bar.append(sourceBadge(label, key));
-  }
-  bar.append(sourceBadge(demo ? "Scripted demo" : config.ai?.provider === "chatgpt" ? "ChatGPT" : config.ai?.provider === "bedrock" ? "Claude · Bedrock" : "Claude", "ai"));
+  renderSourceBar();
+  void syncConnections();
   const ready = aiReady() && (config.github?.repos?.length || (config.jira?.projects?.length || (config.jira?.access === "all" && config.jira?.token_configured)) || config.jenkins?.jobs?.length || (config.jenkins?.access === "all" && config.jenkins?.token_configured));
   $("#setupHint").hidden = Boolean(demo || ready);
   $("#setupHint").textContent = "Connect AI + your project sources →";
@@ -389,6 +411,7 @@ async function ask(question) {
     if (bot) renderAnswer(bot.body, bot.text);
     busy = false; $("#send").disabled = false; $("#modelMode").disabled = false; $("#stop").hidden = true; controller = null;
     document.querySelectorAll("[data-edit-message]").forEach(button => { button.disabled = false; });
+    void syncConnections();
   }
 }
 
@@ -636,10 +659,8 @@ document.querySelectorAll("[data-settings-tab]").forEach(button => {
 
 function renderConnection(service, override) {
   const saved = connectionReports[service];
-  const expired = saved?.checked_at && Date.now() / 1000 - saved.checked_at > 3600;
   const report = override || (dirtyConnections.has(service)
     ? {status: "unchecked", message: "Inputs changed. Save & check to validate them."}
-    : expired ? {status: "unchecked", message: "The previous check expired. Check access again."}
     : saved || {status: "unchecked", message: "Not checked. Save & check this connection."});
   const status = report.status || "unchecked";
   const dot = $(`[data-connection-dot="${service}"]`);
@@ -653,7 +674,8 @@ function renderConnection(service, override) {
   summary.append(light, document.createTextNode(label));
   const output = $(`#test-${service}`);
   output.replaceChildren(element("p", status === "failed" ? "error" : "muted", report.message));
-  if (report.checked_at) output.append(element("p", "hint", "Last checked: " + new Date(report.checked_at * 1000).toLocaleString() + " · valid for up to 1 hour"));
+  if (report.checked_at) output.append(element("p", "hint", "Last verified: " + new Date(report.checked_at * 1000).toLocaleString() +
+    (service === "ai" ? " · also updated by successful answers" : " · refreshed automatically")));
   if (report.details?.length) {
     const list = element("ul"); report.details.forEach(text => list.append(element("li", "", text)));
     if (["ai", "jira", "jenkins"].includes(service)) {
@@ -834,4 +856,7 @@ async function initialize() {
     } else $("#loginError").textContent = "Open your workspace to check the ChatGPT connection.";
   }
 }
+setInterval(() => { void syncConnections(); }, 60_000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) void syncConnections(); });
+window.addEventListener("focus", () => { void syncConnections(); });
 initialize().catch(error => { $("#loginError").textContent = error.message; });

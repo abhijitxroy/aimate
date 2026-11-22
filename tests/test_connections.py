@@ -124,10 +124,52 @@ class ConnectionTests(unittest.TestCase):
         self.client.put("/api/settings/github", headers=self.headers, json=body)
         self.assertEqual(self.store.config()["_version"], version)
 
-    def test_expired_check_is_not_green(self):
+    def test_old_check_retains_last_verified_state_until_refresh(self):
         cfg = self.store.config()
         self.store.save_connection_check("github", cfg, {"status": "passed", "checked_at": time.time() - 3601})
-        self.assertEqual(self.store.connection_checks()["github"]["status"], "unchecked")
+        report = self.store.connection_checks()["github"]
+        self.assertEqual(report["status"], "passed")
+        self.assertTrue(report["stale"])
+
+    def test_sync_refreshes_old_reports_and_never_calls_ai(self):
+        cfg = self.store.config()
+        for service in ("github", "jira", "jenkins", "ai"):
+            self.store.save_connection_check(service, cfg, {"status": "passed", "checked_at": time.time() - 3601})
+        result = self.client.post("/api/connections/sync", headers=self.headers)
+        self.assertEqual(result.status_code, 200)
+        reports = result.json()["connection_checks"]
+        for service in ("github", "jira", "jenkins"):
+            self.assertEqual(reports[service]["status"], "passed")
+            self.assertFalse(reports[service]["stale"])
+        self.assertTrue(reports["ai"]["stale"])
+        calls = len(self.calls)
+        self.client.post("/api/connections/sync", headers=self.headers)
+        self.assertEqual(len(self.calls), calls)
+
+    def test_sync_changes_saved_status_when_credentials_fail(self):
+        cfg = self.store.config()
+        self.store.save_connection_check("github", cfg, {"status": "passed", "checked_at": time.time() - 3601})
+        self.denied = "/user"
+        reports = self.client.post("/api/connections/sync", headers=self.headers).json()["connection_checks"]
+        self.assertEqual(reports["github"]["status"], "failed")
+
+    def test_successful_ai_activity_updates_only_that_model_and_current_settings(self):
+        cfg = fixture_config()
+        cfg["ai"]["analysis_model"] = "analysis-id"
+        self.store.save_config(cfg)
+        self.store.record_ai_activity(cfg, cfg["ai"]["model"])
+        report = self.store.connection_checks()["ai"]
+        self.assertEqual(report["status"], "partial")
+        self.assertEqual(report["counts"]["passed"], 1)
+        self.store.record_ai_activity(cfg, "analysis-id")
+        self.assertEqual(self.store.connection_checks()["ai"]["status"], "passed")
+        self.store.record_ai_activity(cfg, "analysis-id", ok=False, message="AI access denied")
+        self.assertEqual(self.store.connection_checks()["ai"]["status"], "partial")
+        changed = fixture_config()
+        changed["ai"]["api_key"] = "changed-key"
+        self.store.save_config(changed)
+        self.store.record_ai_activity(cfg, "analysis-id")
+        self.assertEqual(self.store.connection_checks()["ai"]["status"], "unchecked")
 
     def test_bad_repo_explains_expected_format(self):
         result = self.client.put("/api/settings/github", headers=self.headers,

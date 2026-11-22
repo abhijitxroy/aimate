@@ -92,11 +92,40 @@ class Store:
         reports = {}
         for row in self.rows("SELECT * FROM connection_checks"):
             report = json.loads(row["report"])
-            if (row["fingerprint"] != self.connection_fingerprint(config, row["service"])
-                    or time.time() - report["checked_at"] > 3600):
-                report = {"status": "unchecked", "message": "Settings changed or check expired. Check access again."}
+            if row["fingerprint"] != self.connection_fingerprint(config, row["service"]):
+                report = {"status": "unchecked", "message": "Settings changed. Checking the saved connection is required."}
+            else:
+                report["stale"] = time.time() - report["checked_at"] > 300
             reports[row["service"]] = report
         return reports
+
+    def record_ai_activity(self, config, model, *, ok=True, message=None):
+        # An answer/access failure verifies only the model involved in that request.
+        with self.lock:
+            if self.connection_fingerprint(config, "ai") != self.connection_fingerprint(self.config(), "ai"):
+                return
+            ai = config.get("ai", {})
+            models = list(dict.fromkeys(m for m in (ai.get("model"), ai.get("analysis_model")) if m))
+            if model not in models:
+                return
+            previous = self.connection_checks().get("ai", {})
+            targets = {t["target"].split(" · ", 1)[-1]: t for t in previous.get("targets", [])}
+            rows = []
+            for configured in models:
+                label = "Standard" if configured == ai.get("model") else "Analysis"
+                row = dict(targets.get(configured, {"target": label + " · " + configured,
+                    "ok": False, "status": "unchecked", "message": "This model has not been verified.",
+                    "details": [], "checks": []}))
+                if configured == model:
+                    row.update(ok=ok, status="passed" if ok else "failed",
+                               message=message or "Verified by a successful AI answer.")
+                rows.append(row)
+            passed = sum(row["ok"] for row in rows)
+            report = {"ok": passed == len(models), "status": "passed" if passed == len(models) else "partial" if passed else "failed",
+                      "checked_at": time.time(), "targets": rows,
+                      "message": message or "Updated from a successful AI answer.",
+                      "counts": {"passed": passed, "total": len(models), "unit": "models"}}
+            self.save_connection_check("ai", config, report)
 
     def new_conversation(self, title="New conversation"):
         cid = secrets.token_hex(16)

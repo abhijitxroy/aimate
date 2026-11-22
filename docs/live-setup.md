@@ -33,8 +33,10 @@ Jira and Jenkins results show which configured projects/jobs are accessible.
 ChatGPT checks verify its account model catalog; Claude API/Bedrock checks
 show the model's actual test reply and incur a small inference charge.
 
-Checks persist locally with their timestamps. Changed connection settings or
-checks older than one hour become unverified and need another check.
+Checks persist locally with their timestamps across restarts. Changed connection
+settings become unverified. GitHub, Jira and Jenkins refresh automatically while
+the app is open; the last verified result stays visible during refresh. AI health
+updates from successful answers or explicit checks, without automatic paid tests.
 
 ## ChatGPT subscriptions
 

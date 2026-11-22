@@ -62,6 +62,7 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
     app.state.chatgpt = chatgpt
     sessions, attempts, chat_limits, chat_locks = {}, {}, {}, {}
     config_lock = asyncio.Lock()
+    connection_locks = {service: asyncio.Lock() for service in SERVICES}
     # A process dying during a write leaves its outcome uncertain; never auto-replay it.
     store.execute("UPDATE actions SET status='unknown' WHERE status='executing'")
     static = Path(__file__).parent / "static"
@@ -246,9 +247,37 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
         cfg = store.config()
         if service == "ai" and cfg.get("ai", {}).get("provider") == "chatgpt":
             require_local_chatgpt()
-        report = scrub(await check_connection(service, cfg, services_factory(cfg), client_factory, chatgpt), cfg)
-        store.save_connection_check(service, cfg, report)
+        async with connection_locks[service]:
+            report = scrub(await check_connection(service, cfg, services_factory(cfg), client_factory, chatgpt), cfg)
+            if store.connection_fingerprint(cfg, service) == store.connection_fingerprint(store.config(), service):
+                store.save_connection_check(service, cfg, report)
+            else:
+                return {"ok": False, "status": "unchecked", "message": "Settings changed during this check. Checking the current saved connection is required."}
         return report
+
+    @app.post("/api/connections/sync")
+    async def sync_connections(session=Depends(auth)):
+        # Read-only service checks. Never perform an automatic billable AI test.
+        if demo:
+            return {"connection_checks": store.connection_checks()}
+        async def update(service):
+            async with connection_locks[service]:
+                cfg = store.config()
+                section = cfg.get(service, {})
+                if not section.get("url"):
+                    return
+                if service in {"jira", "jenkins"} and not section.get("token"):
+                    return
+                if service == "github" and not section.get("repos"):
+                    return
+                previous = store.connection_checks().get(service, {})
+                if previous.get("checked_at") and not previous.get("stale"):
+                    return
+                report = scrub(await check_connection(service, cfg, services_factory(cfg), client_factory, chatgpt), cfg)
+                if store.connection_fingerprint(cfg, service) == store.connection_fingerprint(store.config(), service):
+                    store.save_connection_check(service, cfg, report)
+        await asyncio.gather(*(update(service) for service in ("github", "jira", "jenkins")))
+        return {"connection_checks": store.connection_checks()}
 
     @app.post("/api/conversations")
     def create_conversation(session=Depends(auth)):
@@ -307,6 +336,8 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
         await lock.acquire()
 
         async def events():
+            turn_config = store.config()
+            selected_model = turn_config.get("ai", {}).get("analysis_model") if model_mode == "analysis" else turn_config.get("ai", {}).get("model")
             try:
                 if demo:
                     from app.demo import run_demo_turn
@@ -317,10 +348,16 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
                     turn = run_turn(store, cid, question, client_factory=client_factory,
                                     services_factory=services_factory, chatgpt=chatgpt, model_mode=model_mode)
                 async for event in turn:
+                    if event["event"] == "model":
+                        selected_model = event["model"]
+                    if not demo and event["event"] == "done" and event.get("model"):
+                        store.record_ai_activity(turn_config, event["model"])
                     yield "data: " + json.dumps(event, ensure_ascii=False) + "\n\n"
             except asyncio.CancelledError:
                 raise
             except Exception as exc:
+                if not demo and getattr(exc, "status_code", None) in {401, 403, 404}:
+                    store.record_ai_activity(turn_config, selected_model, ok=False, message=ai_error(exc))
                 message = ai_error(exc)
                 yield "data: " + json.dumps({"event": "error", "message": scrub(message, store.config())}) + "\n\n"
             finally:
