@@ -83,7 +83,7 @@ def validate_config(raw, old):
         raise ValueError("Settings must be an object")
     out = {"allow_writes": bool(raw.get("allow_writes"))}
     allowed_fields = {
-        "ai": {"provider", "model", "region", "api_key", "bedrock_auth", "bedrock_endpoint",
+        "ai": {"provider", "model", "region", "api_key", "bedrock_auth", "bedrock_endpoint", "bedrock_mode",
                "aws_access_key", "aws_secret_key", "aws_session_token"},
         "github": {"url", "repos", "token"},
         "jira": {"url", "projects", "auth", "username", "api_version", "token", "mode", "access"},
@@ -112,6 +112,11 @@ def validate_config(raw, old):
     if out["ai"].get("provider", "anthropic") not in {"anthropic", "bedrock", "chatgpt"}:
         raise ValueError("Choose ChatGPT, Anthropic or Bedrock")
     ai = out["ai"]
+    if ai.get("bedrock_mode", "advanced") not in {"simple", "advanced"}:
+        raise ValueError("Choose Simple or Advanced Bedrock setup")
+    if ai.get("provider") == "bedrock" and ai.get("bedrock_mode") == "simple":
+        ai.update(region="us-east-2", bedrock_auth="bearer", bedrock_endpoint="runtime",
+                  model="us.anthropic.claude-sonnet-4-5-20250929-v1:0")
     if ai.get("bedrock_auth", "bearer") not in {"bearer", "iam"}:
         raise ValueError("Choose a Bedrock API key or AWS credentials")
     if ai.get("bedrock_endpoint", "runtime") not in {"runtime", "mantle"}:

@@ -332,6 +332,9 @@ function openSettings() {
     if (!form.elements["jenkins." + key].value) form.elements["jenkins." + key].value = connectionDefaults.jenkins?.[key] || "";
   }
   $("#jenkinsAccount").open = !form.elements["jenkins.url"].value || !form.elements["jenkins.username"].value;
+  form.elements["ai.bedrock_mode"].value = config.ai?.bedrock_mode ||
+    (config.ai?.provider === "bedrock" && (config.ai?.model || config.ai?.bedrock_auth === "iam" || config.ai?.bedrock_endpoint === "mantle") ? "advanced" : "simple");
+  if (!form.elements["ai.region"].value) form.elements["ai.region"].value = "us-east-2";
   updateJenkinsSetup();
   updateJiraSetup();
   updateProvider();
@@ -399,8 +402,12 @@ $("#settingsForm").elements["ai.provider"].onchange = updateProvider;
 function updateBedrock() {
   const form = $("#settingsForm");
   const bedrock = form.elements["ai.provider"].value === "bedrock";
-  const iam = bedrock && form.elements["ai.bedrock_auth"].value === "iam";
-  $("#bedrockSettings").hidden = !bedrock;
+  const simple = bedrock && form.elements["ai.bedrock_mode"].value === "simple";
+  const iam = bedrock && !simple && form.elements["ai.bedrock_auth"].value === "iam";
+  $("#bedrockSetup").hidden = !bedrock;
+  $("#bedrockSimpleHint").hidden = !simple;
+  $("#bedrockSettings").hidden = !bedrock || simple;
+  $("#apiModelLabel").hidden = simple || form.elements["ai.provider"].value === "chatgpt";
   $("#awsCredentials").hidden = !iam;
   $("#aiKeyLabel").hidden = iam;
   $("#removeAIKey").hidden = iam || form.elements["ai.provider"].value === "chatgpt";
@@ -408,6 +415,13 @@ function updateBedrock() {
   if (iam) form.elements["ai.bedrock_endpoint"].value = "runtime";
 }
 $("#settingsForm").elements["ai.bedrock_auth"].onchange = updateBedrock;
+$("#settingsForm").elements["ai.bedrock_mode"].onchange = () => {
+  const form = $("#settingsForm");
+  if (form.elements["ai.bedrock_mode"].value === "advanced" && !form.elements["ai.model"].value) {
+    form.elements["ai.model"].value = "us.anthropic.claude-sonnet-4-5-20250929-v1:0";
+  }
+  updateBedrock();
+};
 function connectionEdited(event) {
   const service = event.target.closest("[data-settings-panel]")?.dataset.settingsPanel;
   if (!service) return;
@@ -607,6 +621,10 @@ function settingsData() {
   }
   if (data.jira.mode === "simple") Object.assign(data.jira, {auth: "bearer", api_version: "2", access: "all", projects: [], username: ""});
   if (data.jenkins.mode === "simple") Object.assign(data.jenkins, {access: "all", jobs: []});
+  if (data.ai.provider === "bedrock" && data.ai.bedrock_mode === "simple") Object.assign(data.ai, {
+    region: "us-east-2", bedrock_auth: "bearer", bedrock_endpoint: "runtime",
+    model: "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+  });
   if (data.ai.provider === "chatgpt") data.ai.model = $("#chatgptModel").value;
   return data;
 }

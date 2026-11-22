@@ -16,6 +16,32 @@ class BedrockTests(unittest.TestCase):
         return {"ai": {"provider": "bedrock", "region": "us-east-1",
                        "model": "account-model", **kwargs}}
 
+    def test_simple_needs_only_token(self):
+        config = validate_config({"ai": {"provider": "bedrock", "bedrock_mode": "simple", "api_key": "key"}}, {})
+        ai = config["ai"]
+        self.assertEqual(ai["region"], "us-east-2")
+        self.assertEqual(ai["bedrock_auth"], "bearer")
+        self.assertEqual(ai["bedrock_endpoint"], "runtime")
+        self.assertEqual(ai["model"], "us.anthropic.claude-sonnet-4-5-20250929-v1:0")
+        with patch("anthropic.AsyncAnthropicBedrock") as factory:
+            ai_client(config)
+            self.assertEqual(factory.call_args.kwargs["aws_region"], "us-east-2")
+            self.assertEqual(factory.call_args.kwargs["api_key"], "key")
+
+    def test_simple_overrides_hidden_advanced_fields_and_keeps_key(self):
+        old = self.config(api_key="saved")
+        config = validate_config(self.config(bedrock_mode="simple", bedrock_auth="iam", bedrock_endpoint="mantle"), old)
+        self.assertEqual(config["ai"]["api_key"], "saved")
+        self.assertEqual(config["ai"]["bedrock_auth"], "bearer")
+        self.assertEqual(config["ai"]["bedrock_endpoint"], "runtime")
+
+    def test_advanced_and_chatgpt_keep_their_models(self):
+        advanced = validate_config(self.config(bedrock_mode="advanced"), {})
+        self.assertEqual(advanced["ai"]["model"], "account-model")
+        self.assertEqual(advanced["ai"]["region"], "us-east-1")
+        chatgpt = validate_config({"ai": {"provider": "chatgpt", "model": "plan-model", "bedrock_mode": "simple"}}, {})
+        self.assertEqual(chatgpt["ai"]["model"], "plan-model")
+
     def test_bearer_runtime(self):
         with patch("anthropic.AsyncAnthropicBedrock") as factory:
             ai_client(self.config(api_key="bedrock-secret"))
@@ -66,7 +92,7 @@ class BedrockTests(unittest.TestCase):
 
     def test_bad_configuration_rejected(self):
         for fields in ({"region": "evil/path"}, {"aws_access_key": "only-one"},
-                       {"bedrock_auth": "anything"}, {"bedrock_endpoint": "anything"},
+                       {"bedrock_auth": "anything"}, {"bedrock_endpoint": "anything"}, {"bedrock_mode": "anything"},
                        {"bedrock_endpoint": "mantle", "bedrock_auth": "iam"}):
             with self.subTest(fields=fields), self.assertRaises(ValueError):
                 validate_config(self.config(**fields), {})

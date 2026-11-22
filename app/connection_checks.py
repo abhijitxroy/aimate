@@ -46,6 +46,9 @@ async def check_connection(service, config, services, client_factory, chatgpt):
                                        "A small billable inference request was completed."])
         except Exception as exc:
             report["message"] = ai_error(exc)
+            if config.get("ai", {}).get("provider") == "bedrock" and config["ai"].get("bedrock_mode") == "simple":
+                if getattr(exc, "status_code", None) in {400, 403, 404}:
+                    report["message"] += " Open Advanced to select a model/profile and region allowed by your AWS account."
         finally:
             if client:
                 await client.close()

@@ -89,8 +89,12 @@
           <p class="hint">Uses your eligible ChatGPT plan. Go access will be checked after sign-in. <a href="https://chatgpt.com/settings/usage" target="_blank" rel="noopener noreferrer">Manage usage</a></p>
         </div>
         <div id="apiCredentials"><label id="aiKeyLabel">API key / Bedrock bearer key<input name="ai.api_key" type="password" autocomplete="off" placeholder="Leave blank to keep saved key"></label>
+          <div id="bedrockSetup" hidden>
+            <label>Setup<select name="ai.bedrock_mode"><option value="simple">Simple · token access</option><option value="advanced">Advanced · model &amp; AWS settings</option></select></label>
+            <p id="bedrockSimpleHint" class="hint">Claude Sonnet 4.5 · us-east-2 · Bedrock API key. Just add your token.</p>
+          </div>
           <div id="bedrockSettings" hidden>
-            <div class="fields two"><label>AWS region<input name="ai.region" placeholder="us-east-1"></label><label>Authentication<select name="ai.bedrock_auth"><option value="bearer">Bedrock API key</option><option value="iam">AWS credentials / server role</option></select></label></div>
+            <div class="fields two"><label>AWS region<input name="ai.region" placeholder="us-east-2"></label><label>Authentication<select name="ai.bedrock_auth"><option value="bearer">Bedrock API key</option><option value="iam">AWS credentials / server role</option></select></label></div>
             <label>Claude endpoint<select name="ai.bedrock_endpoint"><option value="runtime">Bedrock Runtime · model / inference profile</option><option value="mantle">Bedrock Mantle · native Claude model ID</option></select></label>
             <div id="awsCredentials" hidden>
               <div class="fields two"><label>AWS access key ID<input name="ai.aws_access_key" type="password" autocomplete="off"></label><label>AWS secret access key<input name="ai.aws_secret_key" type="password" autocomplete="off"></label></div>
@@ -101,7 +105,7 @@
             <p class="hint">Use your AWS account's exact Claude model ID and region. Inference and access tests use AWS billing.</p>
           </div>
         </div>
-        <div class="test-row"><label id="removeAIKey" class="check"><input name="ai.clear_token" type="checkbox">Remove saved AI key</label><button id="testAIButton" type="button" data-test="ai">Save & check AI</button></div>
+        <div class="test-row"><details id="removeAIKey"><summary>Manage saved AI key</summary><label class="check"><input name="ai.clear_token" type="checkbox">Remove saved AI key</label></details><button id="testAIButton" type="button" data-test="ai">Save & check AI</button></div>
         <div id="test-ai" class="connection-result" aria-live="polite"></div>
       </fieldset>
       <fieldset id="settings-github" data-settings-panel="github" role="tabpanel" aria-labelledby="tab-github" hidden><legend>GitHub connection</legend>
