@@ -68,6 +68,27 @@ class ValidationTests(unittest.TestCase):
         cfg["github"]["repos"] = ["team/repo", "team/repo"]
         self.assertEqual(validate_config(cfg, {})["github"]["repos"], ["team/repo"])
 
+    def test_github_organization_url_normalizes_mixed_repositories(self):
+        cfg = self.config()
+        cfg["github"].update(url="https://github.com/intel-innersource/",
+                             repos=["abhijitxroy/aimate", "frameworks.devops.oneapi.ci"])
+        result = validate_config(cfg, {})["github"]
+        self.assertEqual(result["url"], "https://api.github.com")
+        self.assertEqual(result["repos"], ["abhijitxroy/aimate", "intel-innersource/frameworks.devops.oneapi.ci"])
+
+    def test_github_repository_and_pr_links_normalize(self):
+        cfg = self.config()
+        cfg["github"].update(url="https://api.github.com",
+                             repos=["https://github.com/team/repo.git", "https://github.com/team/repo/pull/1257"])
+        self.assertEqual(validate_config(cfg, {})["github"]["repos"], ["team/repo"])
+
+    def test_repository_links_reject_credentials_and_other_hosts(self):
+        for value in ["https://github.com/team/repo?token=private", "https://other.example/team/repo"]:
+            cfg = self.config()
+            cfg["github"]["repos"] = [value]
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                validate_config(cfg, {})
+
     def test_numeric_and_branch_guards(self):
         self.assertEqual(number("42"), 42)
         self.assertEqual(ref("fix/DEMO-123"), "fix/DEMO-123")

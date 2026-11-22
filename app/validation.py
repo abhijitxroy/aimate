@@ -147,6 +147,28 @@ def validate_config(raw, old):
         raise ValueError("Choose Jira basic or bearer authentication")
     if out["jira"].get("api_version", "2") not in {"2", "3"}:
         raise ValueError("Choose Jira API 2 or 3")
+    github = out["github"]
+    github_base = urlsplit(github.get("url", ""))
+    owner = None
+    if github_base.hostname == "github.com":
+        parts = github_base.path.strip("/").split("/")
+        if parts and re.fullmatch(r"[A-Za-z0-9_.-]+", parts[0]):
+            owner = parts[0]
+        github["url"] = "https://api.github.com"
+    if isinstance(github.get("repos"), list):
+        normalized = []
+        for item in github["repos"]:
+            if isinstance(item, str):
+                item = item.strip()
+                if item.startswith("https://github.com/"):
+                    parsed = urlsplit(valid_base(item))
+                    parts = parsed.path.strip("/").split("/")
+                    if len(parts) >= 2:
+                        item = "/".join(parts[:2]).removesuffix(".git")
+                elif owner and "/" not in item:
+                    item = owner + "/" + item
+            normalized.append(item)
+        github["repos"] = normalized
     for name, key, pattern, maximum in (
         ("github", "repos", r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", 20),
         ("jira", "projects", r"[A-Z][A-Z0-9_]*", 100),

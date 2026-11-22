@@ -106,9 +106,20 @@ class ConnectionTests(unittest.TestCase):
 
     def test_bad_repo_explains_expected_format(self):
         result = self.client.put("/api/settings/github", headers=self.headers,
-                                 json={"url": "https://api.github.com", "repos": ["https://github.com/team/repo"]})
+                                 json={"url": "https://api.github.com", "repos": ["https://github.com/team"]})
         self.assertEqual(result.status_code, 400)
         self.assertIn("OWNER/REPO", result.json()["detail"])
+
+    def test_organization_url_save_uses_api_and_keeps_token(self):
+        result = self.client.put("/api/settings/github", headers=self.headers,
+                                 json={"url": "https://github.com/intel-innersource/",
+                                       "repos": ["abhijitxroy/aimate", "frameworks.devops.oneapi.ci"],
+                                       "token": ""})
+        self.assertEqual(result.status_code, 200)
+        saved = self.store.config()["github"]
+        self.assertEqual(saved["url"], "https://api.github.com")
+        self.assertEqual(saved["repos"], ["abhijitxroy/aimate", "intel-innersource/frameworks.devops.oneapi.ci"])
+        self.assertEqual(saved["token"], "github-private-token")
 
     def test_other_services_return_actual_target_details(self):
         for service in ("jira", "jenkins"):

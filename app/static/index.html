@@ -110,9 +110,9 @@
       </fieldset>
       <fieldset id="settings-github" data-settings-panel="github" role="tabpanel" aria-labelledby="tab-github" hidden><legend>GitHub connection</legend>
         <div class="connection-summary" data-connection-summary="github" role="status"></div>
-        <div class="fields two"><label>API base URL<input name="github.url" placeholder="https://api.github.com"></label><label>Personal access token<input name="github.token" type="password" autocomplete="off" placeholder="Leave blank to keep saved token"></label></div>
-        <label>Repositories · one OWNER/REPO per line<textarea name="github.repos" rows="3" placeholder="your-team/your-repo"></textarea></label>
-        <p class="hint">Public GitHub repositories work without a token, within GitHub's public rate limit. Private repositories and changes need a token. Enterprise: https://github.company.com/api/v3.</p>
+        <div class="fields two"><label>GitHub API or organization URL<input name="github.url" placeholder="https://api.github.com"></label><label>Personal access token<input name="github.token" type="password" autocomplete="off" placeholder="Leave blank to keep saved token"></label></div>
+        <label>Repositories · name or GitHub link, one per line<textarea name="github.repos" rows="3" placeholder="abhijitxroy/aimate&#10;intel-innersource/frameworks.devops.oneapi.ci"></textarea></label>
+        <p class="hint">Personal and Intel repos on github.com use the same API. Paste OWNER/REPO or a repo link; an organization URL also accepts short repo names. Private repos need a token. Enterprise: https://github.company.com/api/v3.</p>
         <div class="test-row"><label class="check"><input name="github.clear_token" type="checkbox">Remove saved token</label><button type="button" data-test="github">Save & check repositories</button></div>
         <div id="test-github" class="connection-result" aria-live="polite"></div>
       </fieldset>
