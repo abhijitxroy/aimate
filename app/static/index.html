@@ -71,9 +71,17 @@
 
   <dialog id="settingsDialog">
     <div class="dialog-head"><div><p class="eyebrow">MAKE IT YOURS</p><h2>Connections & settings</h2></div><button class="close" data-close="settingsDialog" aria-label="Close settings">×</button></div>
-    <p class="muted">Connect your AI, repositories and projects. Save, check access, then ask.</p>
+    <p class="muted">Choose a connection. Check access to see what works and what needs fixing.</p>
+    <nav class="settings-tabs" role="tablist" aria-label="Connection settings">
+      <button type="button" role="tab" id="tab-ai" data-settings-tab="ai" aria-controls="settings-ai" aria-selected="true">AI model <span class="connection-dot" data-connection-dot="ai"></span></button>
+      <button type="button" role="tab" id="tab-github" data-settings-tab="github" aria-controls="settings-github" aria-selected="false" tabindex="-1">GitHub <span class="connection-dot" data-connection-dot="github"></span></button>
+      <button type="button" role="tab" id="tab-jira" data-settings-tab="jira" aria-controls="settings-jira" aria-selected="false" tabindex="-1">Jira <span class="connection-dot" data-connection-dot="jira"></span></button>
+      <button type="button" role="tab" id="tab-jenkins" data-settings-tab="jenkins" aria-controls="settings-jenkins" aria-selected="false" tabindex="-1">Jenkins <span class="connection-dot" data-connection-dot="jenkins"></span></button>
+      <button type="button" role="tab" id="tab-changes" data-settings-tab="changes" aria-controls="settings-changes" aria-selected="false" tabindex="-1">Changes</button>
+    </nav>
     <form id="settingsForm">
-      <fieldset><legend><span class="dot violet"></span> AI provider</legend>
+      <fieldset id="settings-ai" data-settings-panel="ai" role="tabpanel" aria-labelledby="tab-ai"><legend>AI model connection</legend>
+        <div class="connection-summary" data-connection-summary="ai" role="status"></div>
         <div class="fields two"><label>Provider<select name="ai.provider"><option value="chatgpt">ChatGPT account</option><option value="anthropic">Anthropic API</option><option value="bedrock">AWS Bedrock Runtime</option></select></label><label id="apiModelLabel">Exact model / inference profile ID<input name="ai.model" placeholder="Model ID available to your account"></label><label id="chatgptModelLabel" hidden>Available model<select id="chatgptModel"><option value="">Connect your account first</option></select></label></div>
         <div id="chatgptConnection" hidden>
           <div class="test-row"><label>Account<select id="chatgptAccount"><option value="">Add a ChatGPT account</option></select></label><button id="connectChatGPT" type="button" data-oai-siwc-button>Continue with ChatGPT</button><button id="disconnectChatGPT" type="button" hidden>Disconnect</button></div>
@@ -93,31 +101,36 @@
             <p class="hint">Use your AWS account's exact Claude model ID and region. Inference and access tests use AWS billing.</p>
           </div>
         </div>
-        <div class="test-row"><label id="removeAIKey" class="check"><input name="ai.clear_token" type="checkbox">Remove saved AI key</label><button id="testAIButton" type="button" data-test="ai">Check AI access</button><span id="test-ai"></span></div>
+        <div class="test-row"><label id="removeAIKey" class="check"><input name="ai.clear_token" type="checkbox">Remove saved AI key</label><button id="testAIButton" type="button" data-test="ai">Save & check AI</button></div>
+        <div id="test-ai" class="connection-result" aria-live="polite"></div>
       </fieldset>
-      <fieldset><legend><span class="dot"></span> GitHub</legend>
+      <fieldset id="settings-github" data-settings-panel="github" role="tabpanel" aria-labelledby="tab-github" hidden><legend>GitHub connection</legend>
+        <div class="connection-summary" data-connection-summary="github" role="status"></div>
         <div class="fields two"><label>API base URL<input name="github.url" placeholder="https://api.github.com"></label><label>Personal access token<input name="github.token" type="password" autocomplete="off" placeholder="Leave blank to keep saved token"></label></div>
         <label>Repositories · one OWNER/REPO per line<textarea name="github.repos" rows="3" placeholder="your-team/your-repo"></textarea></label>
         <p class="hint">Public GitHub repositories work without a token, within GitHub's public rate limit. Private repositories and changes need a token. Enterprise: https://github.company.com/api/v3.</p>
-        <div class="test-row"><label class="check"><input name="github.clear_token" type="checkbox">Remove saved token</label><button type="button" data-test="github">Check repository access</button><span id="test-github"></span></div>
+        <div class="test-row"><label class="check"><input name="github.clear_token" type="checkbox">Remove saved token</label><button type="button" data-test="github">Save & check repositories</button></div>
+        <div id="test-github" class="connection-result" aria-live="polite"></div>
       </fieldset>
-      <fieldset><legend><span class="dot amber"></span> Jira</legend>
+      <fieldset id="settings-jira" data-settings-panel="jira" role="tabpanel" aria-labelledby="tab-jira" hidden><legend>Jira connection</legend>
+        <div class="connection-summary" data-connection-summary="jira" role="status"></div>
         <div class="fields two"><label>Site URL<input name="jira.url" placeholder="https://your-team.atlassian.net"></label><label>API token / personal access token<input name="jira.token" type="password" autocomplete="off" placeholder="Leave blank to keep saved token"></label></div>
         <div class="fields three"><label>Authentication<select name="jira.auth"><option value="bearer">Bearer · Data Center PAT</option><option value="basic">Basic · email + Cloud token</option></select></label><label>Username / email<input name="jira.username" autocomplete="off"></label><label>API version<select name="jira.api_version"><option value="2">2 · Data Center</option><option value="3">3 · Cloud</option></select></label></div>
         <label>Project keys · one per line<textarea name="jira.projects" rows="2" placeholder="DEMO"></textarea></label>
         <p class="hint">Data Center: bearer PAT + API 2. Cloud: email + API token + API 3. The assistant reads only the projects you add.</p>
-        <div class="test-row"><label class="check"><input name="jira.clear_token" type="checkbox">Remove saved token</label><button type="button" data-test="jira">Check project access</button><span id="test-jira"></span></div>
+        <div class="test-row"><label class="check"><input name="jira.clear_token" type="checkbox">Remove saved token</label><button type="button" data-test="jira">Save & check projects</button></div>
+        <div id="test-jira" class="connection-result" aria-live="polite"></div>
       </fieldset>
-      <details class="optional-connections"><summary>Jenkins <span>Optional</span></summary>
-      <fieldset><legend><span class="dot blue"></span> Jenkins</legend>
+      <fieldset id="settings-jenkins" data-settings-panel="jenkins" role="tabpanel" aria-labelledby="tab-jenkins" hidden><legend>Jenkins connection</legend>
+        <div class="connection-summary" data-connection-summary="jenkins" role="status"></div>
         <div class="fields two"><label>Controller URL<input name="jenkins.url" placeholder="https://jenkins.company.com"></label><label>Username<input name="jenkins.username" autocomplete="off"></label></div>
         <label>API token<input name="jenkins.token" type="password" autocomplete="off" placeholder="Leave blank to keep saved token"></label>
         <label>Job names · one per line; use folder/job for nested jobs<textarea name="jenkins.jobs" rows="2" placeholder="team/build"></textarea></label>
-        <div class="test-row"><label class="check"><input name="jenkins.clear_token" type="checkbox">Remove saved token</label><button type="button" data-test="jenkins">Check job access</button><span id="test-jenkins"></span></div>
+        <div class="test-row"><label class="check"><input name="jenkins.clear_token" type="checkbox">Remove saved token</label><button type="button" data-test="jenkins">Save & check jobs</button></div>
+        <div id="test-jenkins" class="connection-result" aria-live="polite"></div>
       </fieldset>
-      </details>
-      <fieldset class="write-setting"><legend>Change proposals</legend><label class="check"><input name="allow_writes" type="checkbox">Allow the assistant to prepare changes</label><p class="hint">Every change still requires Confirm. File edits use a working branch; pull requests start as drafts. Proposals expire after 30 minutes.</p></fieldset>
-      <div class="dialog-footer"><span id="settingsStatus" role="status"></span><button class="primary" type="submit">Save connections</button></div>
+      <fieldset class="write-setting" id="settings-changes" data-settings-panel="changes" role="tabpanel" aria-labelledby="tab-changes" hidden><legend>Change proposals</legend><label class="check"><input name="allow_writes" type="checkbox">Allow the assistant to prepare changes</label><p class="hint">Every change still requires Confirm. File edits use a working branch; pull requests start as drafts. Proposals expire after 30 minutes.</p></fieldset>
+      <div class="dialog-footer"><span id="settingsStatus" role="status"></span><button id="saveConnection" class="primary" type="submit">Save AI connection</button></div>
     </form>
   </dialog>
   <dialog id="auditDialog"><div class="dialog-head"><h2>Action history</h2><button class="close" data-close="auditDialog" aria-label="Close history">×</button></div><pre id="auditContent"></pre></dialog>

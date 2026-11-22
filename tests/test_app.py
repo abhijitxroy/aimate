@@ -109,6 +109,8 @@ class WorkflowTests(unittest.TestCase):
 
         def remote(request):
             self.requests.append(request)
+            if request.url.path.endswith(("/user", "/myself", "/whoAmI/api/json")):
+                return httpx.Response(200, json={"login": "operator", "name": "operator", "authenticated": True})
             if request.method != "GET":
                 if self.fail_writes:
                     raise httpx.ReadTimeout("Connection lost after submission", request=request)
@@ -205,7 +207,9 @@ class WorkflowTests(unittest.TestCase):
         checked = self.client.post("/api/connections/github/test", headers=self.csrf)
         self.assertEqual(checked.status_code, 200)
         self.assertTrue(checked.json()["ok"])
-        self.assertEqual(checked.json()["targets"], [{"target": "team/repo", "ok": True}])
+        self.assertEqual(checked.json()["targets"][0]["target"], "team/repo")
+        self.assertTrue(checked.json()["targets"][0]["ok"])
+        self.assertEqual(len(checked.json()["targets"][0]["checks"]), 4)
         self.assertNotIn("authorization", self.requests[-1].headers)
 
     def test_tokens_encrypted_and_not_returned(self):

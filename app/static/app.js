@@ -2,7 +2,9 @@ const $ = selector => document.querySelector(selector);
 let csrf = "", config = {}, cid = null, controller = null, busy = false;
 let demo = false;
 let chatgpt = {}, modelLoad = 0;
-let settingsDirty = false;
+let activeSettings = "ai", checkingConnection = false;
+let connectionReports = {};
+const dirtyConnections = new Set();
 const aiSecretFields = ["api_key", "aws_access_key", "aws_secret_key", "aws_session_token"];
 
 function aiReady() {
@@ -33,9 +35,13 @@ function element(tag, className, text) {
   return node;
 }
 
-function sourceBadge(name, ready) {
-  const chip = element("span", `source-chip ${ready ? "" : "off"}`);
-  chip.append(element("i", "dot"), document.createTextNode(name + (ready ? " configured" : " · Add")));
+function sourceBadge(name, service) {
+  const report = connectionReports[service] || {};
+  const status = demo ? "simulated" : report.status || "unchecked";
+  const chip = element("span", "source-chip");
+  chip.dataset.state = status;
+  const dot = element("i", "connection-dot"); dot.dataset.state = status;
+  chip.append(dot, document.createTextNode(name + " · " + (demo ? "Sample" : status === "passed" ? "Connected" : status === "failed" ? "Failed" : "Not checked")));
   return chip;
 }
 
@@ -45,6 +51,7 @@ async function refreshState() {
   config = state.config;
   demo = Boolean(state.demo);
   chatgpt = state.chatgpt || {};
+  connectionReports = state.connection_checks || {};
   $("#demoBanner").hidden = !demo;
   $("#workspace").hidden = false;
   $("#loginScreen").hidden = true;
@@ -54,9 +61,9 @@ async function refreshState() {
   for (const [key, label] of [["github", "GitHub"], ["jira", "Jira"], ["jenkins", "Jenkins"]]) {
     const publicGitHub = key === "github" && config.github?.url === "https://api.github.com" && config.github?.repos?.length;
     if (["jira", "jenkins"].includes(key) && !config[key]?.token_configured) continue;
-    bar.append(sourceBadge(demo ? `${label} (sample)` : label, Boolean(config[key]?.token_configured || publicGitHub)));
+    bar.append(sourceBadge(label, key));
   }
-  bar.append(sourceBadge(demo ? "Scripted demo" : config.ai?.provider === "chatgpt" ? "ChatGPT" : config.ai?.provider === "bedrock" ? "Claude · Bedrock" : "Claude", demo || aiReady()));
+  bar.append(sourceBadge(demo ? "Scripted demo" : config.ai?.provider === "chatgpt" ? "ChatGPT" : config.ai?.provider === "bedrock" ? "Claude · Bedrock" : "Claude", "ai"));
   const ready = aiReady() && (config.github?.repos?.length || config.jira?.projects?.length || config.jenkins?.jobs?.length);
   $("#setupHint").hidden = Boolean(demo || ready);
   $("#setupHint").textContent = "Connect AI + your project sources →";
@@ -296,7 +303,7 @@ async function ask(question) {
 }
 
 function openSettings() {
-  settingsDirty = false;
+  dirtyConnections.clear();
   const form = $("#settingsForm");
   for (const input of form.elements) input.disabled = demo;
   form.reset();
@@ -317,6 +324,8 @@ function openSettings() {
   if (!config.ai?.provider && !demo) form.elements["ai.provider"].value = "chatgpt";
   $("#settingsStatus").textContent = demo ? "Fixed fictional connections. Restart in live mode to configure real services." : "";
   updateProvider();
+  selectSettingsTab(activeSettings);
+  for (const service of ["ai", "github", "jira", "jenkins"]) renderConnection(service);
   $("#settingsDialog").showModal();
 }
 
@@ -335,7 +344,7 @@ async function updateProvider() {
   $("#apiCredentials").hidden = selected;
   $("#removeAIKey").hidden = selected;
   updateBedrock();
-  $("#testAIButton").textContent = selected ? "Check plan access" : "Test AI · small billable request";
+  $("#testAIButton").textContent = selected ? "Save & check model access" : "Save & test AI · billable";
   if (!selected) return;
   const accounts = $("#chatgptAccount");
   accounts.replaceChildren(element("option", "", "Add a ChatGPT account"));
@@ -388,8 +397,14 @@ function updateBedrock() {
   if (iam) form.elements["ai.bedrock_endpoint"].value = "runtime";
 }
 $("#settingsForm").elements["ai.bedrock_auth"].onchange = updateBedrock;
-$("#settingsForm").addEventListener("input", () => { settingsDirty = true; });
-$("#settingsForm").addEventListener("change", () => { settingsDirty = true; });
+function connectionEdited(event) {
+  const service = event.target.closest("[data-settings-panel]")?.dataset.settingsPanel;
+  if (!service) return;
+  dirtyConnections.add(service);
+  if (service !== "changes") renderConnection(service);
+}
+$("#settingsForm").addEventListener("input", connectionEdited);
+$("#settingsForm").addEventListener("change", connectionEdited);
 $("#connectChatGPT").onclick = async () => {
   $("#connectChatGPT").disabled = true;
   try {
@@ -461,10 +476,76 @@ document.querySelectorAll("[data-question]").forEach(button => {
 document.querySelectorAll("[data-close]").forEach(button => {
   button.onclick = () => document.getElementById(button.dataset.close).close();
 });
-$("#settingsForm").onsubmit = async event => {
-  event.preventDefault();
+const connectionLabels = {ai: "AI", github: "GitHub", jira: "Jira", jenkins: "Jenkins", changes: "change settings"};
+
+function selectSettingsTab(service) {
+  activeSettings = service;
+  document.querySelectorAll("[data-settings-tab]").forEach(button => {
+    const selected = button.dataset.settingsTab === service;
+    button.setAttribute("aria-selected", String(selected));
+    button.tabIndex = selected ? 0 : -1;
+  });
+  document.querySelectorAll("[data-settings-panel]").forEach(panel => {
+    panel.hidden = panel.dataset.settingsPanel !== service;
+  });
+  $("#saveConnection").textContent = service === "changes" ? "Save change settings" : `Save ${connectionLabels[service]} connection`;
+  $("#settingsStatus").textContent = demo ? "Offline sample. Real credentials cannot be added here." : "Only this tab is saved.";
+}
+document.querySelectorAll("[data-settings-tab]").forEach(button => {
+  button.onclick = () => selectSettingsTab(button.dataset.settingsTab);
+  button.onkeydown = event => {
+    const tabs = [...document.querySelectorAll("[data-settings-tab]")];
+    const index = tabs.indexOf(button);
+    const next = event.key === "ArrowRight" ? (index + 1) % tabs.length
+      : event.key === "ArrowLeft" ? (index + tabs.length - 1) % tabs.length
+      : event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : null;
+    if (next === null) return;
+    event.preventDefault(); selectSettingsTab(tabs[next].dataset.settingsTab); tabs[next].focus();
+  };
+});
+
+function renderConnection(service, override) {
+  const saved = connectionReports[service];
+  const expired = saved?.checked_at && Date.now() / 1000 - saved.checked_at > 3600;
+  const report = override || (dirtyConnections.has(service)
+    ? {status: "unchecked", message: "Inputs changed. Save & check to validate them."}
+    : expired ? {status: "unchecked", message: "The previous check expired. Check access again."}
+    : saved || {status: "unchecked", message: "Not checked. Save & check this connection."});
+  const status = report.status || "unchecked";
+  const dot = $(`[data-connection-dot="${service}"]`);
+  dot.dataset.state = status;
+  dot.setAttribute("aria-label", status);
+  const summary = $(`[data-connection-summary="${service}"]`);
+  summary.dataset.state = status;
+  summary.replaceChildren();
+  const light = element("span", "connection-dot"); light.dataset.state = status;
+  const label = {passed: "✓ Connected · Pass", failed: "✕ Failed", checking: "Checking…", unchecked: "Not verified", simulated: "Sample only"}[status];
+  summary.append(light, document.createTextNode(label));
+  const output = $(`#test-${service}`);
+  output.replaceChildren(element("p", status === "failed" ? "error" : "muted", report.message));
+  if (report.checked_at) output.append(element("p", "hint", "Last checked: " + new Date(report.checked_at * 1000).toLocaleString() + " · valid for up to 1 hour"));
+  if (report.details?.length) {
+    const list = element("ul"); report.details.forEach(text => list.append(element("li", "", text))); output.append(list);
+  }
+  for (const target of report.targets || []) {
+    const card = element("div", "connection-target");
+    card.dataset.state = target.ok ? "passed" : "failed";
+    card.append(element("h3", "", (target.ok ? "✓ " : "✕ ") + target.target),
+                element("p", target.ok ? "" : "error", target.message));
+    if (target.details?.length) {
+      const list = element("ul"); target.details.forEach(text => list.append(element("li", "", text))); card.append(list);
+    }
+    for (const check of target.checks || []) {
+      const row = element("p", "capability-check", `${check.ok ? "✓" : "✕"} ${check.name}: ${check.message}`);
+      row.dataset.state = check.ok ? "passed" : "failed"; card.append(row);
+    }
+    output.append(card);
+  }
+}
+
+function settingsData() {
   const data = {ai: {}, github: {}, jira: {}, jenkins: {}};
-  for (const input of event.target.elements) {
+  for (const input of $("#settingsForm").elements) {
     if (!input.name) continue;
     if (input.name === "allow_writes") { data.allow_writes = input.checked; continue; }
     const [section, key] = input.name.split(".");
@@ -473,30 +554,65 @@ $("#settingsForm").onsubmit = async event => {
     data[section][key] = value;
   }
   if (data.ai.provider === "chatgpt") data.ai.model = $("#chatgptModel").value;
+  return data;
+}
+
+async function saveConnection(service) {
+  const data = settingsData();
+  const body = service === "changes" ? {allow_writes: data.allow_writes} : data[service];
+  await api(`/api/settings/${service}`, {method: "PUT", body: JSON.stringify(body)});
+  dirtyConnections.delete(service);
+  const form = $("#settingsForm");
+  for (const input of form.elements) {
+    if (!input.name?.startsWith(service + ".")) continue;
+    const key = input.name.split(".")[1];
+    if (key === "token" || aiSecretFields.includes(key)) input.value = "";
+    if (key.startsWith("clear_")) input.checked = false;
+  }
+  await refreshState();
+  for (const input of form.elements) {
+    if (!input.name?.startsWith(service + ".")) continue;
+    const key = input.name.split(".")[1];
+    if (key === "token" || aiSecretFields.includes(key)) input.placeholder = config[service]?.[key + "_configured"] ? "Saved · leave blank to keep" : "Enter your token/key";
+  }
+  if (service !== "changes") renderConnection(service);
+}
+
+$("#settingsForm").onsubmit = async event => {
+  event.preventDefault();
+  const service = activeSettings;
+  $("#saveConnection").disabled = true;
   try {
-    await api("/api/settings", {method: "PUT", body: JSON.stringify(data)});
-    await refreshState();
-    settingsDirty = false;
-    for (const key of aiSecretFields) event.target.elements[`ai.${key}`].value = "";
-    for (const name of ["ai", "github", "jira", "jenkins"]) {
-      if (name !== "ai") event.target.elements[`${name}.token`].value = "";
-      $(`#test-${name}`).textContent = "";
-    }
-    $("#settingsStatus").textContent = "Saved. Test each connection, then close to start.";
-  } catch (error) { $("#settingsStatus").textContent = error.message; }
+    await saveConnection(service);
+    $("#settingsStatus").textContent = service === "changes" ? "Change settings saved." : "Saved. Check access to verify the connection.";
+  } catch (error) {
+    $("#settingsStatus").textContent = error.message;
+    if (service !== "changes") renderConnection(service, {status: "failed", message: error.message});
+  } finally { $("#saveConnection").disabled = demo; }
 };
 document.querySelectorAll("[data-test]").forEach(button => {
   button.onclick = async () => {
-    const target = $(`#test-${button.dataset.test}`);
-    if (settingsDirty) { target.textContent = "Save connections first to test these settings."; return; }
-    button.disabled = true; target.textContent = "Checking…";
+    if (checkingConnection) return;
+    const service = button.dataset.test;
+    checkingConnection = true;
+    document.querySelectorAll("[data-test]").forEach(b => { b.disabled = true; });
+    $("#saveConnection").disabled = true;
     try {
-      const result = await api(`/api/connections/${button.dataset.test}/test`, {method: "POST"});
-      target.textContent = result.targets
-        ? result.targets.map(t => `${t.ok ? "✓" : "✕"} ${t.target}${t.message ? ": " + t.message : ""}`).join("\n")
-        : "✓ " + result.message;
-    } catch (error) { target.textContent = error.message; }
-    finally { button.disabled = false; }
+      if (!demo) await saveConnection(service);
+      renderConnection(service, {status: "checking", message: "Checking saved credentials and configured targets…"});
+      const result = await api(`/api/connections/${service}/test`, {method: "POST"});
+      await refreshState();
+      renderConnection(service, dirtyConnections.has(service)
+        ? {status: "unchecked", message: "Inputs changed during the check. Save & check again."} : result);
+      $("#settingsStatus").textContent = result.ok ? "Access check passed." : "Fix the failed checks shown above.";
+    } catch (error) {
+      renderConnection(service, {status: "failed", message: error.message});
+      $("#settingsStatus").textContent = "Check failed. See the correction above.";
+    } finally {
+      checkingConnection = false;
+      document.querySelectorAll("[data-test]").forEach(b => { b.disabled = demo; });
+      $("#saveConnection").disabled = demo;
+    }
   };
 });
 $("#openAudit").onclick = async () => {

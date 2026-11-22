@@ -132,6 +132,27 @@ fieldset > label { margin-bottom: 12px; }
 .optional-connections summary span { color: var(--muted); font-size: 11px; margin-left: 8px; }
 .dialog-footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .dialog-footer > span { font-size: 12px; color: var(--accent); }
+.settings-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 20px 0 12px; }
+.settings-tabs button { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 10px 13px; }
+.settings-tabs [aria-selected="true"] { background: #2463a34d; border-color: #79baff; }
+.connection-dot { width: 7px; height: 7px; border-radius: 50%; background: #8292a8; flex-shrink: 0; }
+[data-state="passed"] { --signal: #76e3b0; }
+[data-state="failed"] { --signal: #ff8e9e; }
+[data-state="checking"] { --signal: #79baff; }
+[data-state="unchecked"], [data-state="simulated"] { --signal: #a8b8cc; }
+.connection-dot[data-state] { background: var(--signal); }
+.connection-summary { display: flex; align-items: center; gap: 9px; color: var(--signal); margin: 0 0 20px; font-size: 12px; }
+.connection-result:empty { display: none; }
+.connection-result { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+.connection-result > p { font-size: 12px; line-height: 1.6; }
+.connection-target { border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin-top: 10px; }
+.connection-target h3 { font-size: 13px; color: var(--signal); margin-bottom: 8px; overflow-wrap: anywhere; }
+.connection-target p, .connection-result li { font-size: 12px; line-height: 1.6; margin-bottom: 5px; overflow-wrap: anywhere; }
+.connection-target ul, .connection-result > ul { padding-left: 18px; margin: 8px 0; color: var(--muted); }
+.capability-check { color: var(--signal); }
+.connection-result .error { color: var(--danger); }
+#settingsForm > fieldset { margin: 14px 0 20px; }
+.source-chip[data-state] { color: var(--signal); }
 #auditContent { font-size: 12px; }
 .demo-banner { margin: 0; padding: 10px 24px; color: #f4c18a; background: #493a2440; font-size: 11px; }
 @media (max-width: 800px) {

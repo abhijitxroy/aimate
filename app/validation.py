@@ -139,7 +139,9 @@ def validate_config(raw, old):
         items = list(dict.fromkeys(items))
         if any(not isinstance(item, str) or not re.fullmatch(pattern, item)
                or any(part in {".", ".."} for part in item.split("/")) for item in items):
-            raise ValueError(f"Invalid {key}")
+            raise ValueError({"repos": "Use one GitHub OWNER/REPO per line, for example abhijitxroy/aimate. Do not paste a web URL.",
+                              "projects": "Use Jira project keys such as DEMO, one per line; not issue keys or URLs.",
+                              "jobs": "Use Jenkins job names such as team/build, one per line; not job URLs."}[key])
         out[name][key] = items
         if out[name].get("token") and not items:
             raise ValueError(f"Add at least one {key} entry for {name}")

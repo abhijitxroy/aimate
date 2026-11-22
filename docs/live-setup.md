@@ -20,6 +20,22 @@
 Change proposals are off by default. Adding a write-capable token and enabling
 proposals still requires confirmation for every change.
 
+Settings has separate **AI model, GitHub, Jira, Jenkins and Changes** tabs.
+Each tab saves independently. Use **Save & check** to validate its inputs.
+Green means the check passed; red includes the failure and what to correct;
+gray means unverified. Saved keys alone never count as a successful connection.
+
+GitHub results show each repository's code, issues, pull requests and Actions
+read access, along with its default branch and any reported push permission.
+Token checks identify the authenticated account; anonymous public access is
+marked separately. Write permissions are not tested by creating a change.
+Jira and Jenkins results show which configured projects/jobs are accessible.
+ChatGPT checks verify its account model catalog; Claude API/Bedrock checks
+show the model's actual test reply and incur a small inference charge.
+
+Checks persist locally with their timestamps. Changed connection settings or
+checks older than one hour become unverified and need another check.
+
 ## ChatGPT subscriptions
 
 Local AiMate supports **Continue with ChatGPT** using OpenAI's documented

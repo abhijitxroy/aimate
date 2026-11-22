@@ -1,5 +1,6 @@
 """Single-operator storage. Secrets are encrypted; tool access never exposes them."""
 import json
+import hashlib
 import os
 import secrets
 import sqlite3
@@ -44,6 +45,7 @@ class Store:
                 operation TEXT, payload TEXT, preview TEXT, config_version TEXT,
                 status TEXT, created REAL, result TEXT);
             CREATE TABLE IF NOT EXISTS audit (id INTEGER PRIMARY KEY, action TEXT, status TEXT, result TEXT, created REAL);
+            CREATE TABLE IF NOT EXISTS connection_checks (service TEXT PRIMARY KEY, fingerprint TEXT, report TEXT);
         """)
         self.db.commit()
 
@@ -75,6 +77,25 @@ class Store:
                         section[key + "_configured"] = bool(section.pop(key))
         config.pop("_version", None)
         return config
+
+    @staticmethod
+    def connection_fingerprint(config, service):
+        return hashlib.sha256(json.dumps(config.get(service, {}), sort_keys=True).encode()).hexdigest()
+
+    def save_connection_check(self, service, config, report):
+        self.execute("INSERT OR REPLACE INTO connection_checks VALUES (?, ?, ?)",
+                     (service, self.connection_fingerprint(config, service), json.dumps(report)))
+
+    def connection_checks(self):
+        config = self.config()
+        reports = {}
+        for row in self.rows("SELECT * FROM connection_checks"):
+            report = json.loads(row["report"])
+            if (row["fingerprint"] != self.connection_fingerprint(config, row["service"])
+                    or time.time() - report["checked_at"] > 3600):
+                report = {"status": "unchecked", "message": "Settings changed or check expired. Check access again."}
+            reports[row["service"]] = report
+        return reports
 
     def new_conversation(self, title="New conversation"):
         cid = secrets.token_hex(16)

@@ -19,6 +19,7 @@ from app.agent import ai_client, ai_error, public_action, run_turn
 from app.connectors import Services, plan_fingerprint, scrub, valid_base
 from app.store import Store
 from app.validation import validate_config
+from app.connection_checks import SERVICES, check_connection
 
 
 class OAuthLogFilter(logging.Filter):
@@ -154,6 +155,7 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
     @app.get("/api/state")
     def state(session=Depends(auth)):
         return {"csrf": session["csrf"], "config": store.public_config(), "demo": bool(demo),
+                "connection_checks": store.connection_checks(),
                 "chatgpt": {**chatgpt.status(), "available": not demo and not public_url},
                 "conversations": store.rows("SELECT * FROM conversations ORDER BY created DESC")}
 
@@ -180,6 +182,7 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
             await chatgpt.callback(params,
                 lambda token: token in sessions and time.time() - sessions[token]["created"] < 12 * 3600,
                 str(request.base_url).rstrip("/"))
+            store.execute("DELETE FROM connection_checks WHERE service='ai'")
         except (ValueError, httpx.HTTPError) as exc:
             # OAuth codes/tokens never appear in redirects or diagnostics.
             return RedirectResponse("/?chatgpt=failed", status_code=303)
@@ -193,6 +196,7 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
     @app.post("/api/chatgpt/disconnect")
     async def disconnect_chatgpt(session=Depends(auth)):
         require_local_chatgpt()
+        store.execute("DELETE FROM connection_checks WHERE service='ai'")
         return await chatgpt.disconnect()
 
     @app.put("/api/settings")
@@ -200,57 +204,47 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
         if demo:
             raise HTTPException(409, "Demo uses fixed fictional connections. Restart without AIMATE_DEMO for real connections.")
         async with config_lock:
-            config = validate_config(await request.json(), store.config())
+            old = store.config()
+            config = validate_config(await request.json(), old)
             if config.get("ai", {}).get("provider") == "chatgpt":
                 require_local_chatgpt()
-            store.save_config(config)
+            if config != {k: v for k, v in old.items() if k != "_version"}:
+                store.save_config(config)
+        return {"config": store.public_config()}
+
+    @app.put("/api/settings/{service}")
+    async def section_settings(service: str, request: Request, session=Depends(auth)):
+        if demo:
+            raise HTTPException(409, "Demo connections cannot be changed.")
+        if service not in SERVICES | {"changes"}:
+            raise HTTPException(404, "Unknown connection")
+        async with config_lock:
+            old = store.config()
+            body = await request.json()
+            if not isinstance(body, dict):
+                raise ValueError("Connection settings must be an object")
+            merged = {**old, **({"allow_writes": body.get("allow_writes")} if service == "changes" else {service: body})}
+            config = validate_config(merged, old)
+            if service == "ai" and config["ai"].get("provider") == "chatgpt":
+                require_local_chatgpt()
+            if config != {k: v for k, v in old.items() if k != "_version"}:
+                store.save_config(config)
         return {"config": store.public_config()}
 
     @app.post("/api/connections/{service}/test")
     async def connection_test(service: str, session=Depends(auth)):
+        if service not in SERVICES:
+            raise HTTPException(404, "Unknown connection")
         if demo:
             if service not in {"ai", "github", "jira", "jenkins"}:
                 raise HTTPException(404, "Unknown demo connection")
-            return {"ok": True, "message": "Offline simulation only; no real connection was tested", "simulated": True}
+            return {"ok": True, "status": "simulated", "message": "Offline simulation only; no real connection was tested", "simulated": True}
         cfg = store.config()
-        services = services_factory(cfg)
-        if service == "ai":
-            if cfg.get("ai", {}).get("provider") == "chatgpt":
-                require_local_chatgpt()
-                models = await chatgpt.models()
-                if cfg.get("ai", {}).get("model") not in {m["slug"] for m in models}:
-                    raise ValueError("Choose an available ChatGPT model and save")
-                return {"ok": True, "message": "ChatGPT plan access and model catalog verified; no inference was requested"}
-            client = None
-            try:
-                client = client_factory(cfg)
-                message = await client.messages.create(model=cfg["ai"]["model"], max_tokens=16,
-                                                       messages=[{"role": "user", "content": "Reply OK."}])
-                return {"ok": True, "message": "AI responded", "model": message.model}
-            except Exception as exc:
-                raise HTTPException(400, ai_error(exc)) from None
-            finally:
-                if client is not None:
-                    await client.close()
-        try:
-            section = services.section(service)
-            targets = section.get({"github": "repos", "jira": "projects", "jenkins": "jobs"}[service], [])
-            results = []
-            for target in targets:
-                try:
-                    if service == "github":
-                        path = "/repos/" + target
-                    elif service == "jira":
-                        path = "/rest/api/" + section.get("api_version", "2") + "/project/" + target
-                    else:
-                        path = services.job_path(target) + "/api/json"
-                    await services.read(service, path)
-                    results.append({"target": target, "ok": True})
-                except Exception as exc:
-                    results.append({"target": target, "ok": False, "message": str(exc) if isinstance(exc, ValueError) else "Connection failed"})
-            return {"ok": bool(results) and all(r["ok"] for r in results), "targets": results}
-        except (ValueError, KeyError) as exc:
-            raise HTTPException(400, str(exc)) from None
+        if service == "ai" and cfg.get("ai", {}).get("provider") == "chatgpt":
+            require_local_chatgpt()
+        report = scrub(await check_connection(service, cfg, services_factory(cfg), client_factory, chatgpt), cfg)
+        store.save_connection_check(service, cfg, report)
+        return report
 
     @app.post("/api/conversations")
     def create_conversation(session=Depends(auth)):
