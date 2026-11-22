@@ -63,6 +63,42 @@ class JenkinsSimpleTests(unittest.TestCase):
             with self.subTest(job=job),self.assertRaises(ValueError):
                 service.plan("jenkins","build_job",{"job":job})
 
+    def test_pipeline_stage_read_respects_scope(self):
+        calls = []
+        def remote(request):
+            calls.append(request)
+            return httpx.Response(200, json={"status": "SUCCESS", "stages": [{"name": "Validate", "status": "SUCCESS"}]})
+        for cfg in (self.config(), self.config(mode="advanced", access="selected", jobs=["team/build"])):
+            svc = Services(cfg, httpx.MockTransport(remote))
+            result = asyncio.run(svc.read("jenkins", "/job/team/job/build/11/wfapi/describe"))
+            self.assertEqual(result["data"]["stages"][0]["status"], "SUCCESS")
+        self.assertTrue(all(request.method == "GET" for request in calls))
+        svc = Services(self.config(mode="advanced", access="selected", jobs=["team/build"]))
+        for path in ("/job/other/11/wfapi/describe", "/job/team/job/build/11/wfapi/pendingInputActions"):
+            with self.subTest(path=path), self.assertRaises(ValueError):
+                asyncio.run(svc.read("jenkins", path))
+
+    def test_progressive_log_offsets_cover_all_bytes_without_gaps(self):
+        body = (b"warning line\n" * 7200) + b"Finished: SUCCESS\n"
+        starts = []
+        def remote(request):
+            start = int(request.url.params["start"])
+            starts.append(start)
+            return httpx.Response(200, content=body[start:],
+                                  headers={"content-type": "text/plain", "X-Text-Size": str(len(body)), "X-More-Data": "false"})
+        svc = Services(self.config(), httpx.MockTransport(remote))
+        start, pages = 0, []
+        while True:
+            data = asyncio.run(svc.read("jenkins", "/job/team/job/build/11/logText/progressiveText", {"start": start}))["data"]
+            pages.append(data["text"].encode())
+            if not data["more_data"]:
+                break
+            next_start = int(data["next_start"])
+            self.assertGreater(next_start, start)
+            start = next_start
+        self.assertEqual(b"".join(pages), body)
+        self.assertEqual(starts, list(range(0, len(body), 24000)))
+
     def test_advanced_selected_scope_remains_restricted(self):
         cfg=self.config(mode="advanced",access="selected",jobs=["team/build"])
         service=Services(cfg)

@@ -205,7 +205,7 @@ class Services:
             cfg = self.section(service)
             if cfg.get("access") == "all":
                 # Account permissions govern job access; endpoint families remain restricted.
-                match = re.fullmatch(r"((?:/job/[^/]+)+)/(api/json|(?:[1-9][0-9]*|lastBuild|lastCompletedBuild|lastSuccessfulBuild)/(?:api/json|consoleText|logText/progressiveText))", path)
+                match = re.fullmatch(r"((?:/job/[^/]+)+)/(api/json|(?:[1-9][0-9]*|lastBuild|lastCompletedBuild|lastSuccessfulBuild)/(?:api/json|consoleText|logText/progressiveText|wfapi/describe))", path)
                 if path == "/api/json":
                     params["tree"] = "jobs[name,fullName,_class]"
                     params.pop("depth", None)
@@ -220,7 +220,7 @@ class Services:
                 for job in cfg.get("jobs", []):
                     prefix = self.job_path(job)
                     if path == prefix + "/api/json" or re.fullmatch(
-                            re.escape(prefix) + r"/(?:[1-9][0-9]*|lastBuild|lastCompletedBuild|lastSuccessfulBuild)/(?:api/json|consoleText|logText/progressiveText)", path):
+                            re.escape(prefix) + r"/(?:[1-9][0-9]*|lastBuild|lastCompletedBuild|lastSuccessfulBuild)/(?:api/json|consoleText|logText/progressiveText|wfapi/describe)", path):
                         matched = job
                         break
                 if matched is None:
