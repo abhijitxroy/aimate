@@ -2,64 +2,337 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Your code, issues and builds in one conversation. Try AiMate's interactive sample demo.">
-  <meta name="theme-color" content="#0b1929">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; base-uri 'self'; form-action 'self'">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>AiMate</title>
-  <link rel="icon" href="assets/favicon.svg?v=am2" type="image/svg+xml">
-  <link rel="stylesheet" href="assets/showcase.css">
-  <script src="assets/showcase.js" defer></script>
+  <script src="./pages/config.js"></script>
+  <script src="./pages/preview.js"></script>
+  <script src="./app/static/theme.js"></script>
+  <link rel="icon" href="./app/static/favicon.svg?v=am2" type="image/svg+xml">
+  <link rel="stylesheet" href="./app/static/style.css">
+  <link rel="stylesheet" href="./app/static/theme.css">
+  <script src="./app/static/vendor/markdown-it.min.js" defer></script>
+  <script src="./app/static/markdown.js" defer></script>
+  <script src="./app/static/app.js" defer></script>
 </head>
 <body>
-  <header class="nav wrap">
-    <a class="brand" href="./" aria-label="AiMate home"><img class="brand-icon" src="assets/favicon.svg?v=am2" alt="">AiMate</a>
-    <a class="repo-link" href="https://github.com/abhijitxroy/aimate">GitHub <span aria-hidden="true">↗</span></a>
-  </header>
-  <main class="wrap">
-    <section class="hero" aria-labelledby="heroTitle">
-      <h1 id="heroTitle">Your project.<br><span>One conversation.</span></h1>
-      <p>Code, issues and builds. Connected.</p>
-    </section>
-    <section class="workspace" id="demo" aria-label="Interactive AiMate demo">
-      <div class="workspace-header">
-        <div class="source-list" aria-label="Sample sources"><span>GitHub</span><span>Jira</span><span>Jenkins</span></div>
-        <div class="workspace-controls">
-          <span class="demo-chip">Sample demo</span>
-          <button class="reset-button" id="resetDemo" type="button" aria-label="Reset demo" title="Reset demo">↺</button>
-        </div>
+  <section id="loginScreen" class="login-screen">
+    <div class="login-card">
+      <div class="login-brand"><img class="brand-mark" src="./app/static/favicon.svg?v=am2" alt=""><div><h1>AiMate</h1><p>At Your Service</p></div></div>
+      <form id="loginForm">
+        <label>Who are you?<select id="loginRole"><option value="admin">Administrator</option><option value="developer">Developer · read &amp; write</option><option value="viewer">End-user · read</option><option value="reviewer">Reviewer · read</option></select></label>
+        <label id="accessCodeLogin" hidden>Access code<input id="accessCode" type="password" autocomplete="off" placeholder="Code from your administrator"></label>
+        <label id="passwordLogin">Development password<input id="password" type="password" autocomplete="current-password" placeholder="Enter your workspace password" required></label>
+        <label id="otpLogin" hidden><span id="otpLoginLabel">Authenticator code</span><input id="loginOtp" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="40" placeholder="6-digit code"></label>
+        <button class="primary" type="submit">Sign in</button>
+      </form>
+      <button id="useRecoveryCode" class="login-link" type="button" hidden>Use a recovery code</button>
+      <button id="useDevLogin" class="login-link" type="button" hidden>Developer sign-in</button>
+      <button id="demoLogin" class="primary" hidden>Try the offline demo →</button>
+      <p id="demoLoginHint" class="hint" hidden>Fictional project data and scripted answers. No tokens, AI charges or external changes.</p>
+      <p id="loginError" class="error" role="alert"></p>
+      <details id="localPasswordHint" class="login-help"><summary>Where is my password?</summary><p class="hint">Open <code>.data/access-password.txt</code> in your AiMate folder. If you configured <code>APP_PASSWORD</code>, use that instead.</p></details>
+    </div>
+  </section>
+
+  <div id="workspace" class="workspace" hidden>
+    <aside class="sidebar" id="sidebar">
+      <div class="brand"><img class="brand-mark small" src="./app/static/favicon.svg?v=am2" alt=""><div>AiMate<small>At Your Service</small></div><button id="expandSidebar" type="button" aria-label="Collapse sidebar" title="Collapse sidebar"><img class="sidebar-toggle-logo" src="./app/static/favicon.svg?v=am2" alt=""><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16v16H4zM9 4v16m7-11-3 3 3 3"/></svg></button></div>
+      <div class="sidebar-quick-actions">
+      <button id="newChat" class="new-chat" aria-label="New conversation" title="New conversation"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>New chat</span></button>
+      <button id="searchHistory" class="history-search-button" type="button" aria-label="Search saved chats" title="Search saved chats · Ctrl+K"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><span>Search</span></button>
       </div>
-      <div class="conversation" id="conversation" role="log" aria-label="Demo conversation" aria-live="polite">
-        <div class="welcome" id="demoWelcome">
-          <span class="welcome-symbol" aria-hidden="true">✳</span>
-          <h2>What are we working on?</h2>
+      <div class="conversation-section-head"><p class="eyebrow section-label">CONVERSATIONS</p><button id="newGroup" type="button" title="New project, module or group" aria-label="New project, module or group">＋</button></div>
+      <button id="archiveView" class="archive-view" type="button" aria-pressed="false">Archived chats</button>
+      <nav id="conversations" aria-label="Conversations"></nav>
+      <details id="sidebarTools" class="sidebar-bottom">
+        <summary aria-label="Show or hide tools" title="Show or hide tools"><span>Tools</span><svg class="tools-rail-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg><svg class="tools-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></summary>
+        <div class="sidebar-tools">
+        <button id="openKnowledge"><svg class="sidebar-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v15M12 5C9 3 5 3 2 4v15c3-1 7-1 10 1 3-2 7-2 10-1V4c-3-1-7-1-10 1Z"/><path d="M5 8h4M5 12h4M15 8h4M15 12h4"/></svg><span>My Diary</span></button>
+        <button id="openTodos"><svg class="sidebar-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="m7 12 3 3 7-7"/></svg><span>To-do</span></button>
+        <button id="openUsage"><svg class="sidebar-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18M7 16v-4M12 16V8M17 16V5"/></svg><span>Usage &amp; billing</span></button>
+        <button id="openSettings"><svg class="sidebar-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="8" cy="6" r="2" fill="var(--bg)"/><circle cx="16" cy="12" r="2" fill="var(--bg)"/><circle cx="10" cy="18" r="2" fill="var(--bg)"/></svg><span>Connections &amp; settings</span></button>
+
+
+        <button id="openHelp"><svg class="sidebar-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 2-2.5 2-2.5 4M12 17h.01"/></svg><span>Help</span></button>
+        <button id="logout"><svg class="sidebar-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4H4v16h5M9 12h12m-4-4 4 4-4 4"/></svg><span>Sign out</span></button>
+        <div id="accessMode" class="access-mode" role="status"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3Z"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg><span id="accessModeLabel">Admin · Read mode</span></div>
         </div>
-      </div>
-      <div class="demo-bottom">
-        <div class="suggestions" aria-label="Sample questions">
-          <button data-question="Why did the build fail?" type="button">Explain a build failure <span aria-hidden="true">↗</span></button>
-          <button data-question="What needs attention?" type="button">Find open work <span aria-hidden="true">↗</span></button>
-          <button data-question="Propose a Jira comment" type="button">Draft a Jira comment <span aria-hidden="true">↗</span></button>
+      </details>
+      <div id="sidebarResize" class="sidebar-resize" role="separator" tabindex="0" aria-label="Resize conversation sidebar" aria-orientation="vertical" aria-valuemin="64" aria-valuemax="600" aria-valuenow="224" title="Drag to resize · double-click to reset"></div>
+    </aside>
+    <main>
+      <header><div><p class="eyebrow">PROJECT WORKSPACE</p><h2 id="chatTitle">Ask your project</h2><p id="chatLocation" class="chat-location" hidden></p></div><div class="header-controls"><span id="writeBadge" class="badge">Read mode</span><details id="chatMenu" class="chat-menu" hidden><summary aria-label="Conversation actions" title="Conversation actions">⋯</summary><div><button type="button" id="continueChat">Continue in new chat</button><button type="button" id="pinChat">Pin chat</button><button type="button" id="renameChat">Rename</button><button type="button" id="moveChat">Move to group</button><button type="button" id="copyChat">Copy chat</button><button type="button" id="exportChat">Export Markdown</button><button type="button" id="archiveChat">Archive</button><button type="button" id="deleteChat" class="error">Delete</button></div></details><button id="headerSettings" aria-label="Open connections and settings">⚙</button><button id="mobileMenu" class="mobile-only" aria-label="Workspace menu">☰</button><button id="openAppearance" type="button" class="appearance-button" aria-label="Appearance" title="Appearance"><svg class="sidebar-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg></button></div></header>
+      <div class="source-bar" id="sourceBar"></div>
+      <p id="demoBanner" class="demo-banner" hidden>DEMO MODE · Fictional data · Scripted answers · Confirmations simulate changes only</p>
+      <section id="welcome" class="welcome">
+        <img class="welcome-icon" src="./app/static/favicon.svg?v=am2" alt="">
+        <h1>AiMate, at your service.</h1>
+        <p class="muted">Find answers across your repos, tickets and builds.</p>
+        <div class="suggestions">
+          <button data-question="Read the README and relevant source files of my configured GitHub repositories. Give a brief architecture overview and cite the files you inspected."><b>Repo overview</b></button>
+          <button data-question="Show open pull requests in my configured repositories, with their review status and failing checks. Cite the sources."><b>Review PRs</b></button>
+          <button data-question="Inspect recent builds in my configured Jenkins and GitHub Actions sources. Summarize failures using logs you can actually read and cite the evidence."><b>Investigate builds</b></button>
+          <button data-question="Find unresolved issues in my configured Jira projects. Summarize priorities and blockers, with source links."><b>Find tickets</b></button>
         </div>
-        <form id="demoForm">
-          <label class="sr-only" for="demoQuestion">Your question</label>
-          <textarea id="demoQuestion" rows="1" maxlength="500" placeholder="Ask about the sample project…" required></textarea>
-          <button id="askButton" type="submit" aria-label="Send question">↑</button>
+        <p id="setupHint" class="setup-hint">Start by adding your API connections in Settings.</p>
+      </section>
+      <section id="messages" class="messages" aria-live="polite"></section>
+      <footer class="composer-wrap">
+        <div id="activity" class="activity" role="status"></div>
+        <form id="chatForm" class="composer">
+          <div id="attachmentCards" class="attachment-cards" hidden aria-label="Attached files"></div>
+          <textarea id="question" rows="2" maxlength="30000" placeholder="Ask AiMate" aria-label="Your question" required></textarea>
+          <div class="composer-bottom"><div class="composer-tools"><select id="modelMode" aria-label="Model selection" title="Auto selects Standard or Analysis. Manual choice overrides Auto."><option value="auto">Auto</option><option value="standard">Standard</option><option value="analysis">Analysis</option></select><button id="privateToggle" type="button" aria-pressed="false" title="Private chat: session-only history; prompts still go to your selected AI provider">Private</button><button id="attachText" type="button" title="Attach an image, PDF, text, code or log" aria-label="Attach a file"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.4 11.1-9.2 9.2a6 6 0 0 1-8.5-8.5l10-10a4 4 0 0 1 5.7 5.7l-10 10a2 2 0 0 1-2.8-2.8l9.2-9.2"/></svg></button><input id="textAttachment" type="file" hidden multiple accept=".png,.jpg,.jpeg,.webp,.gif,.pdf,.txt,.log,.md,.csv,.json,.yaml,.yml,.xml,.html,.css,.js,.ts,.tsx,.jsx,.py,.sh,.ps1,.sql,.toml,.ini,.cfg,.c,.cpp,.h,.java,.go,.rs"></div><button id="send" class="primary" type="submit">Ask <span>↑</span></button><button id="stop" type="button" hidden>Stop</button></div>
         </form>
-        <p class="composer-note" id="demoStatus" role="status">Scripted answers · Fictional data · No real changes</p>
+        <p class="footnote">The assistant uses your configured scope and token permissions. Review its evidence and proposed changes.</p>
+      </footer>
+    </main>
+  </div>
+
+  <dialog id="appearanceDialog" class="compact-dialog" aria-labelledby="appearanceTitle">
+    <div class="dialog-head"><h2 id="appearanceTitle">Appearance</h2><button class="close" data-close="appearanceDialog" aria-label="Close appearance">×</button></div>
+    <div class="theme-options" role="group" aria-label="Choose your theme">
+      <button class="theme-option" type="button" data-theme-choice="navy" aria-pressed="true"><span class="theme-preview navy" aria-hidden="true"><i></i><b></b></span><strong>Navy</strong><small>Default</small></button>
+      <button class="theme-option" type="button" data-theme-choice="beige" aria-pressed="false"><span class="theme-preview beige" aria-hidden="true"><i></i><b></b></span><strong>Beige light</strong><small>Warm &amp; soft</small></button>
+      <button class="theme-option" type="button" data-theme-choice="black-blue" aria-pressed="false"><span class="theme-preview black-blue" aria-hidden="true"><i></i><b></b></span><strong>Alienware</strong><small>Black &amp; blue</small></button>
+    </div>
+    <p class="hint">Saved in this browser.</p>
+  </dialog>
+  <dialog id="helpDialog" aria-labelledby="helpTitle">
+    <div class="dialog-head"><h2 id="helpTitle">AiMate help</h2><button class="close" data-close="helpDialog" aria-label="Close help">×</button></div>
+    <div class="help-tabs record-tabs" role="tablist" aria-label="Help topics">
+      <button id="help-tab-guide" type="button" role="tab" data-help-tab="guide" aria-controls="help-guide" aria-selected="true" aria-pressed="true">Quick guide</button>
+      <button id="help-tab-shortcuts" type="button" role="tab" data-help-tab="shortcuts" aria-controls="help-shortcuts" aria-selected="false" aria-pressed="false" tabindex="-1">Shortcuts</button>
+      <button id="help-tab-troubleshooting" type="button" role="tab" data-help-tab="troubleshooting" aria-controls="help-troubleshooting" aria-selected="false" aria-pressed="false" tabindex="-1">Troubleshooting</button>
+      <button id="help-tab-about" type="button" role="tab" data-help-tab="about" aria-controls="help-about" aria-selected="false" aria-pressed="false" tabindex="-1">About</button>
+    </div>
+    <section id="help-guide" class="help-page" role="tabpanel" aria-labelledby="help-tab-guide">
+      <div class="help-cards">
+        <article><h3>Connect your sources</h3><p>Add AI access, then GitHub, Jira or Jenkins. Save and check access. Blank token fields keep your saved token.</p><button type="button" data-help-action="openSettings">Open connections</button></article>
+        <article><h3>Ask with a link</h3><p>Paste a ticket, PR or build link with your question. Open the reply’s source links to check the evidence.</p><p class="help-example">“Read this build’s log and summarize the failures.”</p></article>
+        <article><h3>Keep your work together</h3><p>Use the chat’s ⋯ menu to rename, move, pin, export or archive it. Search chats finds saved messages without AI calls.</p><button type="button" data-help-action="searchHistory">Search saved chats</button></article>
+        <article><h3>Reuse notes and track cost</h3><p>Keep key–value notes in My Diary and tasks in To-do. Usage &amp; billing shows recorded tokens and available cost estimates.</p><div class="help-links"><button type="button" data-help-action="openKnowledge">My Diary</button><button type="button" data-help-action="openUsage">View usage</button></div></article>
       </div>
+      <p class="help-note">Changes are proposed for review. Check the target and details before confirming execution.</p>
     </section>
-    <details class="workspace-guide">
-      <summary>Public demo or local workspace?</summary>
-      <p><strong>Public:</strong> this page uses fictional data. A hosted live workspace will allow approved personal sources only.</p>
-      <p><strong>Office laptop:</strong> run AiMate locally to use your authorized work connections. Corporate chats and credentials stay in that workspace.</p>
-      <div class="workspace-guide-links"><a href="http://127.0.0.1:8765/">Open local AiMate ↗</a><a href="https://github.com/abhijitxroy/aimate/blob/main/docs/live-setup.md">Setup guide ↗</a></div>
-    </details>
-  </main>
-  <footer class="wrap">
-    <span>Built by <a href="https://github.com/abhijitxroy">Abhijit Roy</a></span>
-    <a href="https://github.com/abhijitxroy/aimate/blob/main/docs/architecture.md">Architecture ↗</a>
-  </footer>
-  <noscript><p class="wrap">Enable JavaScript to try the sample demo.</p></noscript>
+    <section id="help-shortcuts" class="help-page" role="tabpanel" aria-labelledby="help-tab-shortcuts" hidden>
+      <dl class="help-shortcuts">
+        <div><dt>Search saved chats</dt><dd><kbd>Ctrl</kbd> + <kbd>K</kbd></dd></div>
+        <div><dt>Open this shortcut guide</dt><dd><kbd>Ctrl</kbd> + <kbd>/</kbd></dd></div>
+        <div><dt>Send your question</dt><dd><kbd>Enter</kbd></dd></div>
+        <div><dt>New line in the ask bar</dt><dd><kbd>Shift</kbd> + <kbd>Enter</kbd></dd></div>
+        <div><dt>Close a dialog or reply details</dt><dd><kbd>Esc</kbd></dd></div>
+        <div><dt>Resize the sidebar with its edge focused</dt><dd><kbd>←</kbd> <kbd>→</kbd> · <kbd>Home</kbd> resets</dd></div>
+      </dl>
+      <p class="help-note">On Mac, use ⌘ instead of Ctrl for chat search and help.</p>
+    </section>
+    <section id="help-troubleshooting" class="help-page help-faq" role="tabpanel" aria-labelledby="help-tab-troubleshooting" hidden>
+      <details><summary>A connection passed, but a resource won’t open</summary><p>Checks cover the configured targets. A private repo, nested Jenkins job or specific build may have different access. Confirm the full URL and scope; expand the connection’s details to see the failed check.</p><button type="button" data-help-action="openSettings">Check connection details</button></details>
+      <details><summary>What do the connection dots mean?</summary><p><span class="success">Green</span>: checked targets passed. <span class="warning">Orange</span>: some passed. <span class="error">Red</span>: check failed. Gray: not checked. Hover a dot for its status.</p></details>
+      <details><summary>The AI model rejects my request</summary><p>Open AI model settings and check the model, region and endpoint. Your provider must allow that model. An AI connection test may be billable.</p></details>
+      <details><summary>Analysis is unavailable</summary><p>Configure an Analysis model in AI settings. Auto can select it for debugging or analysis; Standard uses your regular model.</p></details>
+      <details><summary>I want to continue an older investigation</summary><p>Open the original chat from the sidebar or Search chats. To branch off, use “Continue in new chat” from its top menu. A regular new chat starts a separate conversation.</p></details>
+      <details><summary>An attachment isn’t accepted</summary><p>Paste screenshots directly, or use the paperclip. Attach up to six files, including four images. Text/code/log files: 1 MB each; PDFs: 4 MB and 80 pages, with selectable text. Images are resized to 2048 pixels. Combined file text is limited to 28,000 characters. Attached content is sent to your selected AI provider when you ask.</p></details>
+      <details><summary>I can’t sign in with my authenticator</summary><p>Use a fresh six-digit code and check your device’s automatic time setting. If your authenticator is unavailable, choose “Use a recovery code”; each saved recovery code works once.</p></details>
+      <details><summary>Why is the cost missing?</summary><p>Recorded tokens can still appear when a model has no configured price. Set its rates in Usage &amp; billing. Estimated cost is not your provider’s final invoice.</p></details>
+    </section>
+    <section id="help-about" class="help-page help-about" role="tabpanel" aria-labelledby="help-tab-about" hidden>
+      <img class="brand-mark" src="./app/static/favicon.svg?v=am2" alt="">
+      <h3>AiMate</h3><p class="muted">At Your Service · Created by Abhijit Roy</p>
+      <p>A workspace for investigating code, tickets and builds, with saved chats, personal notes and reviewed changes.</p>
+      <p class="help-note">Saved work lives in this app’s local data directory. Questions and source content used for an answer are sent to your selected AI provider. Access follows your configured scope and token permissions.</p>
+    </section>
+  </dialog>
+  <dialog id="historySearchDialog">
+    <div class="dialog-head"><h2>Search chats</h2><button class="close" data-close="historySearchDialog" aria-label="Close chat search">×</button></div>
+    <label class="history-search-input"><span class="hint">Saved messages · all projects and archived chats · no AI tokens</span><input id="historySearchInput" type="search" maxlength="200" placeholder="Find a ticket, PR, build or phrase…" autocomplete="off"></label>
+    <p id="historySearchStatus" class="hint" role="status">Search your previous work.</p>
+    <div id="historySearchResults" class="history-search-results"></div>
+  </dialog>
+  <dialog id="conversationDialog" class="compact-dialog">
+    <div class="dialog-head"><h2 id="conversationDialogTitle">Rename conversation</h2><button class="close" data-close="conversationDialog" aria-label="Close conversation action">×</button></div>
+    <form id="conversationActionForm">
+      <label id="conversationNameLabel">Name<input id="conversationName" maxlength="100" autocomplete="off"></label>
+      <label id="conversationGroupLabel" hidden>Project / module / group<select id="conversationGroup"></select></label>
+      <p id="conversationDeleteHint" class="muted" hidden>This deletes this conversation and its saved messages. Completed actions remain in Audit log.</p>
+      <p id="conversationActionError" class="error" role="alert"></p>
+      <div class="conversation-action-buttons"><button type="button" data-close="conversationDialog">Cancel</button><button id="conversationActionSubmit" class="primary" type="submit">Save name</button></div>
+    </form>
+  </dialog>
+  <dialog id="groupDialog" class="compact-dialog">
+    <div class="dialog-head"><h2 id="groupDialogTitle">New group</h2><button class="close" data-close="groupDialog" aria-label="Close group settings">×</button></div>
+    <form id="groupForm">
+      <label>Name<input id="groupName" maxlength="80" autocomplete="off" required></label>
+      <div id="groupPlacement"><label>Type<select id="groupKind"><option value="project">Project</option><option value="module">Module</option><option value="group">Group</option></select></label><label>Inside<select id="groupParent"></select></label></div>
+      <p id="groupError" class="error" role="alert"></p>
+      <div class="conversation-action-buttons"><button id="removeGroup" type="button" class="error" hidden>Delete empty group</button><button type="button" data-close="groupDialog">Cancel</button><button id="saveGroup" class="primary" type="submit">Create</button></div>
+    </form>
+  </dialog>
+  <dialog id="knowledgeDialog">
+    <div class="dialog-head"><div><p class="eyebrow">YOUR REUSABLE RECORDS</p><h2 class="knowledge-title"><span class="knowledge-title-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v15M12 5C9 3 5 3 2 4v15c3-1 7-1 10 1 3-2 7-2 10-1V4c-3-1-7-1-10 1Z"/><path d="M5 8h4M5 12h4M15 8h4M15 12h4"/></svg></span> My Diary</h2></div><button class="close" data-close="knowledgeDialog" aria-label="Close My Diary">×</button></div>
+    <p class="hint">Save facts, links and preferences. AiMate searches relevant records when needed. Use Connections for secret tokens.</p>
+    <div class="record-toolbar"><div class="record-tabs"><button id="viewKnowledge" type="button" aria-pressed="true">View records</button><button id="manageKnowledge" type="button" aria-pressed="false">Add / edit</button></div><input id="knowledgeSearch" placeholder="Find a record…" aria-label="Search My Diary"></div><p id="knowledgeCount" class="hint"></p>
+    <p id="knowledgeError" class="error" role="alert"></p><div id="knowledgeCards" class="knowledge-cards"></div>
+    <div id="knowledgeEditor" class="knowledge-layout" hidden>
+      <div><div id="knowledgeList"></div><button id="newRecord" type="button">＋ New record</button></div>
+      <form id="knowledgeForm"><label>Key<input id="recordKey" maxlength="100" required placeholder="release_branch"></label><label>Value<textarea id="recordValue" rows="6" maxlength="6000" required placeholder="main · release notes and links…"></textarea></label><label>Area<select id="recordGroup"></select></label><div class="conversation-action-buttons"><button id="deleteRecord" type="button" class="error" hidden>Delete record</button><button class="primary" type="submit">Save record</button></div></form>
+    </div>
+  </dialog>
+  <dialog id="todoDialog">
+    <div class="dialog-head"><div><p class="eyebrow">ONE THING AT A TIME</p><h2>To-do</h2></div><button class="close" data-close="todoDialog" aria-label="Close to-do">×</button></div>
+    <form id="todoForm" class="todo-add"><textarea id="todoTitle" rows="4" maxlength="6000" required placeholder="What needs doing?&#10;Paste your checklist or notes here…" aria-label="Task"></textarea><button class="primary" type="submit" id="saveTodo">Add task</button><button id="cancelTodoEdit" type="button" hidden>Cancel</button></form>
+    <div class="record-toolbar"><div class="record-tabs" id="todoFilters"><button type="button" data-filter="open" aria-pressed="true">Open</button><button type="button" data-filter="completed" aria-pressed="false">Completed</button><button type="button" data-filter="all" aria-pressed="false">All</button></div><span id="todoCount" class="hint"></span></div>
+    <div id="todoList" class="todo-list"></div><p id="todoError" class="error" role="alert"></p>
+  </dialog>
+  <dialog id="usageDialog">
+    <div class="dialog-head"><div><p class="eyebrow">YOUR AIMATE ACTIVITY</p><h2>Usage &amp; billing</h2></div><button class="close" data-close="usageDialog" aria-label="Close usage">×</button></div>
+    <div class="usage-controls"><select id="usageDays" aria-label="Usage period"><option value="7">Last 7 days</option><option value="30" selected>Last 30 days</option><option value="90">Last 90 days</option><option value="366">Last year</option></select><select id="usageMetric" aria-label="Chart metric"><option value="tokens">Tokens by day</option><option value="cost">Estimated USD by day</option></select><button id="exportUsage" type="button">Export CSV</button></div>
+    <div id="usageSummary" class="usage-summary"></div>
+    <div class="usage-card"><h3>Daily activity</h3><div id="usageChart" class="usage-chart"></div></div>
+    <div class="usage-card"><h3>By model</h3><div id="usageModels" class="usage-table"></div></div>
+    <details class="usage-card"><summary>Cost estimate rates</summary><p class="hint">Enter your provider or organization's USD rates per million tokens. Updating a rate recalculates estimates for the selected period.</p><form id="usageRateForm"><label>Model ID<input id="rateModel" list="usageModelOptions" required maxlength="200"><datalist id="usageModelOptions"></datalist></label><div class="fields two"><label>Input<input id="rateInput" type="number" min="0" max="100000" step="any" required></label><label>Output<input id="rateOutput" type="number" min="0" max="100000" step="any" required></label><label>Cache read<input id="rateRead" type="number" min="0" max="100000" step="any" required></label><label>Cache write<input id="rateWrite" type="number" min="0" max="100000" step="any" required></label></div><button class="primary" type="submit">Save rates</button></form></details>
+    <p id="usageCoverage" class="hint"></p><p id="usageError" class="error" role="alert"></p>
+  </dialog>
+  <dialog id="settingsDialog">
+    <div class="dialog-head"><div><p class="eyebrow">MAKE IT YOURS</p><h2>Connections & settings</h2></div><button class="close" data-close="settingsDialog" aria-label="Close settings">×</button></div>
+    <p class="muted">Choose a connection. Check access to see what works and what needs fixing.</p>
+    <nav class="settings-tabs" role="tablist" aria-label="Connection settings">
+      <button type="button" role="tab" id="tab-ai" data-settings-tab="ai" aria-controls="settings-ai" aria-selected="true">AI model <span class="connection-dot" data-connection-dot="ai"></span></button>
+      <button type="button" role="tab" id="tab-github" data-settings-tab="github" aria-controls="settings-github" aria-selected="false" tabindex="-1">GitHub <span class="connection-dot" data-connection-dot="github"></span></button>
+      <button type="button" role="tab" id="tab-jira" data-settings-tab="jira" aria-controls="settings-jira" aria-selected="false" tabindex="-1">Jira <span class="connection-dot" data-connection-dot="jira"></span></button>
+      <button type="button" role="tab" id="tab-jenkins" data-settings-tab="jenkins" aria-controls="settings-jenkins" aria-selected="false" tabindex="-1">Jenkins <span class="connection-dot" data-connection-dot="jenkins"></span></button>
+      <button type="button" role="tab" id="tab-changes" data-settings-tab="changes" aria-controls="settings-changes" aria-selected="false" tabindex="-1">Admin</button>
+    </nav>
+    <form id="settingsForm">
+      <fieldset id="settings-ai" data-settings-panel="ai" role="tabpanel" aria-labelledby="tab-ai"><legend>AI model connection</legend>
+        <div class="connection-summary" data-connection-summary="ai" role="status"></div>
+          <div id="bedrockSetup" hidden>
+            <label>Setup<select name="ai.bedrock_mode"><option value="simple">Simple · token access</option><option value="advanced">Advanced · model &amp; AWS settings</option></select></label>
+            <p id="bedrockSimpleHint" class="hint">Claude Haiku 5.5 · us-east-2 · Bedrock API key. Just add your token.</p>
+          </div>
+        <div class="fields two"><label>Provider<select name="ai.provider"><option value="chatgpt">ChatGPT account</option><option value="anthropic">Anthropic API</option><option value="bedrock">AWS Bedrock Runtime</option></select></label><label id="apiModelLabel">Exact model / inference profile ID<input name="ai.model" placeholder="Model ID available to your account"></label><label id="chatgptModelLabel" hidden>Available model<select id="chatgptModel"><option value="">Connect your account first</option></select></label></div>
+        <div id="bedrockModelChoices" hidden>
+          <label>Standard model<select id="bedrockModel"><option value="custom">Custom model / profile ID</option></select></label>
+          <button id="refreshBedrockModels" type="button">Refresh available models</button>
+          <p id="bedrockModelsHint" class="hint" role="status">Organization presets; model access must be tested.</p>
+        </div>
+        <div id="chatgptConnection" hidden>
+          <div class="test-row"><label>Account<select id="chatgptAccount"><option value="">Add a ChatGPT account</option></select></label><button id="connectChatGPT" type="button" data-oai-siwc-button>Continue with ChatGPT</button><button id="disconnectChatGPT" type="button" hidden>Disconnect</button></div>
+          <p id="chatgptStatus" class="hint" role="status"></p>
+          <p class="hint">Uses your eligible ChatGPT plan. Go access will be checked after sign-in. <a href="https://chatgpt.com/settings/usage" target="_blank" rel="noopener noreferrer">Manage usage</a></p>
+        </div>
+        <div id="apiCredentials"><label id="aiKeyLabel">API key / Bedrock bearer key<input name="ai.api_key" type="password" autocomplete="off" placeholder="Leave blank to keep saved key"></label>
+          <div id="bedrockSettings" hidden>
+            <div class="fields two"><label>AWS region<input name="ai.region" placeholder="us-east-2"></label><label>Authentication<select name="ai.bedrock_auth"><option value="bearer">Bedrock API key</option><option value="iam">AWS credentials / server role</option></select></label></div>
+            <label>Claude endpoint<select name="ai.bedrock_endpoint"><option value="runtime">Bedrock Runtime · model / inference profile</option><option value="mantle">Bedrock Mantle · native Claude model ID</option></select></label>
+            <div id="awsCredentials" hidden>
+              <div class="fields two"><label>AWS access key ID<input name="ai.aws_access_key" type="password" autocomplete="off"></label><label>AWS secret access key<input name="ai.aws_secret_key" type="password" autocomplete="off"></label></div>
+              <label>AWS session token · temporary credentials<input name="ai.aws_session_token" type="password" autocomplete="off"></label>
+              <label class="check"><input name="ai.clear_aws" type="checkbox">Remove saved AWS credentials</label>
+              <p class="hint">Leave all AWS fields blank to use the server's AWS credential chain when none are saved. Temporary credentials need their session token.</p>
+            </div>
+            <p class="hint">Use your AWS account's exact Claude model ID and region. Inference and access tests use AWS billing.</p>
+          </div>
+        </div>
+        <details class="model-selection"><summary>Model selection</summary>
+          <label id="analysisModelLabel">Analysis model ID · optional<input name="ai.analysis_model" placeholder="Exact model / inference profile ID"></label>
+          <label id="bedrockAnalysisLabel" hidden>Analysis model · optional<select id="bedrockAnalysisModel"><option value="">Use Standard only</option><option value="custom">Custom model / profile ID</option></select></label>
+          <label id="chatgptAnalysisLabel" hidden>Analysis model · optional<select id="chatgptAnalysisModel"><option value="">Use Standard only</option></select></label>
+          <p class="hint">Your connected model is Standard. Auto uses AI to select Analysis for debugging or deeper reasoning. Both use the same provider, account and region. Auto adds a small classification request; Analysis may cost more. Manual choice skips classification.</p>
+        </details>
+        <div class="test-row"><details id="removeAIKey"><summary>Manage saved AI key</summary><label class="check"><input name="ai.clear_token" type="checkbox">Remove saved AI key</label></details><button id="testAIButton" type="button" data-test="ai">Save & check AI</button></div>
+        <div id="test-ai" class="connection-result" aria-live="polite"></div>
+      </fieldset>
+      <fieldset id="settings-github" data-settings-panel="github" role="tabpanel" aria-labelledby="tab-github" hidden><legend>GitHub connection</legend>
+        <div class="connection-summary" data-connection-summary="github" role="status"></div>
+        <div class="fields two"><label>GitHub API or organization URL<input name="github.url" placeholder="https://api.github.com"></label><label>Personal access token<input name="github.token" type="password" autocomplete="off" placeholder="Leave blank to keep saved token"></label></div>
+        <label>Repositories · name or GitHub link, one per line<textarea name="github.repos" rows="3" placeholder="owner/repository"></textarea></label>
+        <p class="hint">Personal and Intel repos on github.com use the same API. Paste OWNER/REPO or a repo link; an organization URL also accepts short repo names. Private repos need a token. Enterprise: https://github.company.com/api/v3.</p>
+        <div class="test-row"><label class="check"><input name="github.clear_token" type="checkbox">Remove saved token</label><button type="button" data-test="github">Save & check repositories</button></div>
+        <div id="test-github" class="connection-result" aria-live="polite"></div>
+      </fieldset>
+      <fieldset id="settings-jira" data-settings-panel="jira" role="tabpanel" aria-labelledby="tab-jira" hidden><legend>Jira connection</legend>
+        <div class="connection-summary" data-connection-summary="jira" role="status"></div>
+        <label>Setup<select name="jira.mode"><option value="simple">Simple · PAT access</option><option value="advanced">Advanced · Cloud or selected projects</option></select></label>
+        <div class="fields two"><label>Site URL<input name="jira.url" placeholder="https://jira.example.com"></label><label>API token / personal access token<input name="jira.token" type="password" autocomplete="off" placeholder="Leave blank to keep saved token"></label></div>
+        <p class="hint" id="jiraSimpleHint">Site URL + PAT is enough. AiMate discovers the projects your account can access.</p>
+        <div id="jiraAdvanced" hidden>
+          <div class="fields two"><label>Authentication<select name="jira.auth"><option value="bearer">Data Center · PAT</option><option value="basic">Cloud · email + API token</option></select></label><label>Username / email<input name="jira.username" autocomplete="off"></label></div>
+          <div class="fields two"><label>API version<select name="jira.api_version"><option value="2">2 · Data Center</option><option value="3">3 · Cloud</option></select></label><label>Project access<select name="jira.access"><option value="all">All accessible projects</option><option value="selected">Selected projects only</option></select></label></div>
+          <label id="jiraProjectKeys">Project keys · one per line<textarea name="jira.projects" rows="2" placeholder="PROJECT"></textarea><span class="hint">Use the key, such as PROJECT, rather than the project name.</span></label>
+        </div>
+        <details><summary>Manage saved token</summary><label class="check"><input name="jira.clear_token" type="checkbox">Remove saved token</label></details>
+        <div class="test-row"><button type="button" data-test="jira">Save & connect</button></div>
+        <div id="test-jira" class="connection-result" aria-live="polite"></div>
+      </fieldset>
+      <fieldset id="settings-jenkins" data-settings-panel="jenkins" role="tabpanel" aria-labelledby="tab-jenkins" hidden><legend>Jenkins connection</legend>
+        <div class="connection-summary" data-connection-summary="jenkins" role="status"></div>
+        <label>Setup<select name="jenkins.mode"><option value="simple">Simple · token access</option><option value="advanced">Advanced · selected jobs</option></select></label>
+        <label>API token<input name="jenkins.token" type="password" autocomplete="off" placeholder="Leave blank to keep saved token"></label>
+        <p class="hint">Keep your controller and account saved. Replace only the token when it changes.</p>
+        <details id="jenkinsAccount"><summary>Controller &amp; account <span id="jenkinsAccountSummary"></span></summary>
+          <div class="fields two"><label>Controller URL<input name="jenkins.url" placeholder="https://jenkins.company.com"></label><label>Username / email<input name="jenkins.username" autocomplete="off"></label></div>
+          <p class="hint">Set these once. Use your Jenkins account ID if it differs from your Windows username.</p>
+        </details>
+        <div id="jenkinsAdvanced" hidden>
+          <label>Job access<select name="jenkins.access"><option value="all">All accessible jobs</option><option value="selected">Selected jobs only</option></select></label>
+          <label id="jenkinsJobNames">Job names · one per line<textarea name="jenkins.jobs" rows="2" placeholder="team/build"></textarea><span class="hint">Optional in Simple mode. Use folder/job for nested jobs.</span></label>
+        </div>
+        <details><summary>Manage saved token</summary><label class="check"><input name="jenkins.clear_token" type="checkbox">Remove saved token</label></details>
+        <div class="test-row"><button type="button" data-test="jenkins">Save &amp; connect</button></div>
+        <div id="test-jenkins" class="connection-result" aria-live="polite"></div>
+      </fieldset>
+      <fieldset class="write-setting" id="settings-changes" data-settings-panel="changes" role="tabpanel" aria-labelledby="tab-changes" hidden><legend>Admin</legend><div id="adminWriteControls"><label class="check"><input name="allow_writes" type="checkbox">Allow the assistant to prepare changes</label><p class="hint">Every change still requires Confirm. File edits use a working branch; pull requests start as drafts. Proposals expire after 30 minutes.</p></div><button id="openAudit" type="button">Audit log</button><button id="openAccess" type="button">Workspace access</button><button id="openVault" type="button">Private vault</button><button id="openFeedbackLog" type="button">Feedback</button><div class="admin-security"><h3>Sign-in security</h3><p id="otpStatus" class="hint">Authenticator OTP</p><button id="openOtpSetup" type="button">Set up OTP</button></div></fieldset>
+      <div class="dialog-footer"><span id="settingsStatus" role="status"></span><button id="saveConnection" class="primary" type="submit">Save AI connection</button></div>
+    </form>
+  </dialog>
+  <dialog id="auditDialog"><div class="dialog-head"><h2>Audit log</h2><button class="close" data-close="auditDialog" aria-label="Close history">×</button></div><pre id="auditContent"></pre></dialog>
+  <dialog id="accessDialog" class="compact-dialog">
+    <div class="dialog-head"><h2>Workspace access</h2><button class="close" data-close="accessDialog" aria-label="Close access">×</button></div>
+    <p class="hint">Each user gets private chats and connections. Access expires after 30 days; production also requires their authenticator.</p>
+    <details><summary>Role permissions</summary><p class="hint">Everyone manages their own connections and records. Viewer / Reviewer: read and ask. Developer: reviewed external changes when enabled by Admin. Admin: roles, security and destructive changes. Every external change needs confirmation.</p></details>
+    <form id="accessForm"><label>Name<input id="accessName" required maxlength="80" placeholder="Person or demo audience"></label><label>Role<select id="accessRole"><option value="viewer">Viewer · read</option><option value="reviewer">Reviewer · read</option><option value="developer">Developer · read &amp; write</option></select></label><button class="primary" type="submit">Create access code</button></form>
+    <div id="newAccessCode" hidden><p class="hint">Shown once. Share this code and authenticator setup privately with the intended person.</p><code id="accessCodeValue" class="otp-secret"></code><button id="copyAccessCode" type="button">Copy code</button><img id="accessAuthenticatorQr" class="otp-qr" alt="User authenticator setup"><details><summary>Authenticator setup key</summary><code id="accessAuthenticatorSecret" class="otp-secret"></code></details></div>
+    <div id="accessGrantList"></div><p id="accessError" class="error" role="alert"></p>
+  </dialog>
+  <dialog id="feedbackDialog" class="compact-dialog">
+    <div class="dialog-head"><h2>How was this answer?</h2><button class="close" data-close="feedbackDialog" aria-label="Close feedback">×</button></div>
+    <form id="feedbackForm"><div class="record-tabs"><button id="feedbackPositive" type="button" aria-pressed="true">👍 Helpful</button><button id="feedbackNegative" type="button" aria-pressed="false">👎 Needs work</button></div><label>What stood out?<select id="feedbackCategory"><option value="helpful">Helpful answer</option><option value="accuracy">Accuracy</option><option value="clarity">Clarity</option><option value="missing_context">Missing context</option><option value="performance">Speed</option><option value="other">Other</option></select></label><label>Anything to add?<textarea id="feedbackComment" rows="3" maxlength="2000" placeholder="What worked, or what should improve?"></textarea></label><p class="hint">Saved locally for your workspace administrator. Avoid private information.</p><button class="primary" type="submit">Save feedback</button><p id="feedbackError" class="error" role="alert"></p></form>
+  </dialog>
+  <dialog id="vaultDialog">
+    <div class="dialog-head"><h2>Private vault</h2><button class="close" data-close="vaultDialog" aria-label="Close vault">×</button></div>
+    <p class="hint">Encrypted on this device. Values stay hidden until revealed. AI access is off by default.</p>
+    <div id="vaultEntries" class="knowledge-grid"></div>
+    <details id="vaultEditor"><summary>Add or replace an entry</summary><form id="vaultForm"><label>Name<input id="vaultName" required maxlength="100" autocomplete="off"></label><label>Secret value<input id="vaultValue" type="password" required maxlength="6000" autocomplete="new-password" spellcheck="false"></label><label class="check"><input id="vaultAiAccess" type="checkbox">Allow AI to read this entry when requested</label><p class="hint">AI-accessible values are sent to your selected provider. Keep passwords and API tokens private unless sharing is necessary. Saved answers redact vault values.</p><button class="primary" type="submit">Save entry</button></form></details>
+    <p id="vaultError" class="error" role="alert"></p>
+  </dialog>
+  <dialog id="otpDialog" class="compact-dialog">
+    <div class="dialog-head"><h2>Authenticator login</h2><button class="close" data-close="otpDialog" aria-label="Close OTP setup">×</button></div>
+    <form id="otpVerifyForm"><label><span id="otpVerifyLabel">Development password</span><input id="otpVerification" type="password" autocomplete="off" required maxlength="200"></label><button class="primary" type="submit">Continue</button></form>
+    <form id="otpPairForm" hidden>
+      <p class="hint">Scan with your authenticator app, then enter its code.</p>
+      <img id="otpQr" class="otp-qr" alt="Authenticator setup QR code">
+      <details><summary class="hint">Enter a setup key instead</summary><code id="otpSecret" class="otp-secret"></code></details>
+      <label>Authenticator code<input id="otpConfirmCode" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="6-digit code" required></label>
+      <button class="primary" type="submit">Enable OTP login</button>
+    </form>
+    <div id="otpRecoveryPanel" hidden><p class="success">OTP login enabled.</p><p class="hint">Save these recovery codes privately. Each works once if you lose your authenticator.</p><pre id="otpRecoveryCodes"></pre><button id="downloadRecoveryCodes" type="button">Download codes</button><label class="check"><input id="savedRecoveryCodes" type="checkbox">I saved my recovery codes</label><button id="finishOtpSetup" class="primary" type="button" disabled>Done</button></div>
+    <p id="otpSetupError" class="error" role="alert"></p>
+  </dialog>
+  <dialog id="conversationIconDialog" class="compact-dialog">
+    <div class="dialog-head"><h2>Conversation icon</h2><button class="close" data-close="conversationIconDialog" aria-label="Close icon picker">×</button></div>
+    <form id="conversationIconForm">
+      <div class="record-tabs"><button id="emojiIconMode" type="button" aria-pressed="true">Emoji</button><button id="monogramIconMode" type="button" aria-pressed="false">Monogram</button></div>
+      <div id="emojiIconPanel"><div class="emoji-filters"><input id="emojiSearch" type="search" placeholder="Search emoji…" aria-label="Search emoji by name"><select id="emojiCategory" aria-label="Emoji topic"><option value="">All topics</option><option value="health">Health</option><option value="school">School</option><option value="office">Office</option><option value="food">Food</option><option value="flower">Flowers</option><option value="notes">Text &amp; notes</option><option value="book">Books</option><option value="travel">Transport</option><option value="sport">Sports</option><option value="pet">Pets</option></select></div><div id="conversationIconChoices" class="icon-choices"></div><p id="emojiSearchStatus" class="hint"></p></div>
+      <label><span id="conversationIconLabel">Emoji</span><input id="conversationIconValue" maxlength="16" placeholder="Paste an emoji, or choose above" aria-label="Conversation icon"></label>
+      <p id="conversationIconHint" class="hint">Leave blank to use the topic icon.</p><p id="conversationIconError" class="error" role="alert"></p>
+      <div class="conversation-action-buttons"><button id="automaticConversationIcon" type="button">Automatic</button><button type="submit" class="primary">Save icon</button></div>
+    </form>
+  </dialog>
+  <dialog id="menuDialog">
+    <div class="dialog-head"><h2>Workspace</h2><button class="close" data-close="menuDialog" aria-label="Close menu">×</button></div>
+    <div class="menu-actions"><button data-menu-action="newChat">New conversation</button><button data-menu-action="searchHistory">Search chats</button><button data-menu-action="newGroup">New project / group</button><button data-menu-action="openKnowledge">My Diary</button><button data-menu-action="openTodos">To-do</button><button data-menu-action="openUsage">Usage &amp; billing</button><button data-menu-action="openSettings">Connections & settings</button><button data-menu-action="archiveView">Archived chats</button><button data-menu-action="openHelp">Help</button><button data-menu-action="logout">Sign out</button></div>
+    <nav id="mobileConversations" aria-label="Saved conversations"></nav>
+  </dialog>
 </body>
 </html>

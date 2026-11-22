@@ -1,6 +1,8 @@
 .venv/
 .data/
 .demo-data/
+.public-data/
+_site/
 __pycache__/
 .pytest_cache/
 .env
