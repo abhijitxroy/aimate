@@ -258,7 +258,7 @@ class ChatGPTTests(unittest.TestCase):
         self.assertFalse(any(e["event"] == "action" for e in events))
         request = next(r for r in self.requests if r.url.path == "/v1/responses")
         payload = json.loads(request.content)
-        self.assertEqual([t["name"] for t in payload["tools"][0]["tools"]], ["api_read"])
+        self.assertEqual([t["name"] for t in payload["tools"][0]["tools"]], ["api_read", "configure_repository"])
         instructions = payload["instructions"]
         self.assertIn('"change_proposals_enabled": false', instructions)
         self.assertIn('"github": false', instructions)

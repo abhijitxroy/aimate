@@ -5,6 +5,7 @@ let chatgpt = {}, modelLoad = 0;
 let activeSettings = "ai", checkingConnection = false;
 let connectionReports = {}, connectionDefaults = {};
 let connectionSync = null;
+let bedrockCatalog = [], bedrockPresetEndpoint = "", bedrockCatalogLoad = 0;
 const dirtyConnections = new Set();
 const aiSecretFields = ["api_key", "aws_access_key", "aws_secret_key", "aws_session_token"];
 
@@ -101,6 +102,8 @@ async function refreshState() {
   $("#setupHint").textContent = "Connect AI + your project sources →";
   $("#setupHint").onclick = openSettings;
   const nav = $("#conversations");
+  $("#chatMenu").hidden = !cid;
+  for (const button of $("#chatMenu").querySelectorAll("button")) button.disabled = busy;
   nav.replaceChildren();
   const mobileNav = $("#mobileConversations");
   mobileNav.replaceChildren();
@@ -139,7 +142,7 @@ function addMessage(role, text = "", turnId = null) {
   } else action.onclick = async () => {
     if (!message.text) return;
     try {
-      await navigator.clipboard.writeText(message.text);
+      await copyFormatted(message.text);
       action.textContent = "Copied";
     } catch {
       action.textContent = "Copy failed";
@@ -265,6 +268,7 @@ function drawAction(action, parent) {
           const next = await api(`/api/actions/${action.id}/${decision}`, {method: "POST"});
           const replacement = drawAction(next);
           card.replaceWith(replacement);
+          if (next.service === "settings" && next.status === "completed") await refreshState();
           $("#activity").textContent = next.status === "completed" ? (demo ? "Simulated change completed. No external service was changed." : "Change completed. Ask a follow-up to continue.") : `Action ${next.status}.`;
         } catch (error) {
           card.append(element("p", "error", error.message));
@@ -286,7 +290,7 @@ async function openConversation(id, title = "Project conversation", allowBusy = 
   cid = id;
   try { localStorage.setItem("aimate.conversation", id); } catch { /* storage may be unavailable */ }
   $("#messages").replaceChildren();
-  $("#chatTitle").textContent = title;
+  $("#chatTitle").textContent = conversation.title || title;
   $("#welcome").hidden = Boolean(conversation.turns.length || conversation.actions.length);
   for (const turn of conversation.turns) {
     const user = turn.messages.find(m => m.role === "user" && typeof m.content === "string");
@@ -457,6 +461,7 @@ function openSettings() {
 
 async function updateProvider() {
   const form = $("#settingsForm"), selected = form.elements["ai.provider"].value === "chatgpt";
+  bedrockPresetEndpoint = "";
   $("#analysisModelLabel").hidden = selected;
   $("#chatgptAnalysisLabel").hidden = !selected;
   if (!selected) {
@@ -531,13 +536,73 @@ function updateBedrock() {
   $("#bedrockSetup").hidden = !bedrock;
   $("#bedrockSimpleHint").hidden = !simple;
   $("#bedrockSettings").hidden = !bedrock || simple;
-  $("#apiModelLabel").hidden = simple || form.elements["ai.provider"].value === "chatgpt";
+  $("#bedrockModelChoices").hidden = !bedrock || simple;
+  $("#bedrockAnalysisLabel").hidden = !bedrock;
+  $("#apiModelLabel").hidden = simple || form.elements["ai.provider"].value === "chatgpt" || (bedrock && $("#bedrockModel").value !== "custom");
+  $("#analysisModelLabel").hidden = form.elements["ai.provider"].value === "chatgpt" || (bedrock && $("#bedrockAnalysisModel").value !== "custom");
   $("#awsCredentials").hidden = !iam;
   $("#aiKeyLabel").hidden = iam;
   $("#removeAIKey").hidden = iam || form.elements["ai.provider"].value === "chatgpt";
   form.elements["ai.bedrock_endpoint"].querySelector('[value="mantle"]').disabled = iam;
   if (iam) form.elements["ai.bedrock_endpoint"].value = "runtime";
+  if (bedrock) void populateBedrockModels();
 }
+function renderBedrockModels() {
+  const form = $("#settingsForm");
+  for (const [pickerId, field, optional] of [["bedrockModel", "ai.model", false], ["bedrockAnalysisModel", "ai.analysis_model", true]]) {
+    const picker = $("#" + pickerId), current = form.elements[field].value;
+    picker.replaceChildren();
+    if (optional) { const option = element("option", "", "Use Standard only"); option.value = ""; picker.append(option); }
+    for (const model of bedrockCatalog) {
+      const option = element("option", "", model.label + " · " + model.source);
+      option.value = model.id; option.title = model.id; picker.append(option);
+    }
+    const custom = element("option", "", "Custom model / profile ID"); custom.value = "custom"; picker.append(custom);
+    picker.value = current && bedrockCatalog.some(m => m.id === current) ? current : optional && !current ? "" : "custom";
+  }
+  $("#apiModelLabel").hidden = form.elements["ai.bedrock_mode"].value === "simple" || $("#bedrockModel").value !== "custom";
+  $("#analysisModelLabel").hidden = $("#bedrockAnalysisModel").value !== "custom";
+}
+async function populateBedrockModels(discover = false) {
+  const endpoint = $("#settingsForm").elements["ai.bedrock_endpoint"].value;
+  if (!discover && bedrockPresetEndpoint === endpoint && bedrockCatalog.length) { renderBedrockModels(); return; }
+  const generation = ++bedrockCatalogLoad;
+  $("#refreshBedrockModels").disabled = true;
+  try {
+    const result = await api("/api/bedrock/models" + (discover ? "?discover=true" : ""));
+    if (generation !== bedrockCatalogLoad || $("#settingsForm").elements["ai.provider"].value !== "bedrock") return;
+    if (discover && (dirtyConnections.has("ai") || endpoint !== config.ai?.bedrock_endpoint)) {
+      $("#bedrockModelsHint").textContent = "Save your Bedrock settings first, then refresh the selected region and endpoint.";
+      return;
+    }
+    const presets = result.presets.map(m => ({...m, id: endpoint === "mantle" ? m.id.replace(/^us\./, "") : m.id.startsWith("us.") ? m.id : "us." + m.id}));
+    bedrockCatalog = [...new Map([...presets, ...result.models].map(m => [m.id, m])).values()];
+    bedrockPresetEndpoint = endpoint;
+    $("#bedrockModelsHint").textContent = result.message;
+    renderBedrockModels();
+  } catch (error) { $("#bedrockModelsHint").textContent = error.message; }
+  finally { if (generation === bedrockCatalogLoad) $("#refreshBedrockModels").disabled = false; }
+}
+$("#refreshBedrockModels").onclick = () => {
+  if (dirtyConnections.has("ai")) { $("#bedrockModelsHint").textContent = "Save your AI connection first, then refresh models."; return; }
+  void populateBedrockModels(true);
+};
+for (const [pickerId, field] of [["bedrockModel", "ai.model"], ["bedrockAnalysisModel", "ai.analysis_model"]]) {
+  $("#" + pickerId).onchange = () => {
+    const value = $("#" + pickerId).value;
+    if (value !== "custom") $("#settingsForm").elements[field].value = value;
+    if (field === "ai.model") $("#apiModelLabel").hidden = value !== "custom";
+    else $("#analysisModelLabel").hidden = value !== "custom";
+  };
+}
+$("#settingsForm").elements["ai.bedrock_endpoint"].onchange = () => {
+  bedrockPresetEndpoint = "";
+  updateBedrock();
+};
+$("#settingsForm").elements["ai.region"].onchange = () => {
+  bedrockPresetEndpoint = "";
+  updateBedrock();
+};
 $("#settingsForm").elements["ai.bedrock_auth"].onchange = updateBedrock;
 $("#settingsForm").elements["ai.bedrock_mode"].onchange = () => {
   const form = $("#settingsForm");
@@ -605,6 +670,96 @@ $("#newChat").onclick = async () => {
   $("#chatTitle").textContent = "Ask your project"; $("#activity").textContent = "";
   await refreshState();
 };
+let conversationAction = "rename", conversationActionId = null;
+async function copyFormatted(markdown) {
+  if (window.ClipboardItem && navigator.clipboard.write) {
+    try {
+      await navigator.clipboard.write([new ClipboardItem({
+        "text/plain": new Blob([markdown], {type: "text/plain"}),
+        "text/html": new Blob([answerMarkdown.render(markdown)], {type: "text/html"}),
+      })]);
+      return;
+    } catch { /* Fall back to portable Markdown when rich clipboard is unavailable. */ }
+  }
+  await navigator.clipboard.writeText(markdown);
+}
+function openConversationAction(action) {
+  if (!cid || busy) return;
+  $("#chatMenu").open = false;
+  conversationAction = action; conversationActionId = cid;
+  const removing = action === "delete";
+  $("#conversationDialogTitle").textContent = removing ? "Delete conversation?" : "Rename conversation";
+  $("#conversationNameLabel").hidden = removing;
+  $("#conversationName").value = $("#chatTitle").textContent;
+  $("#conversationName").required = !removing;
+  $("#conversationDeleteHint").hidden = !removing;
+  $("#conversationActionSubmit").textContent = removing ? "Delete conversation" : "Save name";
+  $("#conversationActionSubmit").className = removing ? "danger-button" : "primary";
+  $("#conversationActionError").textContent = "";
+  $("#conversationDialog").showModal();
+  if (!removing) { $("#conversationName").focus(); $("#conversationName").select(); }
+}
+$("#renameChat").onclick = () => openConversationAction("rename");
+$("#deleteChat").onclick = () => openConversationAction("delete");
+$("#conversationActionForm").onsubmit = async event => {
+  event.preventDefault();
+  if (!conversationActionId || busy) return;
+  $("#conversationActionSubmit").disabled = true;
+  try {
+    if (conversationAction === "delete") {
+      await api(`/api/conversations/${conversationActionId}`, {method: "DELETE"});
+      if (cid === conversationActionId) {
+        cid = null; $("#messages").replaceChildren(); $("#welcome").hidden = false;
+        $("#chatTitle").textContent = "Ask your project";
+        try { localStorage.removeItem("aimate.conversation"); } catch {}
+      }
+      $("#activity").textContent = "Conversation deleted.";
+    } else {
+      const result = await api(`/api/conversations/${conversationActionId}`, {method: "PATCH",
+        body: JSON.stringify({title: $("#conversationName").value.trim()})});
+      if (cid === conversationActionId) $("#chatTitle").textContent = result.title;
+      $("#activity").textContent = "Conversation renamed.";
+    }
+    $("#conversationDialog").close();
+    await refreshState();
+  } catch (error) { $("#conversationActionError").textContent = error.message; }
+  finally { $("#conversationActionSubmit").disabled = false; }
+};
+$("#copyChat").onclick = async () => {
+  if (!cid || busy) return;
+  $("#chatMenu").open = false;
+  try {
+    const conversation = await api(`/api/conversations/${cid}`);
+    const lines = ["# " + conversation.title.replace(/([\\`*_{}[\]<>#+.!|])/g, "\\$1"), ""];
+    for (const turn of conversation.turns) {
+      const user = turn.messages.find(m => m.role === "user" && typeof m.content === "string");
+      if (user) lines.push("## You", "", user.content, "");
+      const answers = turn.messages.filter(m => m.role === "assistant" && Array.isArray(m.content))
+        .flatMap(m => m.content.filter(b => b.type === "text").map(b => b.text));
+      if (answers.length) lines.push("## AiMate", "", answers.join("\n\n"), "");
+      const sources = new Set();
+      for (const message of turn.messages) for (const block of Array.isArray(message.content) ? message.content : []) {
+        if (block.type !== "tool_result") continue;
+        try {
+          const source = JSON.parse(block.content).source;
+          if (source && ["https:", "http:"].includes(new URL(source).protocol)) sources.add(source);
+        } catch {}
+      }
+      if (sources.size) lines.push("Sources:", ...Array.from(sources, url => "- <" + url + ">"), "");
+    }
+    if (conversation.actions.length) {
+      lines.push("## Reviewed actions", "");
+      for (const action of conversation.actions) lines.push(`- ${action.service}: ${action.operation} — ${action.status}`);
+    }
+    await copyFormatted(lines.join("\n"));
+    $("#activity").textContent = "Chat copied with formatting. Plain-text paste includes Markdown.";
+  } catch (error) { $("#activity").textContent = "Copy failed: " + error.message; }
+};
+document.addEventListener("aimate:choice", event => {
+  if (busy) return;
+  $("#question").value = event.detail;
+  $("#question").focus();
+});
 $("#openSettings").onclick = openSettings;
 $("#headerSettings").onclick = openSettings;
 $("#mobileMenu").onclick = () => $("#menuDialog").showModal();
@@ -673,7 +828,7 @@ function renderConnection(service, override) {
   const label = {passed: "✓ Connected · Pass", partial: "◐ Partial access", failed: "✕ Failed", checking: "Checking…", unchecked: "Not verified", simulated: "Sample only"}[status];
   summary.append(light, document.createTextNode(label));
   const output = $(`#test-${service}`);
-  output.replaceChildren(element("p", status === "failed" ? "error" : "muted", report.message));
+  output.replaceChildren(element("p", status === "failed" ? "error" : status === "passed" ? "success" : status === "partial" ? "warning" : "muted", report.message));
   if (report.checked_at) output.append(element("p", "hint", "Last verified: " + new Date(report.checked_at * 1000).toLocaleString() +
     (service === "ai" ? " · also updated by successful answers" : " · refreshed automatically")));
   if (report.details?.length) {

@@ -135,6 +135,28 @@ Your questions and selected source data are sent to the configured AI provider.
 Use a provider/account approved for your project's data. No credentials are
 included in the model's system prompt or tool definitions.
 
+You can add a source from chat: “Add OWNER/REPO to my GitHub sources.”
+To replace an entry, ask “Replace OWNER/OLD with OWNER/NEW.”
+AiMate uses the saved GitHub host and token to check repository, issues, PR and
+Actions read access, then shows a confirmation card. Confirming rechecks access
+and saves the local repository list. This works in read mode; credentials stay in
+Settings. Failed checks leave the list unchanged.
+
+Bedrock Advanced provides Standard and Analysis dropdowns with the organization's
+Haiku/Sonnet/Opus 5.5, Fable 5.2, and Opus/Sonnet 5 presets, plus custom IDs.
+**Refresh available models** reads AWS's current catalog for the saved region and
+endpoint. It does not invoke any model or verify inference permission; use
+**Save & test AI** for that. Catalog listing requires its own AWS permissions.
+Runtime discovery uses ListFoundationModels/ListInferenceProfiles; Mantle uses
+its separate `/v1/models` API. No automatic model fallback is enabled.
+
+The conversation menu (`⋯`) offers Rename, Copy chat and Delete. Copy includes the
+user messages, AiMate replies, citations and reviewed-action statuses as Markdown,
+plus rich HTML when supported by the clipboard. Deletion requires confirmation;
+completed action audit records remain. Answer styling includes scrollable tables,
+code-copy controls, typed callouts, evidence-backed metric cards and bar charts.
+Optional choice buttons fill the composer; they never send or execute automatically.
+
 Connection badges retain their last verified state across restarts. While the app
 is open, GitHub, Jira and Jenkins checks refresh automatically at most every five
 minutes and when the tab regains focus. Settings changes invalidate the previous

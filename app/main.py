@@ -198,6 +198,17 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
         require_local_chatgpt()
         return {"models": await chatgpt.models()}
 
+    @app.get("/api/bedrock/models")
+    async def bedrock_models(discover: bool = False, session=Depends(auth)):
+        from app.bedrock_models import presets, discover_models
+        ai = store.config().get("ai", {})
+        result = {"models": [], "message": "Organization presets. Refresh models to list the saved account and region. Access is verified only by Save & test."}
+        if discover:
+            if demo or ai.get("provider") != "bedrock":
+                raise HTTPException(409, "Save a live Bedrock connection before refreshing models.")
+            result = await discover_models(ai)
+        return {**result, "presets": presets(ai.get("bedrock_endpoint", "runtime"))}
+
     @app.post("/api/chatgpt/disconnect")
     async def disconnect_chatgpt(session=Depends(auth)):
         require_local_chatgpt()
@@ -287,9 +298,34 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
     def conversation(cid: str, session=Depends(auth)):
         store.require_conversation(cid)
         turns = store.rows("SELECT t.id,t.messages,t.created,u.metadata FROM turns t LEFT JOIN turn_usage u ON u.turn=t.id WHERE conversation=? ORDER BY t.id", (cid,))
-        return {"id": cid, "turns": [{"id": t["id"], "messages": json.loads(t["messages"]), "created": t["created"],
+        return {"id": cid, "title": store.rows("SELECT title FROM conversations WHERE id=?", (cid,))[0]["title"], "turns": [{"id": t["id"], "messages": json.loads(t["messages"]), "created": t["created"],
                                     "usage": json.loads(t["metadata"]) if t["metadata"] else None} for t in turns],
                 "actions": [public_action(store.action(r["id"])) for r in store.rows("SELECT id FROM actions WHERE conversation=? ORDER BY created", (cid,))]}
+
+    @app.patch("/api/conversations/{cid}")
+    async def rename_conversation(cid: str, request: Request, session=Depends(auth)):
+        store.require_conversation(cid)
+        body = await request.json()
+        title = body.get("title") if isinstance(body, dict) else None
+        if not isinstance(title, str) or not title.strip() or len(title.strip()) > 100:
+            raise ValueError("Use a conversation name with 1–100 characters.")
+        store.execute("UPDATE conversations SET title=? WHERE id=?", (title.strip(), cid))
+        return {"id": cid, "title": title.strip()}
+
+    @app.delete("/api/conversations/{cid}")
+    async def delete_conversation(cid: str, session=Depends(auth)):
+        async with config_lock:
+            store.require_conversation(cid)
+            if (chat_locks.get(cid) and chat_locks[cid].locked()) or store.rows(
+                    "SELECT id FROM actions WHERE conversation=? AND status='executing'", (cid,)):
+                raise HTTPException(409, "Wait until the current answer or action finishes before deleting.")
+            with store.lock, store.db:
+                store.db.execute("DELETE FROM turn_usage WHERE turn IN (SELECT id FROM turns WHERE conversation=?)", (cid,))
+                store.db.execute("DELETE FROM turns WHERE conversation=?", (cid,))
+                store.db.execute("DELETE FROM actions WHERE conversation=?", (cid,))
+                store.db.execute("DELETE FROM conversations WHERE id=?", (cid,))
+            chat_locks.pop(cid, None)
+            return {"deleted": cid}
 
     @app.post("/api/conversations/{cid}/edit")
     async def edit_message(cid: str, request: Request, session=Depends(auth)):
@@ -379,8 +415,22 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
                 store.execute("UPDATE actions SET status='expired' WHERE id=?", (aid,))
                 raise HTTPException(409, "Proposal expired; ask for a new one")
             config = store.config()
-            if not config.get("allow_writes") or config.get("_version") != action["config_version"]:
+            settings_change = action["service"] == "settings" and action["operation"] == "update_github_repositories"
+            if (not settings_change and not config.get("allow_writes")) or config.get("_version") != action["config_version"]:
                 raise HTTPException(409, "Settings changed; review a new proposal")
+            if settings_change:
+                if demo:
+                    raise HTTPException(409, "Demo connections cannot be changed.")
+                from app.repository_settings import prepare_repository
+                candidate, preview = await prepare_repository(config, action["payload"], services_factory)
+                if preview["after"] != action["preview"]["after"]:
+                    raise HTTPException(409, "Proposal changed; ask for a new one")
+                store.save_config(candidate)
+                result = {"repositories": candidate["github"]["repos"], "message": "Saved GitHub sources. Repository access verified."}
+                store.execute("UPDATE actions SET status='completed',result=? WHERE id=? AND status='pending'", (json.dumps(result), aid))
+                store.execute("INSERT INTO audit (action,status,result,created) VALUES (?,?,?,?)",
+                              (aid, "completed", json.dumps(result), time.time()))
+                return public_action(store.action(aid))
             services = services_factory(config)
             original = services.plan(action["service"], action["operation"], action["payload"])
             # Recheck default branch and file SHA immediately before execution.
