@@ -128,3 +128,9 @@ footer span a { color: #bacbe1; }
 @media (prefers-reduced-motion: reduce) {
   html, .conversation { scroll-behavior: auto; }
 }
+/* Keep environment information available without crowding the demo. */
+.workspace-guide { margin: 16px 0 0; border: 1px solid var(--border, #29415a); border-radius: 14px; padding: 12px 16px; color: #b9c9d9; font-size: 13px; line-height: 1.6; }
+.workspace-guide summary { cursor: pointer; color: #e1e9f2; }
+.workspace-guide p { margin: 10px 0; }
+.workspace-guide-links { display: flex; flex-wrap: wrap; gap: 16px; }
+.workspace-guide-links a { color: #8bc6ff; text-decoration: none; }
