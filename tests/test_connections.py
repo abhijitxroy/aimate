@@ -152,6 +152,26 @@ class ConnectionTests(unittest.TestCase):
         self.assertEqual(updated["token"], "replacement-jenkins-token")
         self.assertNotIn("replacement-jenkins-token", str(response.json()))
 
+    def test_github_token_save_survives_reload_and_repository_edit(self):
+        old = self.store.config()["github"]
+        response = self.client.put("/api/settings/github", headers=self.headers,
+                                   json={"token": "replacement-github-token"})
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("replacement-github-token", str(response.json()))
+        reopened = Store(self.directory.name)
+        try:
+            saved = reopened.config()["github"]
+            self.assertEqual(saved["token"], "replacement-github-token")
+            self.assertEqual(saved["url"], old["url"])
+            self.assertEqual(saved["repos"], old["repos"])
+        finally:
+            reopened.db.close()
+        response = self.client.put("/api/settings/github", headers=self.headers,
+                                   json={"repos": ["team/other"], "token": ""})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.store.config()["github"]["token"], "replacement-github-token")
+        self.assertTrue(self.client.get("/api/state").json()["config"]["github"]["token_configured"])
+
     def test_unknown_service_and_csrf_are_rejected(self):
         self.assertEqual(self.client.post("/api/connections/other/test", headers=self.headers).status_code, 404)
         self.assertEqual(self.client.put("/api/settings/github", json={}).status_code, 403)

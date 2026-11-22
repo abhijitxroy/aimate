@@ -226,7 +226,7 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
             body = await request.json()
             if not isinstance(body, dict):
                 raise ValueError("Connection settings must be an object")
-            merged = {**old, **({"allow_writes": body.get("allow_writes")} if service == "changes" else {service: {**old.get(service, {}), **body} if service in {"ai", "jenkins"} else body})}
+            merged = {**old, **({"allow_writes": body.get("allow_writes")} if service == "changes" else {service: {**old.get(service, {}), **body} if service in {"ai", "github", "jenkins"} else body})}
             config = validate_config(merged, old)
             if service == "ai" and config["ai"].get("provider") == "chatgpt":
                 require_local_chatgpt()

@@ -125,6 +125,8 @@ class Services:
                             403: "check token permissions, organization SSO approval and service access",
                             404: "target was not found or your token cannot see it",
                             429: "service rate limit reached; retry later"}.get(r.status_code, "check service availability and target")
+                    if service == "github" and r.status_code == 404 and not cfg.get("token"):
+                        hint = "target not found with public access; private repositories need a GitHub PAT with repository and organization access"
                     raise ValueError(f"{service}: HTTP {r.status_code}; {hint}")
                 data, capped = bytearray(), False
                 async for chunk in r.aiter_bytes():
@@ -178,7 +180,7 @@ class Services:
                 params["per_page"] = 30
         elif service == "jira":
             cfg = self.section(service)
-            m = re.fullmatch(r"/rest/api/(2|3)/issue/([A-Z][A-Z0-9_]*-[1-9][0-9]*)(?:/(comment|transitions|changelog))?", path)
+            m = re.fullmatch(r"/rest/api/(2|3)/issue/([A-Z][A-Z0-9_]*-[1-9][0-9]*)(?:/(comment|transitions|changelog|remotelink(?:/[0-9]+)?))?", path)
             if m:
                 self.issue(m[2])
             elif re.fullmatch(r"/rest/api/(2|3)/search(?:/jql)?", path):
@@ -193,7 +195,7 @@ class Services:
                 if cfg.get("access") != "all" and path.rsplit("/", 1)[1] not in cfg.get("projects", []):
                     raise ValueError("Jira project is outside your configured scope")
             else:
-                raise ValueError("Use Jira issue, project, transitions, comments or search endpoints")
+                raise ValueError("Use Jira issue, remote links, project, transitions, comments or search endpoints")
         elif service == "jenkins":
             if "start" in params:
                 try:

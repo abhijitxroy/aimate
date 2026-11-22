@@ -55,6 +55,21 @@ class JiraSimpleTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             service.plan("jira", "create_issue", {"project": "Project Name", "summary": "Test"})
 
+    def test_remote_links_are_readable_and_respect_issue_scope(self):
+        calls = []
+        def remote(request):
+            calls.append(request)
+            return httpx.Response(200, json=[{"object": {"url": "https://github.com/team/repo/pull/1"}}])
+        cfg = self.config()
+        service = Services(cfg, httpx.MockTransport(remote))
+        result = asyncio.run(service.read("jira", "/rest/api/2/issue/ONEAPICI-8437/remotelink"))
+        self.assertIn("github.com", result["data"][0]["object"]["url"])
+        asyncio.run(service.read("jira", "/rest/api/2/issue/ONEAPICI-8437/remotelink/12"))
+        self.assertTrue(all(call.method == "GET" for call in calls))
+        cfg["jira"].update(access="selected", projects=["DEMO"])
+        with self.assertRaisesRegex(ValueError, "configured projects"):
+            asyncio.run(Services(cfg).read("jira", "/rest/api/2/issue/OTHER-1/remotelink"))
+
     def test_selected_scope_still_blocks_unlisted_projects(self):
         service = Services(fixture_config())
         with self.assertRaises(ValueError):
