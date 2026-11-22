@@ -113,6 +113,19 @@ class BedrockTests(unittest.TestCase):
         self.assertIn("IAM", ai_error(error))
         self.assertNotIn("secret-token", ai_error(error))
 
+    def test_bad_request_distinguishes_context_model_and_unknown_without_body_leaks(self):
+        cases = [
+            ({"Message": "prompt is too long secret-token"}, "context limit"),
+            ({"error": {"message": "Invalid thinking signature secret-token"}}, "saved reasoning"),
+            ({"message": "Invalid tool_result secret-token"}, "tool context"),
+            ({"Message": "Invalid model identifier secret-token"}, "model or inference profile"),
+            ({"Message": "Unknown service validation secret-token"}, "key may still be valid"),
+        ]
+        for body, expected in cases:
+            message = ai_error(SimpleNamespace(status_code=400, body=body))
+            self.assertIn(expected, message)
+            self.assertNotIn("secret-token", message)
+
 
 if __name__ == "__main__":
     unittest.main()

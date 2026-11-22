@@ -68,6 +68,42 @@ class RepositorySettingsTests(unittest.TestCase):
         self.assertEqual(self.store.config()["github"]["repos"], ["team/new-repo"])
         self.assertEqual(self.store.config()["jira"]["token"], "jira-private-token")
 
+    def test_retry_reuses_pending_card_but_rechecks_access(self):
+        first = self.proposal(repo="team/new-repo")
+        count = len(self.requests)
+        second = self.proposal(repo="https://github.example/team/new-repo")
+        self.assertEqual(first["id"], second["id"])
+        self.assertGreater(len(self.requests), count)
+        self.assertEqual(len(self.store.rows("SELECT id FROM actions")), 1)
+        self.denied = True
+        with self.assertRaises(ValueError):
+            self.proposal(repo="team/new-repo")
+        self.assertEqual(self.store.config()["github"]["repos"], ["team/repo"])
+
+    def test_bad_ai_request_is_recorded_without_credentials_and_does_not_mark_connection_failed(self):
+        import anthropic
+        class RejectAI:
+            def __init__(self, cfg):
+                self.messages = self
+            def stream(self, **kwargs):
+                response = httpx.Response(400, request=httpx.Request("POST", "https://bedrock.example"))
+                raise anthropic.BadRequestError("PRIVATE BODY", response=response,
+                                               body={"Message": "prompt is too long PRIVATE BODY"})
+            async def close(self):
+                pass
+        self.store.save_connection_check("ai", self.store.config(),
+                                         {"status": "passed", "checked_at": 1, "message": "Connected"})
+        with TestClient(create_app(self.store, client_factory=RejectAI)) as client:
+            csrf = client.post("/api/login", json={"password": self.store.password}).json()["csrf"]
+            result = client.post("/api/chat", headers={"X-CSRF-Token": csrf},
+                                 json={"conversation": self.cid, "question": "Add a repository"})
+        self.assertIn("context limit", result.text)
+        failures = self.store.rows("SELECT * FROM ai_failures")
+        self.assertEqual(len(failures), 1)
+        self.assertIn(failures[0]["id"], result.text)
+        self.assertNotIn("PRIVATE BODY", result.text + json.dumps(failures))
+        self.assertEqual(self.store.connection_checks()["ai"]["status"], "passed")
+
     def test_ask_bar_tool_produces_review_card(self):
         class RepositoryStream(FakeStream):
             async def get_final_message(self):

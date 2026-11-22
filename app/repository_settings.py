@@ -59,6 +59,12 @@ async def propose_repository(store, config, cid, args, services_factory):
     if scrub(payload, config) != payload:
         raise ValueError("Do not put credentials in chat. Use the saved GitHub token in Settings.")
     _, preview = await prepare_repository(config, payload, services_factory)
+    for pending in store.rows("""SELECT id FROM actions WHERE conversation=? AND service='settings'
+            AND operation='update_github_repositories' AND status='pending' AND config_version=? AND created>?""",
+                              (cid, config["_version"], time.time() - 1800)):
+        card = public_action(store.action(pending["id"]))
+        if card["preview"]["after"] == preview["after"]:
+            return card
     aid = secrets.token_hex(16)
     store.execute("""INSERT INTO actions
         (id,conversation,service,operation,payload,preview,config_version,status,created)

@@ -503,7 +503,7 @@ async function ask(question) {
     userMessage.turnId = saved.turns.at(-1)?.id || null;
     await refreshState();
   } catch (error) {
-    $("#activity").textContent = error.name === "AbortError" ? "Stopped. An incomplete answer is not saved." : error.message;
+    $("#activity").textContent = error.name === "AbortError" ? "Stopped. An incomplete answer is not saved." : bot ? "Request failed. See the details above." : error.message;
     if (bot && error.name !== "AbortError") bot.root.append(element("p", "error", error.message));
   } finally {
     if (bot?.renderFrame) cancelAnimationFrame(bot.renderFrame);

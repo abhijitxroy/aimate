@@ -181,13 +181,23 @@ def ai_error(exc):
     # AWS uses capitalized Message, unlike the first-party Anthropic error body.
     # Classify it locally and return fixed text; never echo a provider body.
     body = getattr(exc, "body", None)
-    message = str(body.get("Message", "")) if isinstance(body, dict) else ""
+    nested = body.get("error", {}) if isinstance(body, dict) else {}
+    message = str(body.get("Message") or body.get("message") or
+                  (nested.get("message", "") if isinstance(nested, dict) else "")) if isinstance(body, dict) else ""
+    lower = message.lower()
+    if status == 400:
+        if any(text in lower for text in ("prompt is too long", "context window", "maximum context", "too many input tokens")):
+            return "This chat exceeds the model's context limit. Use Continue in new chat to carry relevant context."
+        if any(text in lower for text in ("thinking", "signature", "tool_use", "tool_result", "tool use", "tool result")):
+            return "AI rejected this chat's saved reasoning or tool context. Use Continue in new chat; your saved connections remain available."
+        if any(text in lower for text in ("model identifier", "model id", "inference profile", "throughput")):
+            return "AI rejected the model or inference profile. Check the model ID and Bedrock endpoint in Settings."
+        return "AI rejected this request (HTTP 400). Your key may still be valid. Retry once; if it repeats, use Continue in new chat."
     if status in {401, 403} and "authentication failed" in message.lower():
         return ("AWS could not authenticate the Bedrock API key. Check that the key is active "
                 "and copied completely. Replace it if expired or revoked; if it works in the "
                 "dashboard, match its AWS region and bearer-key permissions.")
     return {
-        400: "AI rejected the request. Check the model ID, inference profile and selected Bedrock endpoint.",
         401: "AI credentials are invalid or expired. Update the saved key or AWS session.",
         403: "AI access denied. Check AWS IAM invocation permissions, bearer-key permission and model access.",
         404: "AI model was not found. Check the exact model ID and AWS region.",

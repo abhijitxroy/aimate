@@ -503,6 +503,11 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
                 if not demo and getattr(exc, "status_code", None) in {401, 403, 404}:
                     store.record_ai_activity(turn_config, selected_model, ok=False, message=ai_error(exc))
                 message = ai_error(exc)
+                if getattr(exc, "status_code", None) is not None:
+                    reference = secrets.token_hex(6)
+                    store.execute("INSERT INTO ai_failures VALUES (?,?,?,?,?)",
+                                  (reference, cid, exc.status_code, message, time.time()))
+                    message += " Reference: " + reference
                 yield "data: " + json.dumps({"event": "error", "message": scrub(message, store.config())}) + "\n\n"
             finally:
                 lock.release()

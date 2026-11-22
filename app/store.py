@@ -60,6 +60,8 @@ class Store:
             CREATE TABLE IF NOT EXISTS usage_rates (model TEXT PRIMARY KEY, input REAL NOT NULL,
                 output REAL NOT NULL, cache_read REAL NOT NULL, cache_write REAL NOT NULL);
             CREATE TABLE IF NOT EXISTS migrations (name TEXT PRIMARY KEY);
+            CREATE TABLE IF NOT EXISTS ai_failures (id TEXT PRIMARY KEY, conversation TEXT,
+                status INTEGER, diagnosis TEXT NOT NULL, created REAL NOT NULL);
         """)
         from app.memory import readable_text
         for row in self.db.execute("SELECT id,conversation,messages FROM turns WHERE id NOT IN (SELECT turn FROM memory_index)").fetchall():
