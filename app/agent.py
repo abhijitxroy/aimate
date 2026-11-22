@@ -7,6 +7,7 @@ import time
 import httpx
 
 from app.connectors import OPERATIONS, Services, scrub
+from app.model_routing import ROUTER_SYSTEM, add_usage, route_input, select_model
 
 SYSTEM = """You are the operator's project assistant for GitHub, Jira and Jenkins.
 Answer by reading evidence through the provided tools. Cross-reference issue keys,
@@ -176,12 +177,12 @@ async def propose(store, config, services, cid, args):
     return public_action(store.action(aid))
 
 
-async def run_turn(store, cid, question, *, client_factory=ai_client, services_factory=Services, chatgpt=None):
+async def run_turn(store, cid, question, *, client_factory=ai_client, services_factory=Services, chatgpt=None, model_mode="auto"):
     config = store.config()
     if config.get("ai", {}).get("provider") == "chatgpt":
         if not chatgpt:
             raise ValueError("ChatGPT sign-in is available in local live mode")
-        async for event in run_chatgpt_turn(store, cid, question, chatgpt, services_factory):
+        async for event in run_chatgpt_turn(store, cid, question, chatgpt, services_factory, model_mode=model_mode):
             yield event
         return
     question = scrub(question, config)
@@ -201,10 +202,20 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
     client = client_factory(config)
     answer = ""
     usage = {"input_tokens": 0, "output_tokens": 0}
+    by_model = {}
     completed = False
     try:
+        async def classify():
+            response = await client.messages.create(
+                model=config["ai"]["model"], max_tokens=32, system=ROUTER_SYSTEM,
+                messages=[{"role": "user", "content": scrub(route_input(question, messages[:-1]), config)}])
+            return ("".join(b.text for b in response.content if getattr(b, "type", "") == "text"),
+                    {"input_tokens": response.usage.input_tokens, "output_tokens": response.usage.output_tokens})
+        selection = await select_model(config["ai"], model_mode, classify)
+        add_usage(usage, by_model, config["ai"]["model"], selection["routing_usage"])
+        yield selection
         for round_no in range(9):
-            params = {"model": config["ai"]["model"], "max_tokens": 4096,
+            params = {"model": selection["model"], "max_tokens": 4096,
                       "system": system, "messages": messages, "tools": available_tools}
             if round_no == 8:
                 params["tool_choice"] = {"type": "none"}
@@ -219,8 +230,8 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
                 msg = await stream.get_final_message()
             blocks = [block.model_dump(exclude_none=True) for block in msg.content]
             messages.append({"role": "assistant", "content": scrub(blocks, config)})
-            usage["input_tokens"] += msg.usage.input_tokens
-            usage["output_tokens"] += msg.usage.output_tokens
+            add_usage(usage, by_model, msg.model if getattr(msg, "model", None) else selection["model"],
+                      {"input_tokens": msg.usage.input_tokens, "output_tokens": msg.usage.output_tokens})
             calls = [block for block in blocks if block["type"] == "tool_use"]
             if not calls:
                 if not answer.strip():
@@ -254,9 +265,11 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
                     yield {"event": "tool_done", "name": call["name"], "ok": False, "message": scrub(message, config)}
             messages.append({"role": "user", "content": results})
         if completed:
-            store.save_turn(cid, scrub(messages[start:], config))
+            store.save_turn(cid, scrub(messages[start:], config),
+                            {"model": selection["model"], "mode": model_mode, "route": selection["route"],
+                             "usage": usage, "by_model": by_model, "notice": selection.get("notice")})
             store.execute("UPDATE conversations SET title=? WHERE id=? AND title='New conversation'", (question[:100], cid))
-        yield {"event": "done", "usage": usage}
+        yield {"event": "done", "usage": usage, "model": selection["model"], "mode": model_mode, "by_model": by_model}
     finally:
         await client.close()
 
@@ -284,13 +297,14 @@ def responses_history(messages):
     return items
 
 
-async def run_chatgpt_turn(store, cid, question, connection, services_factory):
+async def run_chatgpt_turn(store, cid, question, connection, services_factory, *, model_mode="auto"):
     from app.chatgpt import response_events
     config = store.config()
     question = scrub(question, config)
     account_id = connection.status()["active"]
     model = config.get("ai", {}).get("model")
-    if not model or model not in {m["slug"] for m in await connection.models()}:
+    available = {m["slug"] for m in await connection.models()}
+    if not model or model not in available:
         raise ValueError("Select an available ChatGPT model in Settings and save")
     history = store.history(cid)
     input_items = responses_history(history)
@@ -306,6 +320,26 @@ async def run_chatgpt_turn(store, cid, question, connection, services_factory):
                             "parameters": t["input_schema"], "strict": False} for t in tools]}
     services = services_factory(config)
     usage = {"input_tokens": 0, "output_tokens": 0}
+    by_model = {}
+    async def classify():
+        payload = {"model": model, "instructions": ROUTER_SYSTEM,
+                   "input": [{"role": "user", "content": scrub(route_input(question, history), config)}],
+                   "store": False, "stream": True}
+        text, totals = "", None
+        async for event in response_events(connection, payload, expected_account=account_id):
+            if event["type"] == "response.output_text.delta":
+                text += event.get("delta", "")
+            elif event["type"] == "response.completed":
+                totals = event["response"].get("usage", {})
+        if totals is None:
+            raise ValueError("Routing response incomplete")
+        return text, {k: totals.get(k, 0) for k in usage}
+    selection = await select_model(config["ai"], model_mode, classify)
+    add_usage(usage, by_model, model, selection["routing_usage"])
+    model = selection["model"]
+    if model not in available:
+        raise ValueError("The selected Analysis model is unavailable. Choose an available model in Settings.")
+    yield selection
     for round_no in range(9):
         payload = {"model": model, "instructions": instructions, "input": input_items,
                    "store": False, "stream": True, "tools": [namespace],
@@ -323,8 +357,7 @@ async def run_chatgpt_turn(store, cid, question, connection, services_factory):
             elif event["type"] == "response.completed":
                 result = event["response"]
                 output = result["output"]
-                for key in usage:
-                    usage[key] += result.get("usage", {}).get(key, 0)
+                add_usage(usage, by_model, result.get("model") or model, result.get("usage", {}))
         if output is None:
             raise ValueError("ChatGPT returned no completed response")
         output = scrub(output, config)
@@ -336,9 +369,10 @@ async def run_chatgpt_turn(store, cid, question, connection, services_factory):
             blocks.append({"type": "text", "text": text.strip()})
         saved.append({"role": "assistant", "content": blocks})
         if not calls:
-            store.save_turn(cid, saved)
+            store.save_turn(cid, saved, {"model": model, "mode": model_mode, "route": selection["route"],
+                                        "usage": usage, "by_model": by_model, "notice": selection.get("notice")})
             store.execute("UPDATE conversations SET title=? WHERE id=? AND title='New conversation'", (question[:100], cid))
-            yield {"event": "done", "usage": usage}
+            yield {"event": "done", "usage": usage, "model": model, "mode": model_mode, "by_model": by_model}
             return
         results = []
         for call in calls:

@@ -22,6 +22,20 @@ def failure(exc):
 async def check_connection(service, config, services, client_factory, chatgpt):
     report = {"ok": False, "status": "failed", "checked_at": time.time(), "targets": []}
     if service == "ai":
+        ai = config.get("ai", {})
+        if ai.get("analysis_model") and ai["analysis_model"] != ai.get("model"):
+            for label, model in (("Standard", ai.get("model")), ("Analysis", ai["analysis_model"])):
+                selected = {**config, "ai": {**ai, "model": model, "analysis_model": ""}}
+                # Simple setup still uses its configured Standard model; do not revalidate an inference request.
+                checked = await check_connection(service, selected, services, client_factory, chatgpt)
+                report["targets"].append({"target": label + " · " + str(model),
+                    "ok": checked["ok"], "status": checked["status"], "message": checked["message"],
+                    "details": checked.get("details", []), "checks": []})
+            passed = sum(t["ok"] for t in report["targets"])
+            report.update(ok=passed == 2, status="passed" if passed == 2 else "partial" if passed else "failed",
+                          counts={"passed": passed, "total": 2, "unit": "models"},
+                          message=f"{passed} of 2 configured models passed access checks.")
+            return report
         client = None
         try:
             ai = config.get("ai", {})

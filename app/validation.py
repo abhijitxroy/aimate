@@ -83,7 +83,7 @@ def validate_config(raw, old):
         raise ValueError("Settings must be an object")
     out = {"allow_writes": bool(raw.get("allow_writes"))}
     allowed_fields = {
-        "ai": {"provider", "model", "region", "api_key", "bedrock_auth", "bedrock_endpoint", "bedrock_mode",
+        "ai": {"provider", "model", "analysis_model", "region", "api_key", "bedrock_auth", "bedrock_endpoint", "bedrock_mode",
                "aws_access_key", "aws_secret_key", "aws_session_token"},
         "github": {"url", "repos", "token"},
         "jira": {"url", "projects", "auth", "username", "api_version", "token", "mode", "access"},

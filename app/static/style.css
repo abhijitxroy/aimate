@@ -59,6 +59,9 @@ header .eyebrow { margin-bottom: 7px; }
 .source-chip { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; background: transparent; font-size: 11px; color: var(--muted); }
 .source-chip:hover { background: transparent; text-decoration: underline; text-underline-offset: 3px; }
 .source-chip.off { opacity: .6; }
+.composer-bottom #modelMode { width: auto; max-width: 190px; padding: 6px 28px 6px 9px; font-size: 11px; }
+.model-selection { margin: 12px 0; }
+.model-selection > summary { cursor: pointer; margin-bottom: 12px; font-size: 12px; }
 .source-chip.off .dot { background: var(--muted); }
 .welcome { margin: auto; width: min(900px, 100%); text-align: center; padding: 24px; }
 .welcome-icon { color: var(--accent); font-size: 40px; margin-bottom: 18px; }

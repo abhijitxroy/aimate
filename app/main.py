@@ -21,6 +21,7 @@ from app.connectors import Services, plan_fingerprint, scrub, valid_base
 from app.store import Store
 from app.validation import validate_config
 from app.connection_checks import SERVICES, check_connection
+from app.model_routing import MODES
 
 
 class OAuthLogFilter(logging.Filter):
@@ -256,8 +257,9 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
     @app.get("/api/conversations/{cid}")
     def conversation(cid: str, session=Depends(auth)):
         store.require_conversation(cid)
-        turns = store.rows("SELECT id,messages,created FROM turns WHERE conversation=? ORDER BY id", (cid,))
-        return {"id": cid, "turns": [{"id": t["id"], "messages": json.loads(t["messages"]), "created": t["created"]} for t in turns],
+        turns = store.rows("SELECT t.id,t.messages,t.created,u.metadata FROM turns t LEFT JOIN turn_usage u ON u.turn=t.id WHERE conversation=? ORDER BY t.id", (cid,))
+        return {"id": cid, "turns": [{"id": t["id"], "messages": json.loads(t["messages"]), "created": t["created"],
+                                    "usage": json.loads(t["metadata"]) if t["metadata"] else None} for t in turns],
                 "actions": [public_action(store.action(r["id"])) for r in store.rows("SELECT id FROM actions WHERE conversation=? ORDER BY created", (cid,))]}
 
     @app.post("/api/conversations/{cid}/edit")
@@ -278,8 +280,8 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
             raise HTTPException(404, "Message not found in this conversation")
         # Preserve the original conversation and its reviewed actions as a separate version.
         edited = store.new_conversation(question.strip())
-        for turn in store.rows("SELECT messages FROM turns WHERE conversation=? AND id<? ORDER BY id", (cid, turn_id)):
-            store.save_turn(edited, json.loads(turn["messages"]))
+        for turn in store.rows("SELECT t.messages,u.metadata FROM turns t LEFT JOIN turn_usage u ON u.turn=t.id WHERE conversation=? AND t.id<? ORDER BY t.id", (cid, turn_id)):
+            store.save_turn(edited, json.loads(turn["messages"]), json.loads(turn["metadata"]) if turn["metadata"] else None)
         return {"id": edited}
 
     @app.post("/api/chat")
@@ -292,6 +294,9 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
         if not isinstance(question, str) or not question.strip() or len(question) > 30_000:
             raise ValueError("Question must have 1–30,000 characters")
         now = time.time()
+        model_mode = body.get("model_mode", "auto")
+        if not isinstance(model_mode, str) or model_mode not in MODES:
+            raise ValueError("Choose Auto, Standard or Analysis")
         recent = [t for t in chat_limits.get(session["token"], []) if now - t < 60]
         if len(recent) >= 10:
             raise HTTPException(429, "At most 10 questions per minute")
@@ -310,7 +315,7 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
                     if store.config().get("ai", {}).get("provider") == "chatgpt":
                         require_local_chatgpt()
                     turn = run_turn(store, cid, question, client_factory=client_factory,
-                                    services_factory=services_factory, chatgpt=chatgpt)
+                                    services_factory=services_factory, chatgpt=chatgpt, model_mode=model_mode)
                 async for event in turn:
                     yield "data: " + json.dumps(event, ensure_ascii=False) + "\n\n"
             except asyncio.CancelledError:

@@ -135,6 +135,27 @@ Your questions and selected source data are sent to the configured AI provider.
 Use a provider/account approved for your project's data. No credentials are
 included in the model's system prompt or tool definitions.
 
+### Auto and manual models
+
+The ask bar offers **Auto**, **Standard** and **Analysis**. Your existing AI model
+is Standard. Add an optional Analysis model under **Settings → AI model → Model
+selection**, then save and check access. Both models use the same provider,
+credentials and AWS region; the app does not assume access to another model.
+ChatGPT offers models from the connected account's catalog.
+
+Auto uses a separate, tool-free Standard-model request to classify a bounded
+question and recent conversation excerpt. It chooses Analysis for debugging
+and deeper reasoning, or Standard for routine work. Without a second model,
+Auto uses Standard without classification. Manual selection skips classification.
+Routing errors visibly fall back to Standard; answer errors do not silently retry
+with a different model. Model access checks verify both configured models.
+
+Each completed turn saves the selected mode, model and reported token usage,
+including classification, with per-model totals. Reopening the chat retains these
+details. This is usage reporting, not a provider invoice; interrupted requests
+may be billed even when no completed turn is saved. See [the work plan](ROADMAP.md)
+for performance, token optimization, billing, vault, privacy and role work.
+
 ## What is implemented
 
 **Read and investigate**

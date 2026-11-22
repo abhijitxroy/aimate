@@ -62,7 +62,7 @@
         <div id="activity" class="activity" role="status"></div>
         <form id="chatForm" class="composer">
           <textarea id="question" rows="2" maxlength="30000" placeholder="Ask about your project, or paste a log excerpt…" aria-label="Your question" required></textarea>
-          <div class="composer-bottom"><span>Sources checked · Changes reviewed</span><button id="send" class="primary" type="submit">Ask <span>↑</span></button><button id="stop" type="button" hidden>Stop</button></div>
+          <div class="composer-bottom"><select id="modelMode" aria-label="Model selection" title="Auto selects Standard or Analysis. Manual choice overrides Auto."><option value="auto">Auto</option><option value="standard">Standard</option><option value="analysis">Analysis</option></select><button id="send" class="primary" type="submit">Ask <span>↑</span></button><button id="stop" type="button" hidden>Stop</button></div>
         </form>
         <p class="footnote">The assistant uses your configured scope and token permissions. Review its evidence and proposed changes.</p>
       </footer>
@@ -105,6 +105,11 @@
             <p class="hint">Use your AWS account's exact Claude model ID and region. Inference and access tests use AWS billing.</p>
           </div>
         </div>
+        <details class="model-selection"><summary>Model selection</summary>
+          <label id="analysisModelLabel">Analysis model ID · optional<input name="ai.analysis_model" placeholder="Exact model / inference profile ID"></label>
+          <label id="chatgptAnalysisLabel" hidden>Analysis model · optional<select id="chatgptAnalysisModel"><option value="">Use Standard only</option></select></label>
+          <p class="hint">Your connected model is Standard. Auto uses AI to select Analysis for debugging or deeper reasoning. Both use the same provider, account and region. Auto adds a small classification request; Analysis may cost more. Manual choice skips classification.</p>
+        </details>
         <div class="test-row"><details id="removeAIKey"><summary>Manage saved AI key</summary><label class="check"><input name="ai.clear_token" type="checkbox">Remove saved AI key</label></details><button id="testAIButton" type="button" data-test="ai">Save & check AI</button></div>
         <div id="test-ai" class="connection-result" aria-live="polite"></div>
       </fieldset>

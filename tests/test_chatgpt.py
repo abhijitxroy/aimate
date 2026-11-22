@@ -33,6 +33,7 @@ class ChatGPTTests(unittest.TestCase):
         self.nonce, self.subject = "", "test-subject"
         self.grant_scope, self.fail_refresh = "openid " + PERMISSION, False
         self.response_mode, self.response_count = "answer", 0
+        self.extra_model = False
         self.transport = httpx.MockTransport(self.handle)
         self.connection = ChatGPT(self.store, self.transport)
 
@@ -57,9 +58,12 @@ class ChatGPTTests(unittest.TestCase):
                 "id_token": token, "scope": self.grant_scope, "token_type": "Bearer", "expires_in": 3600})
         if path == "/v1/models":
             self.assertEqual(request.headers["authorization"], "Bearer access-secret")
-            return httpx.Response(200, json={"models": [
+            models = [
                 {"slug": "test-model", "display_name": "Test model", "visibility": "list"},
-                {"slug": "hidden", "visibility": "hide"}]})
+                {"slug": "hidden", "visibility": "hide"}]
+            if self.extra_model:
+                models.append({"slug": "analysis-model", "display_name": "Analysis model", "visibility": "list"})
+            return httpx.Response(200, json={"models": models})
         if path == "/v1/responses":
             self.response_count += 1
             payload = json.loads(request.content)
@@ -79,6 +83,12 @@ class ChatGPTTests(unittest.TestCase):
             else:
                 output = [{"type": "message", "role": "assistant", "content": [
                     {"type": "output_text", "text": "Repository answer.", "annotations": []}]}]
+            if payload.get("instructions", "").startswith("Classify an engineering"):
+                self.assertNotIn("tools", payload)
+                self.assertNotIn("private-token", json.dumps(payload))
+                events = [{"type": "response.output_text.delta", "delta": '{"route":"analysis"}'}]
+                output = [{"type": "message", "role": "assistant", "content": [
+                    {"type": "output_text", "text": '{"route":"analysis"}', "annotations": []}]}]
             if self.response_mode == "tool" and self.response_count == 2:
                 self.assertEqual(payload["tools"][0]["type"], "namespace")
                 result = next(i for i in payload["input"] if i.get("type") == "function_call_output")
@@ -316,3 +326,32 @@ class ChatGPTTests(unittest.TestCase):
         asyncio.run(self.connection.disconnect())
         with self.assertRaises(ValueError):
             asyncio.run(self.connection.access_token("oaiapp_test"))
+
+    def test_auto_routes_chatgpt_to_available_analysis_and_counts_both_calls(self):
+        self.connect()
+        self.extra_model = True
+        config = fixture_config()
+        config["ai"] = {"provider": "chatgpt", "model": "test-model", "analysis_model": "analysis-model"}
+        self.store.save_config(config)
+        cid = self.store.new_conversation()
+        async def run():
+            return [e async for e in run_turn(self.store, cid, "Debug the failure", chatgpt=self.connection)]
+        events = asyncio.run(run())
+        payloads = [json.loads(r.content) for r in self.requests if r.url.path == "/v1/responses"]
+        self.assertEqual([p["model"] for p in payloads], ["test-model", "analysis-model"])
+        self.assertEqual(events[-1]["usage"], {"input_tokens": 10, "output_tokens": 6})
+        self.assertEqual(events[-1]["by_model"]["analysis-model"]["input_tokens"], 5)
+        metadata = json.loads(self.store.rows("SELECT metadata FROM turn_usage")[0]["metadata"])
+        self.assertEqual(metadata["model"], "analysis-model")
+
+    def test_manual_unavailable_analysis_fails_without_inference(self):
+        self.connect()
+        config = fixture_config()
+        config["ai"] = {"provider": "chatgpt", "model": "test-model", "analysis_model": "not-in-catalog"}
+        self.store.save_config(config)
+        cid = self.store.new_conversation()
+        async def run():
+            return [e async for e in run_turn(self.store, cid, "Debug", chatgpt=self.connection, model_mode="analysis")]
+        with self.assertRaisesRegex(ValueError, "Analysis model is unavailable"):
+            asyncio.run(run())
+        self.assertFalse(any(r.url.path == "/v1/responses" for r in self.requests))

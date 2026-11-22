@@ -44,8 +44,10 @@ function sourceBadge(name, service) {
   const dot = element("i", "connection-dot"); dot.dataset.state = status;
   const counts = report.counts;
   const partial = "Partial" + (counts ? ` · ${counts.passed}/${counts.total} ${counts.unit}` : "");
-  chip.append(dot, document.createTextNode(name + " · " + (demo ? "Sample" : status === "passed" ? "Connected" : status === "partial" ? partial : status === "failed" ? "Failed" : "Not checked")));
-  chip.title = report.message || "Open connection details";
+  const statusLabel = demo ? "Sample" : status === "passed" ? "Connected" : status === "partial" ? partial : status === "failed" ? "Failed" : "Not checked";
+  chip.append(dot, document.createTextNode(name));
+  chip.title = statusLabel + (report.message ? " · " + report.message : "");
+  chip.setAttribute("aria-label", `${name}: ${statusLabel}. Open connection details`);
   chip.onclick = event => { event.stopPropagation(); activeSettings = service; openSettings(); };
   return chip;
 }
@@ -58,6 +60,8 @@ async function refreshState() {
   chatgpt = state.chatgpt || {};
   connectionReports = state.connection_checks || {};
   connectionDefaults = state.connection_defaults || {};
+  $("#modelMode").querySelector('[value="analysis"]').disabled = !config.ai?.analysis_model || demo;
+  if ($("#modelMode").value === "analysis" && (!config.ai?.analysis_model || demo)) $("#modelMode").value = "auto";
   $("#demoBanner").hidden = !demo;
   $("#workspace").hidden = false;
   $("#loginScreen").hidden = true;
@@ -274,6 +278,11 @@ async function openConversation(id, title = "Project conversation", allowBusy = 
         else { bot.text += "\n\n" + text; renderAnswer(bot.body, bot.text); }
       }
     }
+    if (bot && turn.usage?.model) {
+      const used = turn.usage;
+      bot.root.append(element("p", "hint", `${used.mode === "auto" ? "Auto → " : ""}${used.route === "analysis" ? "Analysis" : "Standard"} · ${used.model} · ${used.usage.input_tokens.toLocaleString()} input / ${used.usage.output_tokens.toLocaleString()} output tokens`));
+      if (used.notice) bot.root.append(element("p", "hint", used.notice));
+    }
     for (const msg of turn.messages) {
       if (!Array.isArray(msg.content)) continue;
       for (const block of msg.content) {
@@ -310,6 +319,7 @@ async function ask(question) {
   busy = true;
   document.querySelectorAll("[data-edit-message]").forEach(button => { button.disabled = true; });
   $("#send").disabled = true;
+  $("#modelMode").disabled = true;
   $("#stop").hidden = false;
   controller = new AbortController();
   let bot;
@@ -323,7 +333,7 @@ async function ask(question) {
     $("#question").value = "";
     $("#activity").textContent = "Reading your question…";
     const response = await api("/api/chat", {
-      method: "POST", body: JSON.stringify({conversation: cid, question}),
+      method: "POST", body: JSON.stringify({conversation: cid, question, model_mode: $("#modelMode").value}),
       signal: controller.signal, stream: true
     });
     const reader = response.body.getReader(), decoder = new TextDecoder();
@@ -338,6 +348,12 @@ async function ask(question) {
         const line = packet.split("\n").find(l => l.startsWith("data: "));
         if (!line) continue;
         const event = JSON.parse(line.slice(6));
+        if (event.event === "model") {
+          bot.modelLabel = `${event.mode === "auto" ? "Auto → " : ""}${event.route === "analysis" ? "Analysis" : "Standard"} · ${event.model}`;
+          bot.root.append(element("p", "hint", bot.modelLabel));
+          if (event.notice) bot.root.append(element("p", "hint", event.notice));
+          $("#activity").textContent = bot.modelLabel;
+        }
         if (event.event === "text") {
           bot.text += event.delta;
           // Coalesce streamed deltas into one render per animation frame.
@@ -357,7 +373,7 @@ async function ask(question) {
         if (event.event === "error") throw new Error(event.message);
         if (event.event === "done") {
           renderAnswer(bot.body, bot.text);
-          $("#activity").textContent = `Answer complete · ${event.usage.input_tokens.toLocaleString()} input / ${event.usage.output_tokens.toLocaleString()} output tokens`;
+          $("#activity").textContent = `${bot.modelLabel || "Answer complete"} · ${event.usage.input_tokens.toLocaleString()} input / ${event.usage.output_tokens.toLocaleString()} output tokens`;
         }
         scrollMessages();
       }
@@ -371,7 +387,7 @@ async function ask(question) {
   } finally {
     if (bot?.renderFrame) cancelAnimationFrame(bot.renderFrame);
     if (bot) renderAnswer(bot.body, bot.text);
-    busy = false; $("#send").disabled = false; $("#stop").hidden = true; controller = null;
+    busy = false; $("#send").disabled = false; $("#modelMode").disabled = false; $("#stop").hidden = true; controller = null;
     document.querySelectorAll("[data-edit-message]").forEach(button => { button.disabled = false; });
   }
 }
@@ -418,13 +434,18 @@ function openSettings() {
 
 async function updateProvider() {
   const form = $("#settingsForm"), selected = form.elements["ai.provider"].value === "chatgpt";
+  $("#analysisModelLabel").hidden = selected;
+  $("#chatgptAnalysisLabel").hidden = !selected;
   if (!selected) {
     const sameProvider = form.elements["ai.provider"].value === config.ai?.provider;
     form.elements["ai.model"].value = sameProvider ? config.ai?.model || "" : "";
+    form.elements["ai.analysis_model"].value = sameProvider ? config.ai?.analysis_model || "" : "";
     form.elements["ai.api_key"].placeholder = sameProvider && config.ai?.api_key_configured
       ? "Saved · leave blank to keep" : "Enter this provider's key";
   }
   const generation = ++modelLoad;
+  $("#chatgptAnalysisModel").replaceChildren(element("option", "", "Use Standard only"));
+  $("#chatgptAnalysisModel").firstChild.value = "";
   $("#chatgptConnection").hidden = !selected;
   $("#chatgptModelLabel").hidden = !selected;
   $("#apiModelLabel").hidden = selected;
@@ -458,12 +479,19 @@ async function updateProvider() {
     const result = await api("/api/chatgpt/models");
     if (generation !== modelLoad) return;
     picker.replaceChildren();
+    const analysisPicker = $("#chatgptAnalysisModel");
+    analysisPicker.replaceChildren(element("option", "", "Use Standard only"));
+    analysisPicker.firstChild.value = "";
     for (const model of result.models) {
       const option = element("option", "", model.display_name);
       option.value = model.slug;
       picker.append(option);
+      const analysisOption = element("option", "", model.display_name);
+      analysisOption.value = model.slug;
+      analysisPicker.append(analysisOption);
     }
     if (result.models.some(m => m.slug === config.ai?.model)) picker.value = config.ai.model;
+    analysisPicker.value = config.ai?.analysis_model || "";
     $("#chatgptStatus").textContent = result.models.length
       ? "Plan access verified. Choose a model and save connections."
       : "No models are available to this account. Check your ChatGPT plan access.";
@@ -702,7 +730,10 @@ function settingsData() {
     region: "us-east-2", bedrock_auth: "bearer", bedrock_endpoint: "runtime",
     model: "us.anthropic.claude-haiku-5-5"
   });
-  if (data.ai.provider === "chatgpt") data.ai.model = $("#chatgptModel").value;
+  if (data.ai.provider === "chatgpt") {
+    data.ai.model = $("#chatgptModel").value;
+    data.ai.analysis_model = $("#chatgptAnalysisModel").value;
+  }
   return data;
 }
 

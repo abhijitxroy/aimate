@@ -46,6 +46,7 @@ class Store:
                 status TEXT, created REAL, result TEXT);
             CREATE TABLE IF NOT EXISTS audit (id INTEGER PRIMARY KEY, action TEXT, status TEXT, result TEXT, created REAL);
             CREATE TABLE IF NOT EXISTS connection_checks (service TEXT PRIMARY KEY, fingerprint TEXT, report TEXT);
+            CREATE TABLE IF NOT EXISTS turn_usage (turn INTEGER PRIMARY KEY, metadata TEXT NOT NULL);
         """)
         self.db.commit()
 
@@ -145,9 +146,13 @@ class Store:
             size += length
         return [message for turn in messages for message in turn]
 
-    def save_turn(self, cid, messages):
-        self.execute("INSERT INTO turns (conversation,messages,created) VALUES (?,?,?)",
-                     (cid, json.dumps(messages), time.time()))
+    def save_turn(self, cid, messages, metadata=None):
+        with self.lock:
+            cur = self.db.execute("INSERT INTO turns (conversation,messages,created) VALUES (?,?,?)",
+                                  (cid, json.dumps(messages), time.time()))
+            if metadata:
+                self.db.execute("INSERT INTO turn_usage VALUES (?,?)", (cur.lastrowid, json.dumps(metadata)))
+            self.db.commit()
 
     def action(self, aid):
         rows = self.rows("SELECT * FROM actions WHERE id=?", (aid,))
