@@ -142,6 +142,16 @@ class ConnectionTests(unittest.TestCase):
         self.assertTrue(report["ok"])
         self.assertIn("an AI answer was not requested", report["details"][-1])
 
+    def test_jenkins_token_rotation_keeps_controller_and_username(self):
+        old = self.store.config()["jenkins"]
+        response = self.client.put("/api/settings/jenkins", headers=self.headers, json={"token": "replacement-jenkins-token"})
+        self.assertEqual(response.status_code, 200)
+        updated = self.store.config()["jenkins"]
+        self.assertEqual(updated["url"], old["url"])
+        self.assertEqual(updated["username"], old["username"])
+        self.assertEqual(updated["token"], "replacement-jenkins-token")
+        self.assertNotIn("replacement-jenkins-token", str(response.json()))
+
     def test_unknown_service_and_csrf_are_rejected(self):
         self.assertEqual(self.client.post("/api/connections/other/test", headers=self.headers).status_code, 404)
         self.assertEqual(self.client.put("/api/settings/github", json={}).status_code, 403)

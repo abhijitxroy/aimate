@@ -3,7 +3,7 @@ let csrf = "", config = {}, cid = null, controller = null, busy = false;
 let demo = false;
 let chatgpt = {}, modelLoad = 0;
 let activeSettings = "ai", checkingConnection = false;
-let connectionReports = {};
+let connectionReports = {}, connectionDefaults = {};
 const dirtyConnections = new Set();
 const aiSecretFields = ["api_key", "aws_access_key", "aws_secret_key", "aws_session_token"];
 
@@ -52,6 +52,7 @@ async function refreshState() {
   demo = Boolean(state.demo);
   chatgpt = state.chatgpt || {};
   connectionReports = state.connection_checks || {};
+  connectionDefaults = state.connection_defaults || {};
   $("#demoBanner").hidden = !demo;
   $("#workspace").hidden = false;
   $("#loginScreen").hidden = true;
@@ -64,7 +65,7 @@ async function refreshState() {
     bar.append(sourceBadge(label, key));
   }
   bar.append(sourceBadge(demo ? "Scripted demo" : config.ai?.provider === "chatgpt" ? "ChatGPT" : config.ai?.provider === "bedrock" ? "Claude · Bedrock" : "Claude", "ai"));
-  const ready = aiReady() && (config.github?.repos?.length || (config.jira?.projects?.length || (config.jira?.access === "all" && config.jira?.token_configured)) || config.jenkins?.jobs?.length);
+  const ready = aiReady() && (config.github?.repos?.length || (config.jira?.projects?.length || (config.jira?.access === "all" && config.jira?.token_configured)) || config.jenkins?.jobs?.length || (config.jenkins?.access === "all" && config.jenkins?.token_configured));
   $("#setupHint").hidden = Boolean(demo || ready);
   $("#setupHint").textContent = "Connect AI + your project sources →";
   $("#setupHint").onclick = openSettings;
@@ -325,6 +326,13 @@ function openSettings() {
   $("#settingsStatus").textContent = demo ? "Fixed fictional connections. Restart in live mode to configure real services." : "";
   form.elements["jira.mode"].value = config.jira?.mode || (config.jira?.auth === "basic" ? "advanced" : "simple");
   form.elements["jira.access"].value = config.jira?.access || "selected";
+  form.elements["jenkins.mode"].value = config.jenkins?.mode || "simple";
+  form.elements["jenkins.access"].value = config.jenkins?.access || (config.jenkins?.jobs?.length ? "selected" : "all");
+  for (const key of ["url", "username"]) {
+    if (!form.elements["jenkins." + key].value) form.elements["jenkins." + key].value = connectionDefaults.jenkins?.[key] || "";
+  }
+  $("#jenkinsAccount").open = !form.elements["jenkins.url"].value || !form.elements["jenkins.username"].value;
+  updateJenkinsSetup();
   updateJiraSetup();
   updateProvider();
   selectSettingsTab(activeSettings);
@@ -530,15 +538,15 @@ function renderConnection(service, override) {
   if (report.checked_at) output.append(element("p", "hint", "Last checked: " + new Date(report.checked_at * 1000).toLocaleString() + " · valid for up to 1 hour"));
   if (report.details?.length) {
     const list = element("ul"); report.details.forEach(text => list.append(element("li", "", text)));
-    if (service === "jira") {
+    if (["jira", "jenkins"].includes(service)) {
       const details = element("details");
       details.append(element("summary", "", "Connection details"), list); output.append(details);
     } else output.append(list);
   }
   let targetsOutput = output;
-  if (service === "jira" && report.targets?.length) {
+  if (["jira", "jenkins"].includes(service) && report.targets?.length) {
     targetsOutput = element("details", "accessible-projects");
-    targetsOutput.append(element("summary", "", `Accessible projects (${report.targets.length} shown)`));
+    targetsOutput.append(element("summary", "", `Accessible ${service === "jira" ? "projects" : "jobs"} (${report.targets.length} shown)`));
     output.append(targetsOutput);
   }
   for (const target of report.targets || []) {
@@ -571,6 +579,22 @@ $("#settingsForm").elements["jira.auth"].addEventListener("change", () => {
   form.elements["jira.api_version"].value = form.elements["jira.auth"].value === "basic" ? "3" : "2";
 });
 
+function updateJenkinsSetup() {
+  const form = $("#settingsForm");
+  $("#jenkinsAdvanced").hidden = form.elements["jenkins.mode"].value === "simple";
+  $("#jenkinsJobNames").hidden = form.elements["jenkins.access"].value === "all";
+  const url = form.elements["jenkins.url"].value.trim();
+  const username = form.elements["jenkins.username"].value.trim();
+  let host = "";
+  try { if (url) { const parsed = new URL(url); host = parsed.hostname + parsed.pathname.replace(/\/$/, ""); } } catch { host = "check URL"; }
+  $("#jenkinsAccountSummary").textContent = url && username ? `· ${username} · ${host}` : "· set once";
+}
+for (const key of ["mode", "access", "url", "username"]) {
+  $("#settingsForm").elements["jenkins." + key].addEventListener("input", () => {
+    try { updateJenkinsSetup(); } catch { $("#jenkinsAccountSummary").textContent = "· check URL"; }
+  });
+}
+
 function settingsData() {
   const data = {ai: {}, github: {}, jira: {}, jenkins: {}};
   for (const input of $("#settingsForm").elements) {
@@ -582,6 +606,7 @@ function settingsData() {
     data[section][key] = value;
   }
   if (data.jira.mode === "simple") Object.assign(data.jira, {auth: "bearer", api_version: "2", access: "all", projects: [], username: ""});
+  if (data.jenkins.mode === "simple") Object.assign(data.jenkins, {access: "all", jobs: []});
   if (data.ai.provider === "chatgpt") data.ai.model = $("#chatgptModel").value;
   return data;
 }

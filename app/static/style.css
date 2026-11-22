@@ -174,3 +174,7 @@ fieldset > label { margin-bottom: 12px; }
 #jiraAdvanced { display: grid; gap: 14px; }
 #settings-jira details summary { cursor: pointer; color: var(--muted); padding: 10px 0; }
 .accessible-projects .connection-target { padding: 10px 14px; }
+
+#jenkinsAdvanced { display: grid; gap: 14px; }
+#settings-jenkins details summary { cursor: pointer; color: var(--muted); padding: 10px 0; }
+#jenkinsAccountSummary { font-size: 11px; }

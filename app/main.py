@@ -2,6 +2,7 @@ import asyncio
 import hmac
 import json
 import os
+import getpass
 import re
 import secrets
 import time
@@ -156,6 +157,8 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
     def state(session=Depends(auth)):
         return {"csrf": session["csrf"], "config": store.public_config(), "demo": bool(demo),
                 "connection_checks": store.connection_checks(),
+                "connection_defaults": {"jenkins": {"username": getpass.getuser() if not public_url and not demo else "",
+                                                      "url": os.environ.get("JENKINS_URL", "")}},
                 "chatgpt": {**chatgpt.status(), "available": not demo and not public_url},
                 "conversations": store.rows("SELECT * FROM conversations ORDER BY created DESC")}
 
@@ -223,7 +226,7 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
             body = await request.json()
             if not isinstance(body, dict):
                 raise ValueError("Connection settings must be an object")
-            merged = {**old, **({"allow_writes": body.get("allow_writes")} if service == "changes" else {service: body})}
+            merged = {**old, **({"allow_writes": body.get("allow_writes")} if service == "changes" else {service: {**old.get(service, {}), **body} if service == "jenkins" else body})}
             config = validate_config(merged, old)
             if service == "ai" and config["ai"].get("provider") == "chatgpt":
                 require_local_chatgpt()

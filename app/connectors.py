@@ -5,7 +5,7 @@ import json
 import re
 import os
 import ssl
-from urllib.parse import quote
+from urllib.parse import quote, unquote
 
 import httpx
 
@@ -78,7 +78,9 @@ class Services:
         return value
 
     def job_path(self, value):
-        if value not in self.section("jenkins").get("jobs", []):
+        if not isinstance(value, str) or not re.fullmatch(r"[A-Za-z0-9_. -]+(?:/[A-Za-z0-9_. -]+)*", value) or any(part in {".", ".."} for part in value.split("/")):
+            raise ValueError("Use a Jenkins job name, for example team/build")
+        if self.section("jenkins").get("access") != "all" and value not in self.section("jenkins").get("jobs", []):
             raise ValueError("Jenkins job is outside your configured scope")
         return "".join("/job/" + quote(part, safe="") for part in value.split("/"))
 
@@ -198,16 +200,29 @@ class Services:
                     params["start"] = max(0, int(params["start"]))
                 except (TypeError, ValueError):
                     raise ValueError("Jenkins log start must be a nonnegative byte offset") from None
-            # No raw root listing: return only jobs the operator added.
-            matched = None
-            for job in self.section(service).get("jobs", []):
-                prefix = self.job_path(job)
-                if path == prefix + "/api/json" or re.fullmatch(
-                        re.escape(prefix) + r"/(?:[1-9][0-9]*|lastBuild|lastCompletedBuild|lastSuccessfulBuild)/(?:api/json|consoleText|logText/progressiveText)", path):
-                    matched = job
-                    break
-            if matched is None:
-                raise ValueError("Use a configured job/build /api/json or build /consoleText path")
+            cfg = self.section(service)
+            if cfg.get("access") == "all":
+                # Account permissions govern job access; endpoint families remain restricted.
+                match = re.fullmatch(r"((?:/job/[^/]+)+)/(api/json|(?:[1-9][0-9]*|lastBuild|lastCompletedBuild|lastSuccessfulBuild)/(?:api/json|consoleText|logText/progressiveText))", path)
+                if path == "/api/json":
+                    params["tree"] = "jobs[name,fullName,_class]"
+                    params.pop("depth", None)
+                elif match:
+                    job = "/".join(unquote(part) for part in match[1].split("/job/")[1:])
+                    if self.job_path(job) != match[1]:
+                        raise ValueError("Use a canonical Jenkins job API path")
+                else:
+                    raise ValueError("Use Jenkins job/build APIs or /api/json to discover jobs")
+            else:
+                matched = None
+                for job in cfg.get("jobs", []):
+                    prefix = self.job_path(job)
+                    if path == prefix + "/api/json" or re.fullmatch(
+                            re.escape(prefix) + r"/(?:[1-9][0-9]*|lastBuild|lastCompletedBuild|lastSuccessfulBuild)/(?:api/json|consoleText|logText/progressiveText)", path):
+                        matched = job
+                        break
+                if matched is None:
+                    raise ValueError("Use a configured job/build /api/json or build /consoleText path")
         else:
             raise ValueError("Unknown service")
         result = await self.request(service, "GET", path, params=params)

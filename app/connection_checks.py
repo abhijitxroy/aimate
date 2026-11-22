@@ -54,8 +54,10 @@ async def check_connection(service, config, services, client_factory, chatgpt):
             fields = {"github": [("url", "API base URL"), ("repos", "OWNER/REPO entries")],
                       "jira": [("url", "site URL"), ("token", "PAT / API token")],
                       "jenkins": [("url", "controller URL"), ("username", "username"),
-                                  ("token", "API token"), ("jobs", "job names")]}[service]
+                                  ("token", "API token")]}[service]
             configured = config.get(service, {})
+            if service == "jenkins" and configured.get("access") != "all":
+                fields = fields + [("jobs", "job names")]
             if service == "jira" and configured.get("access") != "all":
                 fields = fields + [("projects", "project keys")]
             if service == "jira" and configured.get("auth") == "basic":
@@ -65,7 +67,7 @@ async def check_connection(service, config, services, client_factory, chatgpt):
                 raise ValueError("Add " + ", ".join(missing) + " for " + service + ", then save & check again.")
             section = services.section(service)
             targets = section.get({"github": "repos", "jira": "projects", "jenkins": "jobs"}[service], [])
-            if not targets and not (service == "jira" and section.get("access") == "all"):
+            if not targets and not (service in {"jira", "jenkins"} and section.get("access") == "all"):
                 raise ValueError({"github": "Add at least one repository as OWNER/REPO.",
                                   "jira": "Add at least one Jira project key.",
                                   "jenkins": "Add at least one Jenkins job name."}[service])
@@ -73,7 +75,12 @@ async def check_connection(service, config, services, client_factory, chatgpt):
                 identity_path = ("/user" if service == "github" else
                                  "/rest/api/" + section.get("api_version", "2") + "/myself" if service == "jira" else
                                  "/whoAmI/api/json")
-                identity = await services.request(service, "GET", identity_path)
+                try:
+                    identity = await services.request(service, "GET", identity_path)
+                except ValueError as exc:
+                    if service == "jenkins" and "HTTP 404" in str(exc):
+                        raise ValueError("Jenkins API not found (HTTP 404). Open Controller & account and enter the full controller URL, including any path after the hostname.") from None
+                    raise
                 if service == "jenkins" and not identity.get("authenticated"):
                     raise ValueError("Jenkins did not authenticate this token. Check the username and API token.")
                 name = identity.get("login") or identity.get("displayName") or identity.get("name")
@@ -97,6 +104,19 @@ async def check_connection(service, config, services, client_factory, chatgpt):
                 if len(rows) > 15 or (isinstance(data, dict) and not data.get("isLast", True)):
                     report["details"].append("Showing the first 15 projects; the assistant can " + ("fetch additional pages." if version == "3" else "list all accessible projects."))
                 report["status"] = "passed"
+                return report
+            if service == "jenkins" and section.get("access") == "all":
+                result = await services.read("jenkins", "/api/json")
+                jobs = result["data"].get("jobs")
+                if not isinstance(jobs, list):
+                    raise ValueError("Jenkins did not return a job list. Check the controller URL and Job/Read permission.")
+                rows = [{"target": str(j.get("fullName") or j.get("name", "")), "ok": True,
+                         "message": "Accessible folder" if "Folder" in j.get("_class", "") else "Accessible job",
+                         "details": [], "checks": []} for j in jobs if isinstance(j, dict) and j.get("name")]
+                report.update(ok=True, status="passed", targets=rows[:15],
+                              message=f"Connected. {len(rows)} accessible top-level jobs/folders found.")
+                report["details"].append("The assistant can discover nested jobs and read builds permitted by this Jenkins account.")
+                report["details"].append("Build and abort permissions are checked when a reviewed action runs.")
                 return report
             limit = asyncio.Semaphore(4)
 

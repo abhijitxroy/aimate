@@ -87,7 +87,7 @@ def validate_config(raw, old):
                "aws_access_key", "aws_secret_key", "aws_session_token"},
         "github": {"url", "repos", "token"},
         "jira": {"url", "projects", "auth", "username", "api_version", "token", "mode", "access"},
-        "jenkins": {"url", "jobs", "username", "token"},
+        "jenkins": {"url", "jobs", "username", "token", "mode", "access"},
     }
     for name, fields in allowed_fields.items():
         section = raw.get(name, {})
@@ -129,6 +129,15 @@ def validate_config(raw, old):
         jira.update(auth="bearer", api_version="2", access="all", projects=[], username="")
     if jira.get("access", "selected") not in {"all", "selected"}:
         raise ValueError("Choose all accessible Jira projects or selected projects")
+    jenkins = out["jenkins"]
+    if jenkins.get("mode", "advanced") not in {"simple", "advanced"}:
+        raise ValueError("Choose Simple or Advanced Jenkins setup")
+    if jenkins.get("mode") == "simple":
+        jenkins.update(access="all", jobs=[])
+    elif not jenkins.get("access"):
+        jenkins["access"] = "selected" if jenkins.get("jobs") else "all"
+    if jenkins.get("access") not in {"all", "selected"}:
+        raise ValueError("Choose all accessible Jenkins jobs or selected jobs")
     if out["jira"].get("auth", "bearer") not in {"basic", "bearer"}:
         raise ValueError("Choose Jira basic or bearer authentication")
     if out["jira"].get("api_version", "2") not in {"2", "3"}:
@@ -150,7 +159,7 @@ def validate_config(raw, old):
                               "projects": "Use Jira project keys such as DEMO, one per line; not issue keys or URLs.",
                               "jobs": "Use Jenkins job names such as team/build, one per line; not job URLs."}[key])
         out[name][key] = items
-        if out[name].get("token") and not items and not (name == "jira" and out[name].get("access") == "all"):
+        if out[name].get("token") and not items and not (name in {"jira", "jenkins"} and out[name].get("access") == "all"):
             raise ValueError(f"Add at least one {key} entry for {name}")
     for name in ("jenkins", "jira"):
         if out[name].get("token") and (name == "jenkins" or out[name].get("auth") == "basic") and not out[name].get("username"):

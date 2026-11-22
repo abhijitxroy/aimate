@@ -128,10 +128,19 @@
       </fieldset>
       <fieldset id="settings-jenkins" data-settings-panel="jenkins" role="tabpanel" aria-labelledby="tab-jenkins" hidden><legend>Jenkins connection</legend>
         <div class="connection-summary" data-connection-summary="jenkins" role="status"></div>
-        <div class="fields two"><label>Controller URL<input name="jenkins.url" placeholder="https://jenkins.company.com"></label><label>Username<input name="jenkins.username" autocomplete="off"></label></div>
         <label>API token<input name="jenkins.token" type="password" autocomplete="off" placeholder="Leave blank to keep saved token"></label>
-        <label>Job names · one per line; use folder/job for nested jobs<textarea name="jenkins.jobs" rows="2" placeholder="team/build"></textarea></label>
-        <div class="test-row"><label class="check"><input name="jenkins.clear_token" type="checkbox">Remove saved token</label><button type="button" data-test="jenkins">Save & check jobs</button></div>
+        <label>Setup<select name="jenkins.mode"><option value="simple">Simple · token access</option><option value="advanced">Advanced · selected jobs</option></select></label>
+        <p class="hint">Keep your controller and account saved. Replace only the token when it changes.</p>
+        <details id="jenkinsAccount"><summary>Controller &amp; account <span id="jenkinsAccountSummary"></span></summary>
+          <div class="fields two"><label>Controller URL<input name="jenkins.url" placeholder="https://jenkins.company.com"></label><label>Username / email<input name="jenkins.username" autocomplete="off"></label></div>
+          <p class="hint">Set these once. Use your Jenkins account ID if it differs from your Windows username.</p>
+        </details>
+        <div id="jenkinsAdvanced" hidden>
+          <label>Job access<select name="jenkins.access"><option value="all">All accessible jobs</option><option value="selected">Selected jobs only</option></select></label>
+          <label id="jenkinsJobNames">Job names · one per line<textarea name="jenkins.jobs" rows="2" placeholder="team/build"></textarea><span class="hint">Optional in Simple mode. Use folder/job for nested jobs.</span></label>
+        </div>
+        <details><summary>Manage saved token</summary><label class="check"><input name="jenkins.clear_token" type="checkbox">Remove saved token</label></details>
+        <div class="test-row"><button type="button" data-test="jenkins">Save &amp; connect</button></div>
         <div id="test-jenkins" class="connection-result" aria-live="polite"></div>
       </fieldset>
       <fieldset class="write-setting" id="settings-changes" data-settings-panel="changes" role="tabpanel" aria-labelledby="tab-changes" hidden><legend>Change proposals</legend><label class="check"><input name="allow_writes" type="checkbox">Allow the assistant to prepare changes</label><p class="hint">Every change still requires Confirm. File edits use a working branch; pull requests start as drafts. Proposals expire after 30 minutes.</p></fieldset>

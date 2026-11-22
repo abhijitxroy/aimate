@@ -34,6 +34,7 @@ TOOLS = [
         "Jira: /rest/api/2/issue/KEY or /comment,/transitions,/changelog; "
         "Data Center /rest/api/2/search with jql/startAt; Cloud /rest/api/3/search/jql "
         "with jql/nextPageToken. With Jira access=all, use /rest/api/2/project or /rest/api/3/project/search to discover projects; searches and issue reads follow account permissions. Otherwise the backend restricts access to configured project keys. "
+        "With Jenkins access=all, discover jobs through /api/json, then list a folder through its /job/NAME/api/json. Account permissions apply. "
         "Jenkins nested job a/b uses /job/a/job/b/api/json; builds use "
         "/job/a/job/b/NUMBER/api/json or /consoleText. For long logs use "
         "/logText/progressiveText with start (byte offset), following next_start/more_data. "
