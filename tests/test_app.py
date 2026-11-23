@@ -294,10 +294,17 @@ class WorkflowTests(unittest.TestCase):
                                  json={"turn_id": original[1]["id"], "question": "Corrected question"})
         self.assertEqual(result.status_code, 200)
         edited_id = result.json()["id"]
-        self.assertNotEqual(edited_id, self.cid)
+        self.assertEqual(edited_id, self.cid)
         copied = self.client.get(f"/api/conversations/{edited_id}").json()["turns"]
         self.assertEqual([t["messages"] for t in copied], [original[0]["messages"]])
-        self.assertEqual(self.client.get(f"/api/conversations/{self.cid}").json()["turns"], original)
+        self.assertEqual(len(self.store.rows("SELECT * FROM conversations")), 1)
+        revision = self.store.rows("SELECT encrypted FROM conversation_revisions WHERE conversation=?", (self.cid,))[0]
+        replaced = json.loads(self.store.cipher.decrypt(revision["encrypted"].encode()))
+        self.assertEqual([json.loads(t["messages"]) for t in replaced], [t["messages"] for t in original[1:]])
+        self.assertNotIn("Later follow-up", str(self.store.history(self.cid)))
+        self.assertNotIn("Later follow-up", str(self.store.rows("SELECT content FROM memory_index")))
+        self.store.save_turn(self.cid, [{"role": "user", "content": "Corrected question"}])
+        self.assertGreater(self.store.rows("SELECT max(id) AS id FROM turns")[0]["id"], original[-1]["id"])
         self.assertEqual(self.requests, [])
 
     def test_large_saved_turn_keeps_context_after_store_reopens(self):

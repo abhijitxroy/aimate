@@ -37,22 +37,66 @@ function renderAnswer(body, text) {
   }
   for (const pre of body.querySelectorAll("pre")) {
     const code = pre.querySelector("code");
-    const language = code?.className.replace("language-", "") || "text";
+    const language = code?.className.match(/\blanguage-([\w+.-]+)/)?.[1]?.toLowerCase() || "";
     let rich = null;
     if (["chart", "metrics", "poll"].includes(language)) {
       try { rich = richAnswerBlock(language, JSON.parse(code.textContent)); } catch { /* Incomplete or invalid structured data stays literal code. */ }
     }
     if (rich) { pre.replaceWith(rich); continue; }
+    decorateCodeBlock(pre, code, language);
+  }
+}
+
+function codeLanguage(source, requested = "") {
+  const aliases = {yml: "yaml", py: "python", js: "javascript", ts: "typescript",
+    ps1: "powershell", ps: "powershell", sh: "bash", "c#": "csharp", "c++": "cpp"};
+  const language = String(requested).trim().toLowerCase();
+  if (language) return aliases[language] || language;
+  // Conservative detection for unlabelled data; never rewrite or format its text.
+  try {
+    if (/^[\s]*[\[{]/.test(source) && JSON.parse(source) !== null) return "json";
+  } catch { /* Partial JSON remains readable literal text. */ }
+  if ((source.match(/^\s*[\w.-]+:\s/gm) || []).length >= 2) return "yaml";
+  return "text";
+}
+
+function highlightCodeElement(code, requested = "") {
+  const source = code.textContent || "", language = codeLanguage(source, requested);
+  code.classList.add("syntax-code");
+  code.dataset.language = language;
+  // Bound synchronous work during streamed answers and large log rendering.
+  if (!window.hljs || source.length > 50000 || !window.hljs.getLanguage(language)) return language;
+  try {
+    // highlight.js escapes source text and emits only its own token spans.
+    code.innerHTML = window.hljs.highlight(source, {language, ignoreIllegals: true}).value;
+  } catch { code.textContent = source; }
+  return language;
+}
+
+function decorateCodeBlock(pre, code, requested = "") {
+    if (!code) return;
+    const language = highlightCodeElement(code, requested);
+    const names = {json: "JSON", yaml: "YAML", python: "Python", javascript: "JavaScript",
+      typescript: "TypeScript", powershell: "PowerShell", bash: "Shell", sql: "SQL",
+      xml: "HTML / XML", html: "HTML", css: "CSS", cpp: "C++", csharp: "C#", text: "Text"};
     const shell = document.createElement("div"); shell.className = "answer-code";
     const toolbar = document.createElement("div"); toolbar.className = "code-toolbar";
-    const label = document.createElement("span"); label.textContent = language;
+    const label = document.createElement("span"); label.textContent = names[language] || language;
     const copy = document.createElement("button"); copy.type = "button"; copy.textContent = "Copy code";
     copy.onclick = async () => {
       try { await navigator.clipboard.writeText(code?.textContent || pre.textContent); copy.textContent = "Copied"; }
       catch { copy.textContent = "Copy failed"; }
     };
     toolbar.append(label, copy); pre.replaceWith(shell); shell.append(toolbar, pre);
-  }
+}
+
+function renderDataValue(body, text) {
+  if (/^```/m.test(text)) { renderAnswer(body, text); return; }
+  const language = codeLanguage(text);
+  if (language === "text") { body.textContent = text; return; }
+  const pre = document.createElement("pre"), code = document.createElement("code");
+  code.textContent = text; pre.append(code); body.replaceChildren(pre);
+  decorateCodeBlock(pre, code, language);
 }
 
 function richAnswerBlock(kind, data) {

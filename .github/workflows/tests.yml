@@ -29,4 +29,4 @@ jobs:
         with:
           node-version: "22"
       - name: Verify answer rendering and unsafe content handling
-        run: node --test tests/markdown.test.cjs
+        run: node --test tests/markdown.test.cjs tests/syntax.test.cjs

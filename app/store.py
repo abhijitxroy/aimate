@@ -47,6 +47,9 @@ class Store:
             CREATE TABLE IF NOT EXISTS audit (id INTEGER PRIMARY KEY, action TEXT, status TEXT, result TEXT, created REAL);
             CREATE TABLE IF NOT EXISTS connection_checks (service TEXT PRIMARY KEY, fingerprint TEXT, report TEXT);
             CREATE TABLE IF NOT EXISTS turn_usage (turn INTEGER PRIMARY KEY, metadata TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS attachment_previews (turn INTEGER PRIMARY KEY, encrypted TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS conversation_revisions (id INTEGER PRIMARY KEY, conversation TEXT NOT NULL,
+                encrypted TEXT NOT NULL, created REAL NOT NULL);
             CREATE TABLE IF NOT EXISTS conversation_groups (id TEXT PRIMARY KEY, name TEXT NOT NULL,
                 kind TEXT NOT NULL, parent TEXT, created REAL NOT NULL);
             CREATE TABLE IF NOT EXISTS conversation_locations (conversation TEXT PRIMARY KEY, group_id TEXT NOT NULL);
@@ -245,8 +248,10 @@ class Store:
     def save_turn(self, cid, messages, metadata=None):
         from app.memory import readable_text
         with self.lock:
-            cur = self.db.execute("INSERT INTO turns (conversation,messages,created) VALUES (?,?,?)",
-                                  (cid, json.dumps(messages), time.time()))
+            next_id = self.db.execute("SELECT max(coalesce((SELECT max(id) FROM turns),0),"
+                                     "coalesce((SELECT max(id) FROM conversation_revisions),0))+1").fetchone()[0]
+            cur = self.db.execute("INSERT INTO turns (id,conversation,messages,created) VALUES (?,?,?,?)",
+                                  (next_id, cid, json.dumps(messages), time.time()))
             self.db.execute("INSERT INTO memory_index VALUES (?,?,?)",
                             (readable_text(messages), cid, cur.lastrowid))
             if metadata:

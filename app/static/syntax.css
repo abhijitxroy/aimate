@@ -1,0 +1,54 @@
+/* Local syntax palette: one renderer, readable colors for all AiMate themes. */
+:root {
+  --code-text: #dce8f6;
+  --code-comment: #94a9bf;
+  --code-keyword: #d9a2ff;
+  --code-string: #94e3ba;
+  --code-number: #ffc58a;
+  --code-name: #8fd4ff;
+  --code-key: #b8caff;
+  --code-symbol: #ffacc2;
+}
+:root[data-theme="beige"] {
+  --code-text: #28343f;
+  --code-comment: #626b74;
+  --code-keyword: #7437a4;
+  --code-string: #206844;
+  --code-number: #954c16;
+  --code-name: #176390;
+  --code-key: #454ca0;
+  --code-symbol: #a02f53;
+}
+:root[data-theme="black-blue"] {
+  --code-text: #e3e9ef;
+  --code-comment: #9da9b5;
+  --code-keyword: #d8a6ff;
+  --code-string: #97dfb6;
+  --code-number: #ffca91;
+  --code-name: #78caff;
+}
+pre code.syntax-code {
+  display: block;
+  color: var(--code-text);
+  font-family: Consolas, "Cascadia Code", ui-monospace, monospace;
+  font-size: 12px;
+  line-height: 1.65;
+  tab-size: 4;
+  font-variant-ligatures: none;
+  white-space: pre;
+  background: transparent;
+  padding: 0;
+}
+.syntax-code :is(.hljs-comment, .hljs-quote) { color: var(--code-comment); font-style: italic; }
+.syntax-code :is(.hljs-keyword, .hljs-selector-tag, .hljs-meta .hljs-keyword) { color: var(--code-keyword); }
+.syntax-code :is(.hljs-string, .hljs-regexp, .hljs-template-tag, .hljs-addition) { color: var(--code-string); }
+.syntax-code :is(.hljs-number, .hljs-literal, .hljs-type, .hljs-params) { color: var(--code-number); }
+.syntax-code :is(.hljs-title, .hljs-section, .hljs-built_in, .hljs-name, .hljs-selector-class) { color: var(--code-name); }
+.syntax-code :is(.hljs-attr, .hljs-attribute, .hljs-property, .hljs-variable, .hljs-template-variable) { color: var(--code-key); }
+.syntax-code :is(.hljs-symbol, .hljs-bullet, .hljs-meta, .hljs-deletion, .hljs-selector-id) { color: var(--code-symbol); }
+.syntax-code .hljs-emphasis { font-style: italic; }
+.syntax-code .hljs-strong { font-weight: 700; }
+.knowledge-value .answer-code { white-space: normal; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+.knowledge-value pre { margin: 0; padding: 12px; overflow: auto; white-space: pre; }
+.action-card pre code.syntax-code { font-size: 11px; }
+.code-toolbar button { background: transparent; color: var(--text); }

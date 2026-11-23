@@ -367,11 +367,27 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
         async with config_lock:
             store.require_group(gid)
             parent = store.rows("SELECT parent FROM conversation_groups WHERE id=?", (gid,))[0]["parent"]
+            if "parent" in body:
+                parent = body["parent"]
+                if parent is not None:
+                    store.require_group(parent)
+                groups = {g["id"]: g for g in store.rows("SELECT id,parent FROM conversation_groups")}
+                ancestor, depth = parent, 1
+                while ancestor:
+                    if ancestor == gid:
+                        raise ValueError("A group cannot be moved inside itself or one of its subgroups.")
+                    depth += 1
+                    ancestor = groups[ancestor]["parent"]
+                def subtree_depth(ident):
+                    children = [g["id"] for g in groups.values() if g["parent"] == ident]
+                    return 1 + max((subtree_depth(child) for child in children), default=0)
+                if depth + subtree_depth(gid) - 1 > 8:
+                    raise ValueError("Use at most eight levels of groups.")
             if store.rows("SELECT id FROM conversation_groups WHERE parent IS ? AND lower(name)=lower(?) AND id<>?",
                           (parent, name.strip(), gid)):
                 raise ValueError("A group with that name already exists here.")
-            store.execute("UPDATE conversation_groups SET name=? WHERE id=?", (name.strip(), gid))
-        return {"id": gid, "name": name.strip()}
+            store.execute("UPDATE conversation_groups SET name=?,parent=? WHERE id=?", (name.strip(), parent, gid))
+        return {"id": gid, "name": name.strip(), "parent": parent}
 
     @app.delete("/api/groups/{gid}")
     async def delete_group(gid: str, session=Depends(auth)):
@@ -431,31 +447,55 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
                 store.db.execute("DELETE FROM conversation_flags WHERE conversation=?", (cid,))
                 store.db.execute("DELETE FROM conversation_references WHERE conversation=? OR source=?", (cid, cid))
                 store.db.execute("DELETE FROM memory_index WHERE conversation=?", (cid,))
+                store.db.execute("DELETE FROM conversation_revisions WHERE conversation=?", (cid,))
                 store.db.execute("DELETE FROM conversations WHERE id=?", (cid,))
             chat_locks.pop(cid, None)
             return {"deleted": cid}
 
     @app.post("/api/conversations/{cid}/edit")
     async def edit_message(cid: str, request: Request, session=Depends(auth)):
-        store.require_conversation(cid)
+        private = session.get("private_chats", {}).get(cid)
+        if not private:
+            store.require_conversation(cid)
         if chat_locks.get(cid) and chat_locks[cid].locked():
             raise HTTPException(409, "Wait until the current answer finishes before editing")
         body = await request.json()
         if not isinstance(body, dict):
             raise ValueError("Expected an edited message")
+        if chat_locks.get(cid) and chat_locks[cid].locked():
+            raise HTTPException(409, "Wait until the current answer finishes before editing")
         turn_id, question = body.get("turn_id"), body.get("question")
         if isinstance(turn_id, bool) or not isinstance(turn_id, int) or turn_id < 1:
             raise ValueError("Choose a saved message to edit")
         if not isinstance(question, str) or not question.strip() or len(question) > 30_000:
             raise ValueError("Question must have 1–30,000 characters")
-        selected = store.rows("SELECT id FROM turns WHERE conversation=? AND id=?", (cid, turn_id))
+        if private:
+            selected = next((i for i, turn in enumerate(private.turns) if turn["id"] == turn_id), None)
+            if selected is None:
+                raise HTTPException(404, "Message not found in this conversation")
+            private.turns = private.turns[:selected]
+            return {"id": cid}
+        selected = store.rows("SELECT id,created FROM turns WHERE conversation=? AND id=?", (cid, turn_id))
         if not selected:
             raise HTTPException(404, "Message not found in this conversation")
-        # Preserve the original conversation and its reviewed actions as a separate version.
-        edited = store.new_conversation(question.strip(), store.conversation_group(cid))
-        for turn in store.rows("SELECT t.messages,u.metadata FROM turns t LEFT JOIN turn_usage u ON u.turn=t.id WHERE conversation=? AND t.id<? ORDER BY t.id", (cid, turn_id)):
-            store.save_turn(edited, json.loads(turn["messages"]), json.loads(turn["metadata"]) if turn["metadata"] else None)
-        return {"id": edited}
+        # Keep the chat identity and preserve superseded context without branching.
+        with store.lock, store.db:
+            if store.db.execute("SELECT id FROM actions WHERE conversation=? AND status='executing'", (cid,)).fetchone():
+                raise HTTPException(409, "Wait until the current action finishes before editing")
+            replaced = [dict(row) for row in store.db.execute(
+                "SELECT t.*,u.metadata,p.encrypted AS attachment_preview FROM turns t "
+                "LEFT JOIN turn_usage u ON u.turn=t.id LEFT JOIN attachment_previews p ON p.turn=t.id "
+                "WHERE t.conversation=? AND t.id>=? ORDER BY t.id", (cid, turn_id))]
+            encrypted = store.cipher.encrypt(json.dumps(replaced).encode()).decode()
+            store.db.execute("INSERT INTO conversation_revisions(id,conversation,encrypted,created) VALUES (?,?,?,?)",
+                             (replaced[-1]["id"], cid, encrypted, time.time()))
+            for table, column in (("turn_usage", "turn"), ("attachment_previews", "turn"), ("memory_index", "turn")):
+                store.db.execute(f"DELETE FROM {table} WHERE {column} IN "
+                                 "(SELECT id FROM turns WHERE conversation=? AND id>=?)", (cid, turn_id))
+            store.db.execute("DELETE FROM turns WHERE conversation=? AND id>=?", (cid, turn_id))
+            store.db.execute("UPDATE actions SET status='cancelled' WHERE conversation=? AND status='pending' AND created>=?",
+                             (cid, selected[0]["created"]))
+        return {"id": cid}
 
     @app.post("/api/chat")
     async def chat(request: Request, session=Depends(auth)):

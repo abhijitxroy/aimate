@@ -518,12 +518,18 @@ function openGroupDialog(id = null) {
   const group = conversationGroups.find(g => g.id === id);
   $("#groupDialogTitle").textContent = group ? "Group settings" : "New project / group";
   $("#groupName").value = group?.name || "";
-  $("#groupPlacement").hidden = Boolean(group);
+  $("#groupPlacement").hidden = false;
   groupOptions($("#groupParent"), "Top level");
-  $("#groupParent").value = "";
-  $("#groupKind").value = "project";
+  if (group) {
+    for (const option of [...$("#groupParent").options]) {
+      if (option.value === id || isGroupBelow(option.value, id)) option.remove();
+    }
+  }
+  $("#groupParent").value = group?.parent || "";
+  $("#groupKind").value = group?.kind || "project";
+  $("#groupKind").closest("label").hidden = Boolean(group);
   $("#removeGroup").hidden = !group;
-  $("#saveGroup").textContent = group ? "Save name" : "Create";
+  $("#saveGroup").textContent = group ? "Save changes" : "Create";
   $("#groupError").textContent = "";
   $("#groupDialog").showModal(); $("#groupName").focus();
 }
@@ -531,7 +537,7 @@ $("#newGroup").onclick = () => openGroupDialog();
 $("#groupForm").onsubmit = async event => {
   event.preventDefault(); $("#saveGroup").disabled = true;
   try {
-    const payload = {name: $("#groupName").value.trim()};
+    const payload = {name: $("#groupName").value.trim(), parent: $("#groupParent").value || null};
     if (!editingGroup) Object.assign(payload, {kind: $("#groupKind").value, parent: $("#groupParent").value || null});
     const result = await api(editingGroup ? `/api/groups/${editingGroup}` : "/api/groups", {
       method: editingGroup ? "PATCH" : "POST", body: JSON.stringify(payload)});
@@ -553,7 +559,7 @@ function addMessage(role, text = "", turnId = null) {
   heading.append(element("div", "who", role === "user" ? "YOU" : demo && !pagesPreview ? "AiMate · Scripted demo" : "AiMate"));
   const body = element("div", "body");
   if (role === "assistant") renderAnswer(body, text);
-  else body.textContent = text;
+  else renderDataValue(body, text);
   const message = {root, body, text, turnId, reads: 0};
   if (role === "user") {
     const edit = element("button", "message-action", "Edit");
@@ -614,9 +620,9 @@ function editMessage(message, action) {
     send.disabled = cancel.disabled = true;
     try {
       if (message.turnId) {
-        const branch = await api(`/api/conversations/${cid}/edit`, {method: "POST",
+        const updated = await api(`/api/conversations/${cid}/edit`, {method: "POST",
           body: JSON.stringify({turn_id: message.turnId, question})});
-        await openConversation(branch.id, question.slice(0, 100));
+        await openConversation(updated.id, $("#chatTitle").textContent);
       } else close();
       await ask(question);
     } catch (error) {
@@ -692,6 +698,10 @@ function drawAction(action, parent) {
     element("p", "", `Status: ${action.status} · proposals expire after 30 minutes`),
     element("pre", "", JSON.stringify(action.preview, null, 2)));
   if (action.result) card.append(element("pre", "action-result", JSON.stringify(action.result, null, 2)));
+  for (const pre of card.querySelectorAll("pre")) {
+    const code = element("code", "", pre.textContent);
+    pre.replaceChildren(code); highlightCodeElement(code, "json");
+  }
   if (action.status === "unknown") {
     card.append(element("p", "", "The remote outcome is uncertain. Inspect the target before requesting this change again."));
   }
@@ -1719,7 +1729,8 @@ function renderKnowledge() {
     edit.setAttribute("aria-label", `Edit ${record.key}`);
     edit.onclick = () => { editRecord(record); knowledgeView(true); $("#recordKey").focus(); };
     heading.append(element("h3", "", record.key), edit);
-    const value = element("p", "knowledge-value", record.value);
+    const value = element("div", "knowledge-value");
+    renderDataValue(value, record.value);
     const footer = element("div", "knowledge-card-footer");
     const copy = element("button", "", "Copy"); copy.type = "button";
     copy.onclick = async () => {

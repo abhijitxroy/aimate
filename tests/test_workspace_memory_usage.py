@@ -74,6 +74,40 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(context(self.store, child), "")
         self.assertEqual(self.store.rows("SELECT * FROM memory_index WHERE conversation=?", (self.cid,)), [])
 
+    def test_move_group_keeps_entire_subtree_chats_and_diary(self):
+        source = self.store.create_group("Intel", "project")
+        child = self.store.create_group("CI", "module", source)
+        target = self.store.create_group("Work", "project")
+        self.store.move_conversation(self.cid, child)
+        self.store.execute("INSERT INTO knowledge VALUES ('note','key','value',?,1)", (child,))
+        before = self.store.history(self.cid)
+        result = self.client.patch(f"/api/groups/{source}", headers=self.headers,
+                                   json={"name": "Intel", "parent": target})
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual(self.store.rows("SELECT parent FROM conversation_groups WHERE id=?", (source,))[0]["parent"], target)
+        self.assertEqual(self.store.rows("SELECT parent FROM conversation_groups WHERE id=?", (child,))[0]["parent"], source)
+        self.assertEqual(self.store.conversation_group(self.cid), child)
+        self.assertEqual(self.store.history(self.cid), before)
+        self.assertEqual(self.store.rows("SELECT group_id FROM knowledge WHERE id='note'")[0]["group_id"], child)
+        self.assertEqual(self.client.patch(f"/api/groups/{source}", headers=self.headers,
+                                          json={"name": "Intel", "parent": None}).status_code, 200)
+
+    def test_group_move_rejects_cycles_duplicate_names_and_excess_depth(self):
+        source = self.store.create_group("Source")
+        child = self.store.create_group("Child", parent=source)
+        for parent in (source, child, "missing"):
+            self.assertEqual(self.client.patch(f"/api/groups/{source}", headers=self.headers,
+                                              json={"name": "Source", "parent": parent}).status_code, 400)
+        target = self.store.create_group("Target")
+        self.store.create_group("Source", parent=target)
+        self.assertEqual(self.client.patch(f"/api/groups/{source}", headers=self.headers,
+                                          json={"name": "Source", "parent": target}).status_code, 400)
+        deep = target
+        for index in range(6):
+            deep = self.store.create_group(f"Level {index}", parent=deep)
+        self.assertEqual(self.client.patch(f"/api/groups/{source}", headers=self.headers,
+                                          json={"name": "Moved", "parent": deep}).status_code, 400)
+
     def test_dictionary_unique_keys_scopes_and_secret_redaction(self):
         group = self.store.create_group("Project")
         first = self.post("/api/knowledge", {"key": "build", "value": "GPU build eleven github-private-token"}).json()["id"]
