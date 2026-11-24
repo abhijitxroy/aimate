@@ -463,7 +463,9 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
         if service == "ai" and cfg.get("ai", {}).get("provider") == "chatgpt":
             require_local_chatgpt()
         async with connection_locks[service]:
-            report = scrub(await check_connection(service, cfg, services_factory(cfg), client_factory, chatgpt), cfg)
+            from app.usage_meter import MeteredClient
+            metered_factory = lambda chosen: MeteredClient(client_factory(chosen), store, chosen, "Connection test")
+            report = scrub(await check_connection(service, cfg, services_factory(cfg), metered_factory, chatgpt), cfg)
             if store.connection_fingerprint(cfg, service) == store.connection_fingerprint(store.config(), service):
                 store.save_connection_check(service, cfg, report)
             else:
@@ -582,6 +584,18 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
         body = await request.json()
         async with config_lock:
             return save_rate(store, body)
+
+    @app.post("/api/usage/budget")
+    async def usage_budget(request: Request, session=Depends(auth)):
+        from app.usage import save_budget
+        async with config_lock:
+            return save_budget(store, await request.json())
+
+    @app.post("/api/usage/invoice")
+    async def usage_invoice(request: Request, session=Depends(auth)):
+        from app.usage import reconcile
+        async with config_lock:
+            return reconcile(store, await request.json())
 
     @app.post("/api/knowledge")
     async def add_knowledge(request: Request, session=Depends(auth)):

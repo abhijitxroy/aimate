@@ -1990,6 +1990,15 @@ async function loadUsage() {
       const option = element("option"); option.value=model; options.append(option);
     }
     $("#usageCoverage").textContent = usageReport.coverage + " Days use your device timezone.";
+    const monthly = usageReport.monthly, billing = $("#usageBilling");
+    billing.replaceChildren(element("h3","",`${monthly.month} · UTC`),
+      element("p", monthly.exceeded ? "error" : "hint",
+        `${usd(monthly.estimated_usd)} estimated${monthly.budget.monthly_usd ? " / " + usd(monthly.budget.monthly_usd) + " budget" : ""}${monthly.exceeded ? " · Budget reached" : ""}`));
+    for (const row of usageReport.calls) billing.append(element("p","hint",`${row.origin} · ${row.status}: ${row.count}`));
+    for (const row of monthly.invoices) billing.append(element("p","hint",`${row.model}: billed ${usd(row.amount)}, estimated ${usd(row.estimated_usd)}, difference ${usd(row.difference_usd)}`));
+    $("#usageBudget").value = monthly.budget.monthly_usd;
+    $("#usageBudgetMode").value = monthly.budget.mode;
+    $("#invoiceMonth").value ||= monthly.month;
     renderUsageChart();
   } catch (error) { $("#usageError").textContent = error.message; }
 }
@@ -2025,6 +2034,16 @@ $("#openUsage").onclick = () => { $("#usageDialog").showModal(); void loadUsage(
 $("#usageDays").onchange = loadUsage;
 $("#usageMetric").onchange = renderUsageChart;
 $("#rateModel").oninput = setRateFields;
+$("#usageBudgetForm").onsubmit = async event => {
+  event.preventDefault();
+  try { await api("/api/usage/budget",{method:"POST",body:JSON.stringify({monthly_usd:Number($("#usageBudget").value),mode:$("#usageBudgetMode").value})}); await loadUsage(); }
+  catch(error) { $("#usageError").textContent=error.message; }
+};
+$("#usageInvoiceForm").onsubmit = async event => {
+  event.preventDefault();
+  try { await api("/api/usage/invoice",{method:"POST",body:JSON.stringify({month:$("#invoiceMonth").value,model:$("#invoiceModel").value,amount:Number($("#invoiceAmount").value)})}); await loadUsage(); }
+  catch(error) { $("#usageError").textContent=error.message; }
+};
 $("#usageRateForm").onsubmit = async event => {
   event.preventDefault();
   try {

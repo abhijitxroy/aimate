@@ -2,7 +2,9 @@
 
 Historical tool results use short excerpts with the saved turn ID. Full records
 remain encrypted and available through `read_saved_turn`; request/response IDs
-and opaque provider reasoning are retained. Recent history is bounded at
+and opaque provider reasoning are retained during normal excerpting. Turns
+still larger than 40,000 characters use readable text as context instead;
+the original provider transcript remains in the full saved record. Recent history is bounded at
 60,000 characters, with durable project briefs supplying older context.
 
 Verified immutable GitHub commit/file reads can reuse an encrypted snapshot

@@ -4,6 +4,66 @@ import json
 import math
 import secrets
 import time
+import re
+
+
+def preferences(store):
+    rows = store.rows("SELECT body FROM usage_preferences WHERE id=1")
+    return json.loads(rows[0]["body"]) if rows else {"monthly_usd": 0, "mode": "warn"}
+
+
+def save_budget(store, body):
+    value = body.get("monthly_usd") if isinstance(body, dict) else None
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not 0 <= value <= 1000000:
+        raise ValueError("Use a monthly USD budget from 0 to 1,000,000; zero disables it.")
+    if body.get("mode") not in {"warn", "stop"}:
+        raise ValueError("Choose warn or stop.")
+    saved = {"monthly_usd": value, "mode": body["mode"]}
+    store.execute("INSERT OR REPLACE INTO usage_preferences VALUES (1,?)", (json.dumps(saved),))
+    return saved
+
+
+def reconcile(store, body):
+    if not isinstance(body, dict) or not re.fullmatch(r"\d{4}-(0[1-9]|1[0-2])", str(body.get("month", ""))):
+        raise ValueError("Use a billing month as YYYY-MM.")
+    model, amount = body.get("model"), body.get("amount")
+    if not isinstance(model, str) or not 1 <= len(model.strip()) <= 200:
+        raise ValueError("Provide the invoice's exact model ID.")
+    if isinstance(amount, bool) or not isinstance(amount, (int, float)) or not math.isfinite(amount) or not 0 <= amount <= 1000000:
+        raise ValueError("Provide a nonnegative billed USD amount.")
+    key = body["month"] + ":" + model.strip()
+    store.execute("INSERT OR REPLACE INTO usage_invoices VALUES (?,?,?,?)", (key, body["month"], model.strip(), amount))
+    return {"saved": key}
+
+
+def monthly(store):
+    month = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m")
+    start = dt.datetime.strptime(month, "%Y-%m").replace(tzinfo=dt.timezone.utc).timestamp()
+    rates = {r["model"]: r for r in store.rows("SELECT * FROM usage_rates")}
+    values, unpriced = {}, 0
+    for row in store.rows("SELECT * FROM usage_events WHERE created>=?", (start,)):
+        rate, tokens = rates.get(row["model"]), json.loads(row["tokens"])
+        if rate and row["provider"] != "chatgpt":
+            value = sum(tokens.get(k, 0)*rate[r] for k,r in (
+                ("input_tokens","input"),("output_tokens","output"),("cache_read_input_tokens","cache_read"),
+                ("cache_creation_input_tokens","cache_write"))) / 1000000
+            values[row["model"]] = values.get(row["model"], 0) + value
+        else:
+            unpriced += 1
+    invoices = []
+    for row in store.rows("SELECT * FROM usage_invoices WHERE month=?", (month,)):
+        estimate = values.get(row["model"], 0)
+        invoices.append({**row, "estimated_usd": estimate, "difference_usd": row["amount"] - estimate})
+    budget = preferences(store)
+    spent = sum(values.values())
+    return {"month": month, "estimated_usd": spent, "unpriced_requests": unpriced, "invoices": invoices,
+            "budget": budget, "exceeded": bool(budget["monthly_usd"] and spent >= budget["monthly_usd"])}
+
+
+def enforce_budget(store):
+    info = monthly(store)
+    if info["exceeded"] and info["budget"]["mode"] == "stop":
+        raise ValueError("AiMate monthly estimated budget reached. Review Usage & billing to change your budget.")
 
 
 def record(store, config, model, incoming, origin="Chat"):
@@ -52,8 +112,9 @@ def report(store, days=30, offset=0):
     return {"days": days, "timezone_offset": offset, "totals": total,
             "daily": [{"date": key, **value} for key, value in sorted(daily.items())],
             "models": sorted(models.values(), key=lambda row: row["input_tokens"] + row["output_tokens"], reverse=True),
-            "rates": list(rates.values()),
-            "coverage": "AiMate reported chat and routing usage only. Each entry is a reported request or an imported historical turn/model total. Connection checks and calls without a usage report are excluded. Costs are estimates at your current rates, not an invoice. ChatGPT plan limits and organization spend are managed by your provider."}
+            "rates": list(rates.values()), "monthly": monthly(store),
+            "calls": store.rows("SELECT origin,status,count(*) AS count FROM usage_calls WHERE created>=? GROUP BY origin,status", (start,)),
+            "coverage": "Chat, routing and billable connection tests are tracked. Interrupted/failed calls without provider usage appear separately; their tokens and cost are unknown. Estimates use your current rates. Monthly budgets use UTC and check before each request; they cannot cap a request already in progress or unknown/unpriced spend. Invoice amounts are manually entered for comparison, not fetched from AWS. ChatGPT plan limits and organization spend remain with your provider."}
 
 
 def save_rate(store, body):

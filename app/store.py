@@ -75,6 +75,11 @@ class Store:
                 provider TEXT NOT NULL, model TEXT NOT NULL, tokens TEXT NOT NULL, origin TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS usage_rates (model TEXT PRIMARY KEY, input REAL NOT NULL,
                 output REAL NOT NULL, cache_read REAL NOT NULL, cache_write REAL NOT NULL);
+            CREATE TABLE IF NOT EXISTS usage_calls (id TEXT PRIMARY KEY, created REAL NOT NULL,
+                model TEXT NOT NULL, origin TEXT NOT NULL, status TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS usage_preferences (id INTEGER PRIMARY KEY CHECK(id=1), body TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS usage_invoices (id TEXT PRIMARY KEY, month TEXT NOT NULL,
+                model TEXT NOT NULL, amount REAL NOT NULL);
             CREATE TABLE IF NOT EXISTS migrations (name TEXT PRIMARY KEY);
             CREATE TABLE IF NOT EXISTS evidence_cache (id TEXT PRIMARY KEY, encrypted TEXT NOT NULL,
                 created REAL NOT NULL, expires REAL NOT NULL);

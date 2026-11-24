@@ -72,6 +72,22 @@ class BrowserRegressionTests(unittest.TestCase):
     def tearDown(self):
         self.context.close()
 
+    def test_usage_budget_and_bill_comparison_persist(self):
+        self.page.locator("#sidebarTools").evaluate("(el) => { el.open = true; }")
+        self.page.locator("#openUsage").click()
+        self.expect(self.page.locator("#usageBilling")).to_contain_text("UTC")
+        self.page.locator("#usageBudgetForm").locator("..").evaluate("(el) => { el.open = true; }")
+        self.page.locator("#usageBudget").fill("12")
+        self.page.locator("#usageBudgetMode").select_option("stop")
+        self.page.get_by_role("button",name="Save budget",exact=True).click()
+        self.expect(self.page.locator("#usageBilling")).to_contain_text("$12")
+        self.page.locator("#usageInvoiceForm").locator("..").evaluate("(el) => { el.open = true; }")
+        self.page.locator("#invoiceModel").fill("standard-fixture")
+        self.page.locator("#invoiceAmount").fill("0.5")
+        self.page.get_by_role("button",name="Save comparison",exact=True).click()
+        self.expect(self.page.locator("#usageBilling")).to_contain_text("billed $0.50")
+        self.expect(self.page.locator("#usageError")).to_have_text("")
+
     def test_todo_expansion_preserves_text_and_visible_controls(self):
         self.page.locator("#sidebarTools").evaluate("(el) => { el.open = true; }")
         self.page.locator("#openTodos").click()

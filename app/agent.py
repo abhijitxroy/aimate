@@ -10,7 +10,6 @@ import httpx
 from app.connectors import OPERATIONS, Services, scrub
 from app.model_routing import ROUTER_SYSTEM, ROUTER_MAX_TOKENS, add_usage, route_input, select_model
 from app.memory import TOOLS as MEMORY_TOOLS, context as memory_context, recall
-from app.usage import record as record_usage
 from app.vault import TOOL as VAULT_TOOL, read as read_vault, redactions as vault_redactions
 from app.review import TOOLS as REVIEW_TOOLS, read as read_review
 from app.read_batch import read_evidence, prefetch_reads
@@ -296,7 +295,8 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
         services.enable_reuse()
     evidence = {}
     available_tools = tools_for(config)
-    client = await asyncio.to_thread(client_factory, config)
+    from app.usage_meter import MeteredClient
+    client = MeteredClient(await asyncio.to_thread(client_factory, config), store, config, "Chat / routing")
     answer = ""
     usage = {"input_tokens": 0, "output_tokens": 0}
     by_model = {}
@@ -312,7 +312,6 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
                     {"input_tokens": response.usage.input_tokens, "output_tokens": response.usage.output_tokens})
         selection = await select_model(config["ai"], model_mode, classify)
         add_usage(usage, by_model, config["ai"]["model"], selection["routing_usage"])
-        record_usage(store, config, config["ai"]["model"], selection["routing_usage"], "Auto routing")
         yield selection
         for round_no in range(9):
             if access_check:
@@ -344,8 +343,6 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
             messages.append({"role": "assistant", "content": scrub(blocks, config)})
             add_usage(usage, by_model, msg.model if getattr(msg, "model", None) else selection["model"],
                       {"input_tokens": msg.usage.input_tokens, "output_tokens": msg.usage.output_tokens})
-            record_usage(store, config, getattr(msg, "model", None) or selection["model"],
-                         msg.usage.model_dump() if hasattr(msg.usage, "model_dump") else vars(msg.usage))
             calls = [block for block in blocks if block["type"] == "tool_use"]
             if not calls:
                 if not answer.strip():
@@ -456,7 +453,10 @@ async def run_chatgpt_turn(store, cid, question, connection, services_factory, *
 
 
 async def _run_chatgpt_turn(store, cid, question, connection, services_factory, *, model_mode="auto", images=None, role="admin", vault_access=None, access_check=None):
-    from app.chatgpt import response_events
+    from app.chatgpt import response_events as provider_events
+    from app.usage_meter import responses
+    def response_events(connection, payload, **kwargs):
+        return responses(store, config, "Chat / routing", provider_events, connection, payload, **kwargs)
     config = store.config()
     config["_role"] = role
     config["_vault_secrets"] = vault_redactions(store)
@@ -505,7 +505,6 @@ async def _run_chatgpt_turn(store, cid, question, connection, services_factory, 
         return text, {k: totals.get(k, 0) for k in usage}
     selection = await select_model(config["ai"], model_mode, classify)
     add_usage(usage, by_model, model, selection["routing_usage"])
-    record_usage(store, config, model, selection["routing_usage"], "Auto routing")
     model = selection["model"]
     if model not in available:
         raise ValueError("The selected Analysis model is unavailable. Choose an available model in Settings.")
@@ -533,7 +532,6 @@ async def _run_chatgpt_turn(store, cid, question, connection, services_factory, 
                 result = event["response"]
                 output = result["output"]
                 add_usage(usage, by_model, result.get("model") or model, result.get("usage", {}))
-                record_usage(store, config, result.get("model") or model, result.get("usage", {}))
         if output is None:
             raise ValueError("ChatGPT returned no completed response")
         if text and config["_vault_ai_access"]:

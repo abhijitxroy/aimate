@@ -41,8 +41,8 @@
   },
   {
     "id": "audit-396aab9dae34f984d0e6feb9",
-    "title": "P1 · Efficiency · WIP — Token optimization\n\nCompact historical tool output, bounded recall, read reuse and routing-token accounting exist. No persistent evidence cache with expiry or durable conversation compaction.",
-    "completed": false
+    "title": "P1 · Efficiency · Done — Token optimization\n\nHistorical evidence compacted with full saved-record paging; encrypted immutable GitHub snapshots expire after five minutes, invalidate on scope/token rotation and disclose verification time. Mutable sources and fresh/private requests bypass snapshots.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45445074986",
+    "completed": true
   },
   {
     "id": "audit-687f51deb551f73dfaceb762",
