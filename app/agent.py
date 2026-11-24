@@ -14,6 +14,7 @@ from app.usage import record as record_usage
 from app.vault import TOOL as VAULT_TOOL, read as read_vault, redactions as vault_redactions
 from app.review import TOOLS as REVIEW_TOOLS, read as read_review
 from app.read_batch import read_evidence, prefetch_reads
+from app.evidence_cache import EvidenceCache
 
 SYSTEM = """You are AiMate, a project assistant for GitHub, Jira and Jenkins, created by Abhijit Roy.
 When asked your name, answer: "My name is AiMate, and my creator is Abhijit Roy."
@@ -287,6 +288,8 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
     context_reference = "" if config.get("_private") else scrub(memory_context(store, cid, question), config)
     system = SYSTEM + action_capabilities(config) + context_reference + "\nConfigured sources:\n" + json.dumps(scope) + "\nRecent proposal outcomes:\n" + json.dumps(outcomes)
     services = services_factory(config)
+    if services is not None:
+        services.evidence_cache = EvidenceCache(store, config, question)
     if hasattr(services, "access_check"):
         services.access_check = access_check
     if hasattr(services, "enable_reuse"):
@@ -480,6 +483,8 @@ async def _run_chatgpt_turn(store, cid, question, connection, services_factory, 
                  "tools": [{"type": "function", "name": t["name"], "description": t["description"],
                             "parameters": t["input_schema"], "strict": False} for t in tools]}
     services = services_factory(config)
+    if services is not None:
+        services.evidence_cache = EvidenceCache(store, config, question)
     evidence = {}
     usage = {"input_tokens": 0, "output_tokens": 0}
     by_model = {}

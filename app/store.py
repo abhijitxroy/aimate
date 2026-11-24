@@ -76,6 +76,8 @@ class Store:
             CREATE TABLE IF NOT EXISTS usage_rates (model TEXT PRIMARY KEY, input REAL NOT NULL,
                 output REAL NOT NULL, cache_read REAL NOT NULL, cache_write REAL NOT NULL);
             CREATE TABLE IF NOT EXISTS migrations (name TEXT PRIMARY KEY);
+            CREATE TABLE IF NOT EXISTS evidence_cache (id TEXT PRIMARY KEY, encrypted TEXT NOT NULL,
+                created REAL NOT NULL, expires REAL NOT NULL);
             CREATE TABLE IF NOT EXISTS ai_failures (id TEXT PRIMARY KEY, conversation TEXT,
                 status INTEGER, diagnosis TEXT NOT NULL, created REAL NOT NULL);
             CREATE INDEX IF NOT EXISTS turns_by_conversation ON turns(conversation,id DESC);
@@ -234,39 +236,14 @@ class Store:
             raise ValueError("Conversation not found")
 
     def history(self, cid):
-        rows = self.rows("SELECT messages FROM turns WHERE conversation=? ORDER BY id DESC LIMIT 10", (cid,))
+        rows = self.rows("SELECT id,messages FROM turns WHERE conversation=? ORDER BY id DESC LIMIT 10", (cid,))
         # Keep complete tool/result groups together when limiting context.
         messages, size = [], 0
         for row in rows:
-            turn = json.loads(row["messages"])
-            if len(row["messages"]) > 40_000:
-                for message in turn:
-                    if not isinstance(message.get("content"), list):
-                        continue
-                    for block in message["content"]:
-                        if block.get("type") == "tool_result" and isinstance(block.get("content"), str):
-                            value = block["content"]
-                            if len(value) > 3000:
-                                block["content"] = value[:2300] + "\n[Historical result excerpt; re-read the source for full evidence.]\n" + value[-500:]
-                        if block.get("type") == "responses":
-                            for item in block.get("items", []):
-                                value = item.get("output")
-                                if isinstance(value, str) and len(value) > 3000:
-                                    item["output"] = value[:2300] + "\n[Historical result excerpt; re-read the source for full evidence.]\n" + value[-500:]
-                if len(json.dumps(turn)) > 40_000:
-                    # A very large tool round must not erase the conversational context.
-                    compact = []
-                    for message in turn:
-                        content = message.get("content")
-                        if isinstance(content, str):
-                            compact.append({"role": message["role"], "content": content[:12000]})
-                        elif message["role"] == "assistant":
-                            text = "\n\n".join(b.get("text", "") for b in content if b.get("type") == "text")
-                            if text:
-                                compact.append({"role": "assistant", "content": text[:12000]})
-                    turn = compact
+            from app.history_budget import compact, MAX_HISTORY
+            turn = compact(json.loads(row["messages"]), row["id"])
             length = len(json.dumps(turn))
-            if messages and size + length > 140_000:
+            if messages and size + length > MAX_HISTORY:
                 break
             messages.insert(0, turn)
             size += length

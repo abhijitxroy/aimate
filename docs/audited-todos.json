@@ -36,8 +36,8 @@
   },
   {
     "id": "audit-7b9c4f0f48a5098accc1cb58",
-    "title": "P1 · Speed · WIP — Performance improvement\n\nPer-turn HTTP reuse, identical-read deduplication, SDK initialization off event loop and storage indexes exist. No complete latency benchmark, bounded parallel tool reads or production load validation.",
-    "completed": false
+    "title": "P1 · Speed · Done — Performance improvement\n\nIndependent read rounds run at concurrency 4 with ordered results, single-flight duplicate reuse, cancellation and sequential writes. Windows TLS initialization moved off the event loop. Offline benchmark measured 3.98x scheduling speedup and 96.31% repeated-evidence reduction; actual network latency varies. Windows/Linux/browser CI passed: https://github.com/abhijitxroy/aimate/actions/runs/45439006885",
+    "completed": true
   },
   {
     "id": "audit-396aab9dae34f984d0e6feb9",

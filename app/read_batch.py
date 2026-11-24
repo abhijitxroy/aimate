@@ -24,7 +24,15 @@ async def read_evidence(services, args, cache):
     pending = asyncio.get_running_loop().create_future()
     cache[pending_key] = pending
     try:
-        result = await services.read(args["service"], args["path"], args.get("params"))
+        check = getattr(services, "access_check", None)
+        if check:
+            check()
+        persistent = getattr(services, "evidence_cache", None)
+        result = persistent.get(args) if persistent else None
+        if result is None:
+            result = await services.read(args["service"], args["path"], args.get("params"))
+            if persistent:
+                persistent.put(args, result)
         if len(cache) < 40:
             cache[key] = result
         pending.set_result((result, None))
