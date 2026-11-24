@@ -96,6 +96,20 @@ class BrowserRegressionTests(unittest.TestCase):
         self.expect(self.page.locator("#auditContent")).to_contain_text("duration_ms")
         self.expect(self.page.locator("#auditContent")).not_to_contain_text("browser-regression-password")
 
+    def test_github_scope_recovery_creates_review_card_without_model_request(self):
+        action={"id":"scope-review","service":"settings","operation":"update_github_repositories",
+                "status":"pending","preview":{"repository":"demo/new","before":[],"after":["demo/new"]}}
+        self.page.route("**/api/conversations/*/repository-proposal",lambda route:route.fulfill(json=action))
+        self.page.evaluate("""() => {
+            cid="existing-conversation";
+            const message=addMessage("assistant","The repository is outside scope.");
+            renderGitHubGuidance(message,{repo:"demo/new",action:"validate_repository",message:"Validate access before adding."});
+        }""")
+        self.page.get_by_role("button",name="Validate & review repository",exact=True).click()
+        self.expect(self.page.locator('[data-action="scope-review"]')).to_be_visible()
+        self.expect(self.page.get_by_role("button",name="Confirm change",exact=True)).to_be_visible()
+        self.expect(self.page.get_by_role("button",name="Access verified · confirm below",exact=True)).to_be_disabled()
+
     def test_large_paste_is_a_document_card_and_saved_message_keeps_card(self):
         self.page.evaluate("""() => {
             const transfer = new DataTransfer();

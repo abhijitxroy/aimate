@@ -15,6 +15,7 @@ from app.review import TOOLS as REVIEW_TOOLS, read as read_review
 from app.read_batch import read_evidence, prefetch_reads
 from app.evidence_cache import EvidenceCache
 from app.documents import TOOLS as DOCUMENT_TOOLS, read as read_document
+from app.github_guidance import guidance as github_guidance
 
 SYSTEM = """You are AiMate, a project assistant for GitHub, Jira and Jenkins, created by Abhijit Roy.
 When asked your name, answer: "My name is AiMate, and my creator is Abhijit Roy."
@@ -399,7 +400,8 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
                     message = str(exc) if isinstance(exc, ValueError) else "Tool failed; check connection and arguments"
                     results.append({"type": "tool_result", "tool_use_id": call["id"],
                                     "content": scrub(message, config), "is_error": True})
-                    yield {"event": "tool_done", "name": call["name"], "ok": False, "message": scrub(message, config)}
+                    yield {"event": "tool_done", "name": call["name"], "ok": False, "message": scrub(message, config),
+                           "guidance":scrub(github_guidance(config,args,message),config)}
             messages.append({"role": "user", "content": results})
         if completed:
             # Persist the readable prompt and answer; do not replay image bytes on every follow-up.
@@ -603,7 +605,8 @@ async def _run_chatgpt_turn(store, cid, question, connection, services_factory, 
                 yield {"event": "tool_done", "name": name, "ok": True}
             except (ValueError, KeyError, TypeError, httpx.HTTPError) as exc:
                 value = scrub(str(exc) if isinstance(exc, ValueError) else "Tool failed; check connection and arguments", config)
-                yield {"event": "tool_done", "name": name, "ok": False, "message": value}
+                yield {"event": "tool_done", "name": name, "ok": False, "message": value,
+                       "guidance":scrub(github_guidance(config,args,value),config)}
             input_items.append({"type": "function_call_output", "call_id": call["call_id"], "output": value})
             results.append({"type": "tool_result", "tool_use_id": call["call_id"], "content": value})
         saved.append({"role": "user", "content": results})

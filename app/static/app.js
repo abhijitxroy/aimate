@@ -977,6 +977,7 @@ async function ask(question) {
         }
         if (event.event === "tool_done" && !event.ok) {
           bot.root.append(element("p", "error", event.message));
+          renderGitHubGuidance(bot,event.guidance);
         }
         if (event.event === "action") drawAction(event.action, bot.root);
         if (event.event === "error") throw new Error(event.message);

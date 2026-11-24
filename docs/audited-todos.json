@@ -66,8 +66,8 @@
   },
   {
     "id": "audit-4e74cf072dc30234a10e3170",
-    "title": "P1 · Code · WIP — Modular code and useful logging\n\nSeparate storage, connectors, routing, memory, access and attachment modules; server logs and audit exist. main.py and app.js remain large; structured tracing/performance telemetry is planned.",
-    "completed": false
+    "title": "P1 · Code · Done — Modular code and useful logging\n\nUsage routes/UI, metering, documents, stream tracking and request telemetry have separate modules. Bounded JSON request logs omit raw URLs/query text, headers, prompts and credentials; admin/developer diagnostics show timing and request IDs. Role isolation and browser checks passed CI.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45512868739",
+    "completed": true
   },
   {
     "id": "audit-153cc4e2f6af2319c269b0a8",
