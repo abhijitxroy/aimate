@@ -1,0 +1,8 @@
+# One-time authenticator enrollment on the deployment machine, loopback only.
+# Use alongside compose.live.yaml; both use the same live-data volume.
+services:
+  aimate:
+    environment:
+      APP_PUBLIC_URL: ""
+      AIMATE_ENV: development
+      AIMATE_DEV_LOGIN: "0"

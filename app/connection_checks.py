@@ -55,7 +55,7 @@ async def check_connection(service, config, services, client_factory, chatgpt):
                               details=["Model: " + found.get("display_name", model),
                                        "Verified through the account catalog; an AI answer was not requested."])
             else:
-                client = client_factory(config)
+                client = await asyncio.to_thread(client_factory, config)
                 response = await client.messages.create(model=model, max_tokens=16,
                                                        messages=[{"role": "user", "content": "Reply OK."}])
                 report.update(ok=True, model=response.model, message="Connected. The model answered.",

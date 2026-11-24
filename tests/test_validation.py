@@ -5,6 +5,19 @@ from app.validation import clean_path, number, ref, scoped_jql, valid_base, vali
 
 
 class ValidationTests(unittest.TestCase):
+    def test_masked_credentials_cannot_replace_saved_secrets(self):
+        for credential in ("api_key", "aws_access_key", "aws_secret_key", "aws_session_token"):
+            for masked in ("<redacted>", "[REDACTED]", "********", "••••••"):
+                config = self.config()
+                config["ai"][credential] = masked
+                with self.subTest(credential=credential, masked=masked), self.assertRaisesRegex(ValueError, "Masked"):
+                    validate_config(config, {})
+        for section in ("github", "jira", "jenkins"):
+            config = self.config()
+            config[section]["token"] = "<redacted>"
+            with self.assertRaisesRegex(ValueError, "Masked"):
+                validate_config(config, {})
+
     def config(self):
         return {"allow_writes": False,
                 "ai": {"provider": "anthropic", "model": "example-model"},

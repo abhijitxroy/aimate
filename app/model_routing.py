@@ -2,6 +2,9 @@
 import json
 
 MODES = {"auto", "standard", "analysis"}
+# Reasoning-capable providers count internal reasoning against output limits.
+# 32 tokens can stop before the tiny route JSON is emitted.
+ROUTER_MAX_TOKENS = 128
 ROUTER_SYSTEM = """Classify an engineering assistant request.
 Reply only with JSON: {"route":"standard"} or {"route":"analysis"}.
 Use analysis for debugging, root-cause investigation, complex code review,

@@ -17,13 +17,8 @@ class Store:
         self.directory.mkdir(parents=True, exist_ok=True)
         if os.name != "nt":
             self.directory.chmod(0o700)
-        key_file = self.directory / "encryption.key"
-        if not key_file.exists():
-            with key_file.open("xb") as f:
-                f.write(Fernet.generate_key())
-        if os.name != "nt":
-            key_file.chmod(0o600)
-        self.cipher = Fernet(key_file.read_bytes())
+        from app.device_key import load_key
+        self.cipher = Fernet(load_key(self.directory))
         self.password = os.environ.get("APP_PASSWORD")
         if not self.password:
             password_file = self.directory / "access-password.txt"
@@ -36,6 +31,7 @@ class Store:
         self.lock = threading.RLock()
         self.db = sqlite3.connect(self.directory / "app.sqlite3", check_same_thread=False)
         self.db.row_factory = sqlite3.Row
+        self.db.create_function("casefold", 1, lambda value: str(value or "").casefold(), deterministic=True)
         self.db.execute("PRAGMA journal_mode=WAL")
         self.db.executescript("""
             CREATE TABLE IF NOT EXISTS settings (id INTEGER PRIMARY KEY CHECK(id=1), encrypted TEXT);
@@ -50,13 +46,27 @@ class Store:
             CREATE TABLE IF NOT EXISTS attachment_previews (turn INTEGER PRIMARY KEY, encrypted TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS conversation_revisions (id INTEGER PRIMARY KEY, conversation TEXT NOT NULL,
                 encrypted TEXT NOT NULL, created REAL NOT NULL);
+            CREATE TABLE IF NOT EXISTS access_grants (id TEXT PRIMARY KEY, name TEXT NOT NULL,
+                role TEXT NOT NULL, digest TEXT NOT NULL, expires REAL NOT NULL, revoked INTEGER NOT NULL);
+            CREATE TABLE IF NOT EXISTS access_grant_otp (id TEXT PRIMARY KEY, encrypted TEXT NOT NULL, last_counter INTEGER NOT NULL);
+            CREATE TABLE IF NOT EXISTS access_audit (id INTEGER PRIMARY KEY, grant_id TEXT NOT NULL,
+                operation TEXT NOT NULL, before_role TEXT, after_role TEXT, created REAL NOT NULL);
+            CREATE TABLE IF NOT EXISTS vault_entries (id TEXT PRIMARY KEY, name TEXT NOT NULL,
+                encrypted TEXT NOT NULL, ai_access INTEGER NOT NULL, updated REAL NOT NULL);
+            CREATE TABLE IF NOT EXISTS feedback (id TEXT PRIMARY KEY, conversation TEXT NOT NULL,
+                turn INTEGER NOT NULL, rating TEXT NOT NULL, category TEXT NOT NULL,
+                comment TEXT NOT NULL, created REAL NOT NULL, role TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS conversation_groups (id TEXT PRIMARY KEY, name TEXT NOT NULL,
                 kind TEXT NOT NULL, parent TEXT, created REAL NOT NULL);
             CREATE TABLE IF NOT EXISTS conversation_locations (conversation TEXT PRIMARY KEY, group_id TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS conversation_flags (conversation TEXT PRIMARY KEY, pinned INTEGER NOT NULL);
+            CREATE TABLE IF NOT EXISTS conversation_archives (conversation TEXT PRIMARY KEY, archived INTEGER NOT NULL);
+            CREATE TABLE IF NOT EXISTS conversation_icons (conversation TEXT PRIMARY KEY, icon TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS conversation_references (conversation TEXT PRIMARY KEY, source TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS knowledge (id TEXT PRIMARY KEY, key TEXT NOT NULL,
                 value TEXT NOT NULL, group_id TEXT, updated REAL NOT NULL);
+            CREATE TABLE IF NOT EXISTS todos (id TEXT PRIMARY KEY, title TEXT NOT NULL,
+                completed INTEGER NOT NULL DEFAULT 0, created REAL NOT NULL, updated REAL NOT NULL);
             CREATE VIRTUAL TABLE IF NOT EXISTS memory_index USING fts5(content, conversation UNINDEXED, turn UNINDEXED);
             CREATE TABLE IF NOT EXISTS usage_events (id TEXT PRIMARY KEY, created REAL NOT NULL,
                 provider TEXT NOT NULL, model TEXT NOT NULL, tokens TEXT NOT NULL, origin TEXT NOT NULL);
@@ -65,6 +75,10 @@ class Store:
             CREATE TABLE IF NOT EXISTS migrations (name TEXT PRIMARY KEY);
             CREATE TABLE IF NOT EXISTS ai_failures (id TEXT PRIMARY KEY, conversation TEXT,
                 status INTEGER, diagnosis TEXT NOT NULL, created REAL NOT NULL);
+            CREATE INDEX IF NOT EXISTS turns_by_conversation ON turns(conversation,id DESC);
+            CREATE INDEX IF NOT EXISTS actions_by_conversation ON actions(conversation,created DESC);
+            CREATE INDEX IF NOT EXISTS usage_by_date ON usage_events(created);
+            CREATE INDEX IF NOT EXISTS feedback_by_date ON feedback(created DESC);
         """)
         from app.memory import readable_text
         for row in self.db.execute("SELECT id,conversation,messages FROM turns WHERE id NOT IN (SELECT turn FROM memory_index)").fetchall():
@@ -93,9 +107,17 @@ class Store:
 
     def config(self):
         rows = self.rows("SELECT encrypted FROM settings WHERE id=1")
-        return json.loads(self.cipher.decrypt(rows[0]["encrypted"].encode())) if rows else {}
+        config = json.loads(self.cipher.decrypt(rows[0]["encrypted"].encode())) if rows else {}
+        policy = getattr(self, "public_policy", None)
+        if policy:
+            policy.validate(config)
+            config["_public_showcase"] = True
+        return config
 
     def save_config(self, config):
+        policy = getattr(self, "public_policy", None)
+        if policy:
+            policy.validate(config)
         config["_version"] = secrets.token_hex(16)
         encrypted = self.cipher.encrypt(json.dumps(config).encode()).decode()
         self.execute("INSERT OR REPLACE INTO settings VALUES (1, ?)", (encrypted,))

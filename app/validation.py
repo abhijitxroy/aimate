@@ -94,6 +94,12 @@ def validate_config(raw, old):
         if not isinstance(section, dict):
             raise ValueError("Each connection must be an object")
         out[name] = {k: v for k, v in section.items() if k in fields}
+        for credential in ("token", "api_key", "aws_access_key", "aws_secret_key", "aws_session_token"):
+            value = out[name].get(credential)
+            if isinstance(value, str) and value.strip():
+                masked = value.strip()
+                if masked.casefold() in {"<redacted>", "[redacted]", "redacted"} or set(masked) <= set("*•●"):
+                    raise ValueError("Enter the actual credential, or leave the field blank to keep the saved value. Masked values cannot be saved.")
         secret = "api_key" if name == "ai" else "token"
         if not out[name].get(secret):
             changed_provider = name == "ai" and section.get("provider") != old.get(name, {}).get("provider")
@@ -191,5 +197,9 @@ def validate_config(raw, old):
     for name in ("jenkins", "jira"):
         if out[name].get("token") and (name == "jenkins" or out[name].get("auth") == "basic") and not out[name].get("username"):
             raise ValueError(f"Add the {name} username/email")
+    if old.get("_public_showcase") or __import__("os").environ.get("AIMATE_PUBLIC_SHOWCASE") == "1":
+        from app.public_showcase import PublicPolicy
+        PublicPolicy().validate(out)
+        out["_public_showcase"] = True
     return out
 

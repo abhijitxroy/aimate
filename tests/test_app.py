@@ -153,12 +153,20 @@ class WorkflowTests(unittest.TestCase):
         anonymous.close()
 
     def test_hosted_https_origin_cookie_and_csrf(self):
+        from app.otp import Authenticator, code_for_counter
+        authenticator = Authenticator(self.store)
+        setup = authenticator.begin("enrollment-session", self.store.password)
+        now = time.time()
+        authenticator.enable("enrollment-session", code_for_counter(setup["secret"], int(now // 30)))
         with patch.dict(os.environ, {"APP_PUBLIC_URL": "https://aimate.example",
                                      "APP_PASSWORD": "test-host-password"}):
             hosted = create_app(self.store, services_factory=self.services, client_factory=FakeAI)
         with TestClient(hosted, base_url="https://aimate.example") as client:
-            result = client.post("/api/login", json={"password": self.store.password},
-                                 headers={"Origin": "https://aimate.example"})
+            self.assertEqual(client.post("/api/login", json={"password": self.store.password}).status_code, 403)
+            with patch("app.otp.time.time", return_value=now + 30):
+                result = client.post("/api/login/otp",
+                                     json={"code": code_for_counter(setup["secret"], int(now // 30) + 1)},
+                                     headers={"Origin": "https://aimate.example"})
             self.assertEqual(result.status_code, 200)
             cookie = result.headers["set-cookie"].lower()
             self.assertIn("secure", cookie)

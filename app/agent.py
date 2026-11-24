@@ -1,5 +1,6 @@
 """Claude tool loop with streamed answers and persisted, user-confirmed proposals."""
 import json
+import asyncio
 import os
 import secrets
 import time
@@ -7,9 +8,10 @@ import time
 import httpx
 
 from app.connectors import OPERATIONS, Services, scrub
-from app.model_routing import ROUTER_SYSTEM, add_usage, route_input, select_model
+from app.model_routing import ROUTER_SYSTEM, ROUTER_MAX_TOKENS, add_usage, route_input, select_model
 from app.memory import TOOLS as MEMORY_TOOLS, context as memory_context, recall
 from app.usage import record as record_usage
+from app.vault import TOOL as VAULT_TOOL, read as read_vault, redactions as vault_redactions
 
 SYSTEM = """You are AiMate, a project assistant for GitHub, Jira and Jenkins, created by Abhijit Roy.
 When asked your name, answer: "My name is AiMate, and my creator is Abhijit Roy."
@@ -122,14 +124,20 @@ REPOSITORY_TOOL = {
 
 
 def tools_for(config):
-    return (TOOLS if config.get("allow_writes") else TOOLS[:1]) + [REPOSITORY_TOOL] + MEMORY_TOOLS
+    if config.get("_private"):
+        return TOOLS[:1]
+    admin_tools = ([REPOSITORY_TOOL] + ([VAULT_TOOL] if config.get("_vault_ai_access") else [])) if config.get("_role", "admin") == "admin" else []
+    return (TOOLS if config.get("allow_writes") else TOOLS[:1]) + admin_tools + MEMORY_TOOLS
 
 
 def action_capabilities(config):
+    from app.access import permits_operation
     enabled = bool(config.get("allow_writes"))
     tokens = {name: bool(config.get(name, {}).get("token")) for name in OPERATIONS}
     return ("\nCurrent action capabilities (authoritative settings):\n"
-            + json.dumps({"change_proposals_enabled": enabled, "service_token_saved": tokens})
+            + json.dumps({"change_proposals_enabled": enabled, "service_token_saved": tokens,
+                          "allowed_operations":{service:[op for op in operations if permits_operation(config.get("_role","admin"),op)]
+                                                for service,operations in OPERATIONS.items()}})
             + "\nWhen change proposals are disabled, propose_action is intentionally unavailable. "
             "This restriction applies to remote writes, not configure_repository, which is "
             "available for reviewed local source settings changes. For a requested remote change, explain that the operator must open Settings, enable "
@@ -213,6 +221,9 @@ async def propose(store, config, services, cid, args):
     if not config.get("allow_writes"):
         raise ValueError("Enable change proposals in Settings first")
     service, operation, payload = args["service"], args["operation"], args["payload"]
+    from app.access import permits_operation
+    if not permits_operation(config.get("_role","admin"),operation):
+        raise ValueError("This operation requires Administrator access.")
     if not isinstance(payload, dict):
         raise ValueError("Payload must be an object")
     if scrub(payload, config) != payload:
@@ -232,12 +243,16 @@ async def propose(store, config, services, cid, args):
     return public_action(store.action(aid))
 
 
-async def run_turn(store, cid, question, *, client_factory=ai_client, services_factory=Services, chatgpt=None, model_mode="auto"):
+async def run_turn(store, cid, question, *, client_factory=ai_client, services_factory=Services, chatgpt=None, model_mode="auto", images=None, role="admin"):
     config = store.config()
+    config["_role"] = role
+    config["_vault_secrets"] = vault_redactions(store)
+    config["_vault_ai_access"] = bool(store.rows("SELECT id FROM vault_entries WHERE ai_access=1 LIMIT 1"))
+    config["allow_writes"] = bool(config.get("allow_writes")) and role in {"admin", "developer"}
     if config.get("ai", {}).get("provider") == "chatgpt":
         if not chatgpt:
             raise ValueError("ChatGPT sign-in is available in local live mode")
-        async for event in run_chatgpt_turn(store, cid, question, chatgpt, services_factory, model_mode=model_mode):
+        async for event in run_chatgpt_turn(store, cid, question, chatgpt, services_factory, model_mode=model_mode, images=images, role=role):
             yield event
         return
     question = scrub(question, config)
@@ -245,16 +260,19 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
     for message in messages:
         if isinstance(message["content"], list):
             message["content"] = [b for b in message["content"] if b.get("type") != "responses"]
-    messages.append({"role": "user", "content": question})
+    messages.append({"role": "user", "content": [{"type": "text", "text": question}, *(images or [])] if images else question})
     start = len(messages) - 1
     # Include action outcomes so a follow-up can continue after confirmation.
     outcomes = store.rows("SELECT id,operation,status,result FROM actions WHERE conversation=? ORDER BY created DESC LIMIT 12", (cid,))
     scope = {name: {k: v for k, v in config.get(name, {}).items() if k not in {"token", "api_key"}}
              for name in ("github", "jira", "jenkins")}
-    system = SYSTEM + action_capabilities(config) + memory_context(store, cid) + "\nConfigured sources:\n" + json.dumps(scope) + "\nRecent proposal outcomes:\n" + json.dumps(outcomes)
+    system = SYSTEM + action_capabilities(config) + ("" if config.get("_private") else memory_context(store, cid)) + "\nConfigured sources:\n" + json.dumps(scope) + "\nRecent proposal outcomes:\n" + json.dumps(outcomes)
     services = services_factory(config)
+    if hasattr(services, "enable_reuse"):
+        services.enable_reuse()
+    evidence = {}
     available_tools = tools_for(config)
-    client = client_factory(config)
+    client = await asyncio.to_thread(client_factory, config)
     answer = ""
     usage = {"input_tokens": 0, "output_tokens": 0}
     by_model = {}
@@ -262,7 +280,7 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
     try:
         async def classify():
             response = await client.messages.create(
-                model=config["ai"]["model"], max_tokens=32, system=ROUTER_SYSTEM,
+                model=config["ai"]["model"], max_tokens=ROUTER_MAX_TOKENS, system=ROUTER_SYSTEM,
                 messages=[{"role": "user", "content": scrub(route_input(question, messages[:-1]), config)}])
             return ("".join(b.text for b in response.content if getattr(b, "type", "") == "text"),
                     {"input_tokens": response.usage.input_tokens, "output_tokens": response.usage.output_tokens})
@@ -277,13 +295,19 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
                 params["tool_choice"] = {"type": "none"}
             async with client.messages.stream(**params) as stream:
                 first_delta = True
+                protected_text = ""
                 async for delta in stream.text_stream:
                     if first_delta and answer:
                         delta = "\n\n" + delta
                     first_delta = False
                     answer += delta
-                    yield {"event": "text", "delta": scrub(delta, config)}
+                    if config["_vault_ai_access"]:
+                        protected_text += delta
+                    else:
+                        yield {"event": "text", "delta": scrub(delta, config)}
                 msg = await stream.get_final_message()
+            if protected_text:
+                yield {"event": "text", "delta": scrub(protected_text, config)}
             blocks = [block.model_dump(exclude_none=True) for block in msg.content]
             messages.append({"role": "assistant", "content": scrub(blocks, config)})
             add_usage(usage, by_model, msg.model if getattr(msg, "model", None) else selection["model"],
@@ -301,8 +325,10 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
                 args = call.get("input", {})
                 yield {"event": "tool", "name": call["name"], "input": scrub(args, config)}
                 try:
+                    if call["name"] not in {tool["name"] for tool in available_tools}:
+                        raise ValueError("This tool is unavailable for your role.")
                     if call["name"] == "api_read":
-                        result = await services.read(args["service"], args["path"], args.get("params"))
+                        result = await read_evidence(services, args, evidence)
                         yield {"event": "source", "url": result["source"]}
                     elif call["name"] == "propose_action":
                         card = await propose(store, config, services, cid, args)
@@ -315,9 +341,11 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
                         card = await propose_repository(store, config, cid, args, services_factory)
                         result = {"proposal": card["id"], "status": "pending", "note": "Access validated. User must confirm the settings change."}
                         yield {"event": "action", "action": card}
+                    elif call["name"] == "read_vault_entry":
+                        result = {"value":read_vault(store,args.get("name"),ai=True)}
                     else:
                         raise ValueError("Unknown tool")
-                    text = json.dumps(scrub(result, config), ensure_ascii=False)
+                    text = json.dumps(result if call["name"] == "read_vault_entry" else scrub(result, config), ensure_ascii=False)
                     log_page = args.get("service") == "jenkins" and isinstance(result.get("data"), dict) and "next_start" in result["data"]
                     if len(text) > 24_000 and not log_page:
                         text = text[:24_000] + "\n[truncated; narrow the query or paginate]"
@@ -330,13 +358,32 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
                     yield {"event": "tool_done", "name": call["name"], "ok": False, "message": scrub(message, config)}
             messages.append({"role": "user", "content": results})
         if completed:
+            # Persist the readable prompt and answer; do not replay image bytes on every follow-up.
+            messages[start] = {"role": "user", "content": question}
             store.save_turn(cid, scrub(messages[start:], config),
                             {"model": selection["model"], "mode": model_mode, "route": selection["route"],
                              "usage": usage, "by_model": by_model, "notice": selection.get("notice")})
             store.execute("UPDATE conversations SET title=? WHERE id=? AND title='New conversation'", (question[:100], cid))
         yield {"event": "done", "usage": usage, "model": selection["model"], "mode": model_mode, "by_model": by_model}
     finally:
-        await client.close()
+        try:
+            await client.close()
+        finally:
+            if hasattr(services, "aclose"):
+                await services.aclose()
+
+
+async def read_evidence(services, args, cache):
+    key = json.dumps([args["service"],args["path"],args.get("params")],sort_keys=True)
+    if key in cache:
+        earlier = cache[key]
+        return {"source":earlier["source"],"data":{"reused_this_turn":True,
+                "note":"This exact source was already read in this turn. Use the earlier full result.",
+                "excerpt":json.dumps(earlier["data"],ensure_ascii=False)[:1200]}}
+    result = await services.read(args["service"],args["path"],args.get("params"))
+    if len(cache) < 40:
+        cache[key] = result
+    return result
 
 
 def responses_history(messages):
@@ -362,9 +409,26 @@ def responses_history(messages):
     return items
 
 
-async def run_chatgpt_turn(store, cid, question, connection, services_factory, *, model_mode="auto"):
+async def run_chatgpt_turn(store, cid, question, connection, services_factory, *, model_mode="auto", images=None, role="admin"):
+    services = services_factory(store.config())
+    if hasattr(services,"enable_reuse"):
+        services.enable_reuse()
+    try:
+        async for event in _run_chatgpt_turn(store,cid,question,connection,lambda config:services,
+                                           model_mode=model_mode,images=images,role=role):
+            yield event
+    finally:
+        if hasattr(services,"aclose"):
+            await services.aclose()
+
+
+async def _run_chatgpt_turn(store, cid, question, connection, services_factory, *, model_mode="auto", images=None, role="admin"):
     from app.chatgpt import response_events
     config = store.config()
+    config["_role"] = role
+    config["_vault_secrets"] = vault_redactions(store)
+    config["_vault_ai_access"] = bool(store.rows("SELECT id FROM vault_entries WHERE ai_access=1 LIMIT 1"))
+    config["allow_writes"] = bool(config.get("allow_writes")) and role in {"admin", "developer"}
     question = scrub(question, config)
     account_id = connection.status()["active"]
     model = config.get("ai", {}).get("model")
@@ -373,17 +437,19 @@ async def run_chatgpt_turn(store, cid, question, connection, services_factory, *
         raise ValueError("Select an available ChatGPT model in Settings and save")
     history = store.history(cid)
     input_items = responses_history(history)
-    input_items.append({"role": "user", "content": question})
+    image_inputs = [{"type": "input_image", "image_url": "data:" + block["source"]["media_type"] + ";base64," + block["source"]["data"]} for block in images or []]
+    input_items.append({"role": "user", "content": [{"type": "input_text", "text": question}, *image_inputs] if images else question})
     saved = [{"role": "user", "content": question}]
     scope = {name: {k: v for k, v in config.get(name, {}).items() if k not in {"token", "api_key"}}
              for name in ("github", "jira", "jenkins")}
     outcomes = store.rows("SELECT id,operation,status,result FROM actions WHERE conversation=? ORDER BY created DESC LIMIT 12", (cid,))
-    instructions = SYSTEM + action_capabilities(config) + memory_context(store, cid) + "\nConfigured sources:\n" + json.dumps(scope) + "\nRecent proposal outcomes:\n" + json.dumps(outcomes)
+    instructions = SYSTEM + action_capabilities(config) + ("" if config.get("_private") else memory_context(store, cid)) + "\nConfigured sources:\n" + json.dumps(scope) + "\nRecent proposal outcomes:\n" + json.dumps(outcomes)
     tools = tools_for(config)
     namespace = {"type": "namespace", "name": "project", "description": "Scoped engineering project tools",
                  "tools": [{"type": "function", "name": t["name"], "description": t["description"],
                             "parameters": t["input_schema"], "strict": False} for t in tools]}
     services = services_factory(config)
+    evidence = {}
     usage = {"input_tokens": 0, "output_tokens": 0}
     by_model = {}
     async def classify():
@@ -415,11 +481,12 @@ async def run_chatgpt_turn(store, cid, question, connection, services_factory, *
         output, text = None, ""
         async for event in response_events(connection, payload, expected_account=account_id):
             if event["type"] == "response.output_text.delta":
-                delta = scrub(event.get("delta", ""), config)
+                delta = event.get("delta", "")
                 if not text and round_no:
                     delta = "\n\n" + delta
                 text += delta
-                yield {"event": "text", "delta": delta}
+                if not config["_vault_ai_access"]:
+                    yield {"event": "text", "delta": scrub(delta, config)}
             elif event["type"] == "response.completed":
                 result = event["response"]
                 output = result["output"]
@@ -427,6 +494,9 @@ async def run_chatgpt_turn(store, cid, question, connection, services_factory, *
                 record_usage(store, config, result.get("model") or model, result.get("usage", {}))
         if output is None:
             raise ValueError("ChatGPT returned no completed response")
+        if text and config["_vault_ai_access"]:
+            yield {"event": "text", "delta": scrub(text, config)}
+        text = scrub(text, config)
         output = scrub(output, config)
         input_items.extend(output)
         calls = [item for item in output if item["type"] == "function_call"]
@@ -436,7 +506,7 @@ async def run_chatgpt_turn(store, cid, question, connection, services_factory, *
             blocks.append({"type": "text", "text": text.strip()})
         saved.append({"role": "assistant", "content": blocks})
         if not calls:
-            store.save_turn(cid, saved, {"model": model, "mode": model_mode, "route": selection["route"],
+            store.save_turn(cid, scrub(saved, config), {"model": model, "mode": model_mode, "route": selection["route"],
                                         "usage": usage, "by_model": by_model, "notice": selection.get("notice")})
             store.execute("UPDATE conversations SET title=? WHERE id=? AND title='New conversation'", (question[:100], cid))
             yield {"event": "done", "usage": usage, "model": model, "mode": model_mode, "by_model": by_model}
@@ -452,7 +522,7 @@ async def run_chatgpt_turn(store, cid, question, connection, services_factory, *
                     raise ValueError("Tool arguments must be an object")
                 yield {"event": "tool", "name": name, "input": scrub(args, config)}
                 if name == "api_read":
-                    result = await services.read(args["service"], args["path"], args.get("params"))
+                    result = await read_evidence(services, args, evidence)
                     yield {"event": "source", "url": result["source"]}
                 elif name in {"search_knowledge", "read_past_conversation"}:
                     result = recall(store, cid, name, args)
@@ -465,9 +535,11 @@ async def run_chatgpt_turn(store, cid, question, connection, services_factory, *
                     card = await propose(store, config, services, cid, args)
                     result = {"proposal": card["id"], "status": "pending", "note": "User must confirm; not executed."}
                     yield {"event": "action", "action": card}
+                elif name == "read_vault_entry":
+                    result = {"value":read_vault(store,args.get("name"),ai=True)}
                 else:
                     raise ValueError("Unknown tool")
-                value = json.dumps(scrub(result, config), ensure_ascii=False)
+                value = json.dumps(result if name == "read_vault_entry" else scrub(result, config), ensure_ascii=False)
                 log_page = args.get("service") == "jenkins" and isinstance(result.get("data"), dict) and "next_start" in result["data"]
                 if len(value) > 24_000 and not log_page:
                     value = value[:24_000] + "\n[truncated; narrow the query or paginate]"

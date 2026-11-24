@@ -1,0 +1,13 @@
+# Public showcase: separate volume, personal GitHub sources only by default.
+# Combine with compose.live.yaml and compose.enroll.yaml for first OTP setup.
+services:
+  aimate:
+    environment:
+      AIMATE_PUBLIC_SHOWCASE: "1"
+      AIMATE_PUBLIC_GITHUB_OWNERS: ${AIMATE_PUBLIC_GITHUB_OWNERS:-abhijitxroy}
+      AIMATE_PUBLIC_JIRA_HOSTS: ${AIMATE_PUBLIC_JIRA_HOSTS:-}
+      AIMATE_PUBLIC_JENKINS_HOSTS: ${AIMATE_PUBLIC_JENKINS_HOSTS:-}
+    volumes:
+      - public-data:/app/.data
+volumes:
+  public-data:

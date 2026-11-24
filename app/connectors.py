@@ -5,6 +5,7 @@ import json
 import re
 import os
 import ssl
+from contextlib import asynccontextmanager
 from urllib.parse import quote, unquote
 
 import httpx
@@ -25,6 +26,7 @@ SECRET_KEYS = {"token", "api_key", "password", "authorization", "access_token", 
 def scrub(value, config):
     secrets = [v for section in config.values() if isinstance(section, dict)
                for k, v in section.items() if k in SECRET_KEYS and isinstance(v, str) and v]
+    secrets.extend(config.get("_vault_secrets", []))
 
     def clean(item):
         if isinstance(item, dict):
@@ -53,7 +55,36 @@ def scrub(value, config):
 class Services:
     def __init__(self, config, transport=None):
         self.config = config
+        self.public_policy = None
+        if config.get("_public_showcase") or os.environ.get("AIMATE_PUBLIC_SHOWCASE") == "1":
+            from app.public_showcase import PublicPolicy
+            self.public_policy = PublicPolicy()
+            self.public_policy.validate(config)
         self.transport = transport
+        self._reuse = False
+        self._clients = {}
+        self._tls = None
+
+    def enable_reuse(self):
+        self._reuse = True
+
+    @asynccontextmanager
+    async def http_client(self, service, **kwargs):
+        if self._tls is None:
+            self._tls = ssl.create_default_context() if os.name == "nt" else True
+        kwargs["verify"] = self._tls
+        if not self._reuse:
+            async with httpx.AsyncClient(**kwargs) as client:
+                yield client
+            return
+        if service not in self._clients:
+            self._clients[service] = httpx.AsyncClient(**kwargs)
+        yield self._clients[service]
+
+    async def aclose(self):
+        clients, self._clients = list(self._clients.values()), {}
+        for client in clients:
+            await client.aclose()
 
     def section(self, service):
         if service not in OPERATIONS:
@@ -100,9 +131,8 @@ class Services:
             headers["Authorization"] = "Bearer " + cfg["token"]
         else:
             auth = httpx.BasicAuth(cfg.get("username", ""), cfg["token"])
-        async with httpx.AsyncClient(timeout=30, follow_redirects=False, transport=self.transport,
-                                     headers=headers, auth=auth,
-                                     verify=ssl.create_default_context() if os.name == "nt" else True) as client:
+        async with self.http_client(service, timeout=30, follow_redirects=False, transport=self.transport,
+                                    headers=headers, auth=auth) as client:
             if service == "jenkins" and method != "GET":
                 crumb = await client.get(base + "/crumbIssuer/api/json")
                 if crumb.is_success:
@@ -153,6 +183,8 @@ class Services:
                 location = r.headers.get("location")
                 if location:
                     result = {"response": result, "location": location}
+            if self.public_policy:
+                self.public_policy.text(result)
             return scrub(result, self.config)
 
     async def read(self, service, path, params=None):

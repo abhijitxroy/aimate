@@ -1,0 +1,212 @@
+[
+  {
+    "id": "audit-45598b108d57b500ed062e06",
+    "title": "P0 · AI · WIP — Auto routing for debug/analysis, manual override; always-Haiku complaint\n\nAI classifier, Auto/Standard/Analysis, usage accounting and mocked routing tests exist. Bedrock now shows Connected from a successful AI answer. Real Auto switching on a debugging request still needs verification. Auto falls back to Standard with a notice if classification fails or Analysis is unset/same.",
+    "completed": false
+  },
+  {
+    "id": "audit-05866576b3a7fce2e371fb8a",
+    "title": "P0 · Analysis · WIP — Comprehensive large-file/PR reviews\n\nAPI paging and Jenkins progressive logs exist. GitHub decoded files cap at 24,000 characters; no line-range file reader or complete review coverage tracking.",
+    "completed": false
+  },
+  {
+    "id": "audit-bc575b0a1ce95434f2f6e7c0",
+    "title": "P0 · Memory · WIP — Restart continuity, carry previous knowledge, global project context, hold context until asked\n\nPersisted turns, FTS search, recall tools and explicit continuation references exist. Active history is limited to ten turns / roughly 140,000 serialized characters. No durable project summaries or complete indefinite context.",
+    "completed": false
+  },
+  {
+    "id": "audit-d39c9efd2acfdd5f751e9452",
+    "title": "P0 · Security · WIP — Data safety for chats, diary, tasks, secrets and configuration\n\nLocal SQLite; configuration/vault values encrypted with Fernet; Windows key protected by DPAPI; encrypted portable backups. Chat text, diary, tasks and search index are not fully encrypted at rest. Workspace development password is a local plain-text file.",
+    "completed": false
+  },
+  {
+    "id": "audit-00d98fdbf7d43c72568dce90",
+    "title": "P0 · Privacy · WIP — Ultra privacy for tokens/passwords\n\nPrivate/session chats, masked fields, redaction and AI opt-in vault entries exist. Full DB encryption and separate vault unlock/auto-lock remain. AI-shared entry values leave the device for the selected model provider.",
+    "completed": false
+  },
+  {
+    "id": "audit-183794f3203014a68fbac474",
+    "title": "P0 · Access · WIP — Further role/access improvements\n\nBackend roles, scoped workspaces, revocation, role updates and OTP exist. Enterprise identity/SSO and project-level shared permissions are additional work.",
+    "completed": false
+  },
+  {
+    "id": "audit-a64983ae13f38e987b979a30",
+    "title": "P0 · UI bug · WIP — To-do Show more not working\n\nToggle handler and multiline expanded CSS exist. Your reported failure has not been independently reproduced or verified fixed in this audit; no dedicated browser regression test.",
+    "completed": false
+  },
+  {
+    "id": "audit-7b9c4f0f48a5098accc1cb58",
+    "title": "P1 · Speed · WIP — Performance improvement\n\nPer-turn HTTP reuse, identical-read deduplication, SDK initialization off event loop and storage indexes exist. No complete latency benchmark, bounded parallel tool reads or production load validation.",
+    "completed": false
+  },
+  {
+    "id": "audit-396aab9dae34f984d0e6feb9",
+    "title": "P1 · Efficiency · WIP — Token optimization\n\nCompact historical tool output, bounded recall, read reuse and routing-token accounting exist. No persistent evidence cache with expiry or durable conversation compaction.",
+    "completed": false
+  },
+  {
+    "id": "audit-687f51deb551f73dfaceb762",
+    "title": "P1 · Usage · WIP — Bill details; day/model usage dashboard\n\nToken ledger, day/model totals, charts/tables, CSV export and editable price estimates exist. Not provider invoices; connection checks and calls without usage reports are excluded. No provider billing reconciliation or budget enforcement.",
+    "completed": false
+  },
+  {
+    "id": "audit-5e0e05d0b59a4c18ec097760",
+    "title": "P1 · Attachments · WIP — Files and pasted screenshots\n\nImage paste/drop/cards, text/code/log files and PDF text extraction exist. Not every file type: binary documents/ZIPs unsupported; no scanned-PDF OCR.",
+    "completed": false
+  },
+  {
+    "id": "audit-18513c40106ee70b7d8176ec",
+    "title": "P1 · Validation · WIP — Attachment size/formats; huge paste becomes attachment\n\nSix attachments / four images; text files up to 1 MB; PDFs up to 4 MB / 80 pages; combined text limit. Frontend image compression and backend validation exist. Huge text is not automatically converted to an attachment.",
+    "completed": false
+  },
+  {
+    "id": "audit-96206ae80f69e941a6d4d0ed",
+    "title": "P1 · Concurrency · WIP — Multiple asks in parallel\n\nBackend concurrent workspace streams have isolation tests. Frontend has one global busy/controller and blocks another ask while running; tool calls are sequential.",
+    "completed": false
+  },
+  {
+    "id": "audit-4e74cf072dc30234a10e3170",
+    "title": "P1 · Code · WIP — Modular code and useful logging\n\nSeparate storage, connectors, routing, memory, access and attachment modules; server logs and audit exist. main.py and app.js remain large; structured tracing/performance telemetry is planned.",
+    "completed": false
+  },
+  {
+    "id": "audit-153cc4e2f6af2319c269b0a8",
+    "title": "P1 · GitHub · WIP — On 404, ask to add repository if appropriate\n\nRepo-add proposal validates access before confirmation; scope/auth errors have hints. No deterministic 404-to-add flow. A 404 can also mean nonexistent or inaccessible data.",
+    "completed": false
+  },
+  {
+    "id": "audit-ac198fd1721c14e5f01a8e84",
+    "title": "P1 · Files · Planned — Validate/extract/search/analyse ZIP\n\nNo ZIP ingestion or extraction-safety implementation found.",
+    "completed": false
+  },
+  {
+    "id": "audit-4043d434188aa3d55f52b626",
+    "title": "P1 · Maintenance · Planned — Cleanup unused files with dependency checks\n\nChat/record deletion exists; no dependency-aware file cleanup workflow.",
+    "completed": false
+  },
+  {
+    "id": "audit-6196efe12411494866e879aa",
+    "title": "P2 · Access · Done — Developer/end-user, view and reviewed execute modes\n\nBackend read/write rules, administrator-only actions/config controls, confirmed writes and account isolation tests. Personal notes/connection settings remain editable in read-only service roles.",
+    "completed": true
+  },
+  {
+    "id": "audit-e2b4c9deae0744ea508762d2",
+    "title": "P2 · Access · Done — Admin/read-write-config; developer/read-write; viewer/read\n\nFour roles: admin, developer, viewer, reviewer. External service writes are restricted by role plus the global write switch and confirmation.",
+    "completed": true
+  },
+  {
+    "id": "audit-c80fb386603cd408e2a7f03f",
+    "title": "P2 · Login · Done — Who are you? Reviewer / End-user choices\n\nRole picker, issued access credentials and secondary authenticator flow; production requires OTP, local dev bypass is loopback-only.",
+    "completed": true
+  },
+  {
+    "id": "audit-05edd4f8bda31d67dc9dae0d",
+    "title": "P2 · Vault · Done — Password vault, optional AI access\n\nEncrypted entries, per-entry AI sharing off by default, admin UI and redacted stored outputs; tested.",
+    "completed": true
+  },
+  {
+    "id": "audit-9805913ac85bb249e7e586f6",
+    "title": "P2 · Organization · Done — Single chats, projects/modules/groups/subgroups\n\nSeparate conversations and nested organization; creation/move/validation tests. Cross-chat reuse is Partial above.",
+    "completed": true
+  },
+  {
+    "id": "audit-65459d8b8560ea25fc022fc4",
+    "title": "P2 · Organization · Done — Key/value personal records, pin/export/move chats\n\nMy Diary records, pinning, Markdown/text export, copying and chat movement.",
+    "completed": true
+  },
+  {
+    "id": "audit-36885d67e017f220d881268e",
+    "title": "P2 · Organization · Done — Move whole project/group with its contents\n\nSubtree move preserves chats, diary records and children within a workspace. Cross-account workspace transfer is not provided.",
+    "completed": true
+  },
+  {
+    "id": "audit-c9daaa1530d9a0cf50117908",
+    "title": "P2 · Validation · Done — Maximum subgroup depth\n\nEight levels; cycle, duplicate-name and move-depth validation with tests.",
+    "completed": true
+  },
+  {
+    "id": "audit-714b4e8edbd139df5ed212df",
+    "title": "P2 · Diary · Done — Separate visual key/value view\n\nMy Diary cards/view and editor; persisted scoped records.",
+    "completed": true
+  },
+  {
+    "id": "audit-da4cfa720b2271a1612e8d5a",
+    "title": "P2 · Tasks · Done — To-do section\n\nAdd/edit/delete/complete/filter/copy; multiline text preserved. Expansion issue is separately Partial.",
+    "completed": true
+  },
+  {
+    "id": "audit-659cd2f9a186bc87da34e5dd",
+    "title": "P2 · Identity · Done — At Your Service branding\n\nLogin and sidebar branding use the requested text.",
+    "completed": true
+  },
+  {
+    "id": "audit-6b9c94c6bd0fc9f17b605d3f",
+    "title": "P2 · Usage UI · Done — Burning-token emoji\n\nCompact Auto/token badge; expanded model/token details.",
+    "completed": true
+  },
+  {
+    "id": "audit-8ea5726c1289db2055644eee",
+    "title": "P2 · Feedback · Done — Positive/negative, useful feedback form\n\nRating, category, comment and restricted feedback log; saved-answer validation.",
+    "completed": true
+  },
+  {
+    "id": "audit-5d9e220b5f14cf29f09b8021",
+    "title": "P2 · Conversations · Done — First-message title and rename\n\nAutomatic first-message title; persistent rename; edits preserve chat identity/group.",
+    "completed": true
+  },
+  {
+    "id": "audit-fe05da1517aaa5019ba734bc",
+    "title": "P2 · Icons · Done — Topic emoji, default/custom emoji and monogram\n\nTopic defaults, searchable presets, pasted custom emoji and 1–3 character monogram.",
+    "completed": true
+  },
+  {
+    "id": "audit-d9515a8b3a63d5b773e25636",
+    "title": "P2 · Conversations · Done — Archive chats\n\nArchive/unarchive, archived view and persistence tests.",
+    "completed": true
+  },
+  {
+    "id": "audit-35b2e8792357ba4a7593bb25",
+    "title": "P2 · Administration · Done — Rename/restrict Action history\n\nAudit log inside Admin settings; visible to administrator/developer, denied to viewer/reviewer.",
+    "completed": true
+  },
+  {
+    "id": "audit-df53946c96c11e3320f73c57",
+    "title": "P2 · Rendering · Done — Colourful code/JSON/YAML\n\nTheme-aware syntax highlighting and exact-text code copy; 9 rendering tests passed.",
+    "completed": true
+  },
+  {
+    "id": "audit-dbc468a14b601d5d9240aeb7",
+    "title": "P2 · Help · Done — FAQ\n\nBasic troubleshooting FAQ, quick guide and shortcuts exist. Larger searchable knowledge/support content would be additional scope.",
+    "completed": true
+  },
+  {
+    "id": "audit-ddca440dc8f3fdaf8958e8b9",
+    "title": "P3 · Prompting · Planned — Reusable favourite words/prompts\n\nMy Diary can store text manually; no dedicated prompt-snippet library/insertion UI.",
+    "completed": false
+  },
+  {
+    "id": "audit-b0f4e50a4f5a4b5d8e355c8f",
+    "title": "P3 · Analysis · WIP — Analysis templates and skills\n\nResponse format guidance and structured Markdown/components exist. No reusable analysis-template/skill registry or selected template workflow.",
+    "completed": false
+  },
+  {
+    "id": "audit-3a691f7d991e8d3df4a90393",
+    "title": "P3 · Tasks · Planned — To-do type column\n\nCurrent task fields: ID, title, completed, created, updated. No type/category column.",
+    "completed": false
+  },
+  {
+    "id": "audit-b84efb70055d7ca73bed78f5",
+    "title": "P3 · Icons · Planned — Change monogram colour\n\nColour follows theme/CSS; no per-icon colour picker/storage.",
+    "completed": false
+  },
+  {
+    "id": "audit-e3cb16cd4ed8e5d7808fcf7d",
+    "title": "P3 · Composer · Planned — B/U/I, colour, indentation, tables, panels, etc.\n\nComposer is a plain textarea; rendered answers support Markdown. No rich-text authoring toolbar.",
+    "completed": false
+  },
+  {
+    "id": "audit-0913c4c7266e5c1236b1e71e",
+    "title": "P3 · Service · Planned — Another level of user assistance\n\nRecommendations below; no dedicated new service layer implemented.",
+    "completed": false
+  }
+]

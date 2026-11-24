@@ -1,3 +1,4 @@
+param([switch]$Secure)
 $ErrorActionPreference = "Stop"
 Set-Location -LiteralPath $PSScriptRoot
 $pythonPath = Join-Path $PSScriptRoot ".venv\Scripts\python.exe"
@@ -8,7 +9,10 @@ Write-Host "AiMate: http://127.0.0.1:8765"
 Write-Host "Local app password: .data/access-password.txt (created on first start), or APP_PASSWORD if you set it."
 $previousHttpsProxy = $env:HTTPS_PROXY
 $previousNoProxy = $env:NO_PROXY
+$previousDevLogin = $env:AIMATE_DEV_LOGIN
 try {
+    if ($Secure) { $env:AIMATE_DEV_LOGIN = "0" }
+    else { $env:AIMATE_DEV_LOGIN = "1"; Write-Host "Local dev mode: login bypass enabled. Use .\run.ps1 -Secure for authenticator/password sign-in." }
     # HTTPX uses proxy environment variables, not Windows' automatic proxy settings.
     if (-not $env:HTTPS_PROXY -and -not $env:ALL_PROXY) {
         $githubUri = [uri]"https://api.github.com"
@@ -18,7 +22,13 @@ try {
             $env:HTTPS_PROXY = $systemProxy.AbsoluteUri
             # Preserve the system PAC's direct route for configured intranet services.
             $directHosts = @("127.0.0.1", "localhost")
-            $connectionUrls = & $pythonPath -c 'import json; from app.store import Store; print(json.dumps([s.get("url", "") for s in Store().config().values() if isinstance(s, dict)]))'
+            $connectionUrls = @'
+import json
+from app.store import Store
+store = Store()
+print(json.dumps([source.get("url", "") for source in store.config().values() if isinstance(source, dict)]))
+store.db.close()
+'@ | & $pythonPath -
             if ($LASTEXITCODE -ne 0) { throw "Cannot read saved connection URLs for proxy routing." }
             foreach ($connectionUrl in ($connectionUrls | ConvertFrom-Json)) {
                 if (-not $connectionUrl) { continue }
@@ -36,4 +46,5 @@ try {
 } finally {
     $env:HTTPS_PROXY = $previousHttpsProxy
     $env:NO_PROXY = $previousNoProxy
+    $env:AIMATE_DEV_LOGIN = $previousDevLogin
 }

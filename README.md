@@ -1,8 +1,10 @@
 # AiMate
 
+[Next work on the new laptop](TODO.md) — phased upgrades and verification checklist.
+
 [![Tests](https://github.com/abhijitxroy/aimate/actions/workflows/tests.yml/badge.svg)](https://github.com/abhijitxroy/aimate/actions/workflows/tests.yml)
 
-A standalone, local, single-operator app for asking questions across your GitHub
+A standalone, local workspace for asking questions across your GitHub
 repositories, Jira projects and Jenkins jobs. Built from scratch with FastAPI,
 ChatGPT Responses or Claude tool calling, SQLite and plain browser JavaScript.
 
@@ -12,6 +14,9 @@ The public showcase runs in your browser with fictional data and scripted
 answers. You can inspect evidence, confirm or cancel sample changes, and reset
 the demo. It requires no account, tokens or AI subscription.
 The live AI integration is available in the local Python application below.
+The office-laptop workspace retains authorized work connections. A separately
+hosted public workspace uses a fresh data store and approved personal sources;
+it never inherits the office workspace's credentials or conversations.
 
 **[Set up real GitHub questions →](docs/live-setup.md)** — add AI access and one
 repository. Public GitHub repositories can be read without a token.
@@ -21,12 +26,37 @@ in Settings, review permission on OpenAI's page, then select an available model.
 Plan eligibility and a real answer must be verified with your own account.
 No ChatGPT password or API key is entered in AiMate for this flow.
 
+## App and backend options
+
+Python/FastAPI remains the default. Additional options are planned alongside it;
+the goal is one interface and one tested feature contract across supported backends.
+
+| Option | Status | Intended use |
+|---|---|---|
+| Browser + Python/FastAPI | Available locally | Current full workspace |
+| GitHub Pages | Available interface/demo | Public interface; live features require a connected backend |
+| Tauri desktop + bundled backend | Planned | Standalone laptop app |
+| VS Code extension + backend | Planned | Same workspace with selected-code/editor context |
+| Node.js + Fastify | Planned alternative | Local, desktop or server backend |
+| Cloudflare Workers + TypeScript/Hono | Planned alternative | Public serverless backend |
+| Supabase Edge Functions | Planned alternative | Public functions with managed data/auth services |
+| Hosted Python/FastAPI | Deployment option | Same backend on a reachable server |
+
+Choose an option based on required capabilities, infrastructure and network access.
+An alternative becomes supported after it passes the shared feature tests.
+Restricted runtimes can use an approved companion service for required processing.
+Intel access still requires authorized network connectivity. Free hosting and AI
+usage have separate limits and costs.
+
+See [backend options and parity requirements](docs/backend-options.md) and
+[the implementation to-do](TODO.md).
+
 ## Try without credentials
 
 After installing dependencies using the Windows setup below, run:
 
 ```powershell
-.\run-demo.ps1
+.\run_aimate_demo.ps1
 ```
 
 Open http://127.0.0.1:8765 and click **Try the offline demo**. No AI account,
@@ -52,7 +82,7 @@ Demo state uses `.demo-data/`, separate from live credentials in `.data/`.
 Comments, created issues and queued builds live in memory and reset when the
 process restarts. Conversation and audit history persist; restarting invalidates
 old pending proposals. Demo settings are fixed and reject credential changes.
-Stop the server and run `.\run.ps1` for live mode.
+Stop the server and run `.\run_aimate.ps1` for live mode.
 
 ![Offline demo with fictional build evidence](docs/assets/demo-evidence.png)
 
@@ -74,7 +104,7 @@ together behind HTTPS using [the live setup](docs/live-setup.md). A Pages
 landing page can then link to that hosted app. Keep service and AI tokens in the
 backend; never embed them in a public HTML file.
 
-`run.ps1` is an optional Windows development launcher: it selects the repository
+`run_aimate.ps1` is an optional Windows development launcher: it selects the repository
 folder and starts Uvicorn using `.venv` on loopback port 8765. Keeping it at the
 root makes local setup simple. Production can use its own container/server
 startup command.
@@ -101,12 +131,25 @@ git clone https://github.com/abhijitxroy/aimate.git
 cd aimate
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\run.ps1
+.\run_aimate.ps1
 ```
 
 Open http://127.0.0.1:8765. Sign in with the password in
 `.data/access-password.txt`, generated at the first startup. Alternatively, set
 `APP_PASSWORD` to a password of at least 12 characters before startup.
+
+For authenticator login, open **Settings → Admin → Set up OTP**. Verify your
+development password, scan the QR code with an authenticator app, and confirm a
+six-digit code. Save the eight one-use recovery codes privately. OTP is enabled
+only after confirmation; enrollment expires after ten minutes.
+
+Once enabled, password login is disabled. For local development only, set
+`AIMATE_DEV_LOGIN=1` before starting the server to allow a password login from
+loopback. This override never works with `APP_PUBLIC_URL`. OTP seeds are
+encrypted separately from project settings, and recovery codes are hashed.
+Accepted authenticator codes cannot be reused, including after a restart.
+This is single-workspace OTP login, not a multi-user account system or two-factor
+login. The algorithm follows [RFC 6238](https://www.rfc-editor.org/rfc/rfc6238).
 If script execution is restricted, launch directly:
 
 ```powershell
@@ -149,6 +192,15 @@ endpoint. It does not invoke any model or verify inference permission; use
 **Save & test AI** for that. Catalog listing requires its own AWS permissions.
 Runtime discovery uses ListFoundationModels/ListInferenceProfiles; Mantle uses
 its separate `/v1/models` API. No automatic model fallback is enabled.
+
+Use **Search chats** (or **Ctrl+K**) to find saved titles and messages across projects
+and archived chats. Search runs locally without AI calls or token charges. Open a
+result to jump to the matching turn. Expand the sidebar with its top arrow button,
+or drag its right edge; the width is remembered in this browser. **Change icon**
+supports emoji name search, pasted emoji, or a 1–3 character monogram.
+
+**Tools → Appearance** switches between the default Navy theme and Beige light.
+The choice is saved in this browser and also applies to the sign-in screen.
 
 The conversation menu (`⋯`) offers Rename, Copy chat and Delete. Copy includes the
 user messages, AiMate replies, citations and reviewed-action statuses as Markdown,
@@ -271,14 +323,52 @@ The app has a workspace password, HTTP-only session cookie, same-origin checks
 and CSRF protection. Local startup binds to loopback. Private HTTPS hosting uses
 `APP_PUBLIC_URL`, secure cookies and a required `APP_PASSWORD`; see
 [live setup](docs/live-setup.md). For a shared multi-user deployment, add real
-user accounts/SSO, per-user credentials and scopes, persistent sessions and
+account registration/SSO, persistent sessions and
 production rate limiting.
 
-Tokens are encrypted with a locally generated key. Both key and database are
-under `.data/`; restrict access to that directory and your OS account. This
-protects against accidental plaintext disclosure, not an attacker who can read
-both files. Conversations and action previews are stored in SQLite with
-best-effort secret redaction; do not paste credentials into chat.
+Tokens, vault values and image previews are encrypted. On Windows, the encryption
+key is protected with current-user DPAPI; existing plaintext key files migrate
+only after verification. Backups need the original Windows account/device.
+Other platforms use a local key file; protect `.data/` and your OS account.
+This does not protect against malware running as you. Saved conversations and
+action previews use best-effort secret redaction; do not paste credentials into chat.
+
+The Windows launcher defaults to local dev mode, opening the workspace without
+a login prompt. Authenticator sign-in stays available as a secondary option. Run
+`.\run_aimate.ps1 -Secure` to require the configured authenticator OTP or workspace
+password. Direct Uvicorn startup requires `AIMATE_DEV_LOGIN=1` to enable bypass;
+it is refused for hosted deployments, `AIMATE_ENV=production` and non-loopback clients.
+Production refuses startup without an enrolled owner authenticator; password
+login is disabled there. Every invited user needs their own authenticator too.
+
+Administrators in secure mode sign in with the workspace password or a configured
+authenticator OTP. Under **Connections & settings → Admin → Workspace access**, issue revocable,
+30-day access codes for Developer, End-user or Reviewer. Developers can prepare
+and confirm enabled changes; End-users and Reviewers can read and ask questions.
+Share the user's one-time authenticator setup alongside their invitation code.
+Admin can change a user's role or revoke access; existing sessions recheck the
+assignment on every request. Deletes, merges and build aborts stay Admin-only.
+Every invited user has a separate personal workspace: their own encrypted service
+and AI credentials, ChatGPT accounts, chats, search/recall, diary, tasks, groups,
+connection checks and usage ledger. Users can edit their personal connections
+and records; only Admin controls roles, security and the global execution switch.
+Roles and workspace isolation are enforced on the server. A Viewer or Reviewer
+cannot execute external changes even with a token that permits writes.
+
+Existing `.data/` content stays with the owner. Invited users start with empty
+workspaces under `.data/users/<invitation-id>/`; owner's credentials and history
+are never copied. Role changes retain the user's workspace; revoking access
+blocks subsequent requests but retains their data for backup. Issuing a new
+invitation creates a new workspace. Back up the entire data directory. Application
+isolation does not prevent the machine administrator from accessing local files.
+Self-service registration, account recovery and shared chat permissions are not
+implemented.
+
+**Private vault** stores named secrets with AI access off by default. Enabling AI
+access for an entry explicitly permits sending its value to the selected provider.
+The vault tool is administrator-only; answers and saved transcripts redact values.
+Feedback on saved answers stays local and is visible in the administrator/developer
+panel alongside the **Audit log**.
 
 Write failures are conservatively marked **unknown**, because a network timeout
 can happen after the target accepted the operation. Inspect the target before
@@ -297,6 +387,25 @@ the entire transcript. AiMate can search relevant past user/assistant messages
 and saved Knowledge key/value records. Internal tool bodies are excluded from
 cross-chat recall. Recalled facts may be stale, so current status needs a fresh
 service read. Knowledge records are user-managed reference data, not a password vault.
+Knowledge opens in a searchable card view with copy and edit controls; use
+Add / edit to manage records. To-do is a separate local task list with editing,
+completion, deletion and Open / Completed / All views. Tasks persist across
+restarts and are independent of chat history.
+
+**Private** in the composer starts a session-only chat: no transcript, search index
+or image preview is saved to disk. Signing out or restarting clears it. Private
+chats cannot prepare changes or recall other chats. Prompts and attachments still
+go to your selected AI provider; token counts remain in the usage ledger.
+
+The paperclip and clipboard paste accept images as removable preview cards
+(PNG, JPEG, WebP and GIF, first frame). Images are resized before sending; up to
+four per question. PDFs up to 4 MB / 80 pages use selectable text; scanned PDFs
+need screenshots. Text/code/log files allow 1 MB each with a combined 28,000-character
+limit. Original image bytes are not replayed on later questions.
+
+Within an answer, identical source reads are reused and HTTP connections pooled.
+Repeated tool evidence uses a compact reference. Each new question reads fresh
+sources. Chat search filters matching indexed text before decoding transcripts.
 
 **Usage & billing** tracks reported chat and Auto-routing requests by local day
 and model, including cache tokens when reported. Its independent ledger survives
@@ -328,3 +437,7 @@ If dependencies are unavailable, the input/scope checks can run independently:
 API references: [ChatGPT local OAuth](https://developers.openai.com/siwc/token-sharing-open-source),
 [Anthropic Python SDK](https://github.com/anthropics/anthropic-sdk-python),
 [Jira Cloud enhanced JQL search](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-search/).
+
+## Code and conversation updates
+
+Code, JSON and YAML use local syntax colors in every theme. See [formatting examples](docs/syntax-highlighting.md). Editing resends within the same chat. Group settings can move a whole project, including its chats and subgroups.

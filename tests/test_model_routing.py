@@ -73,6 +73,7 @@ class RoutingTests(unittest.TestCase):
             async def create(self, **kwargs):
                 self.calls.append(("router", kwargs))
                 self_assert.assertNotIn("tools", kwargs)
+                self_assert.assertEqual(kwargs["max_tokens"], 128)
                 self_assert.assertNotIn("private-token", json.dumps(kwargs))
                 return SimpleNamespace(content=[SimpleNamespace(type="text", text='{"route":"analysis"}')],
                                        usage=SimpleNamespace(input_tokens=12, output_tokens=4))

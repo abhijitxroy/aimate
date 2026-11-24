@@ -1,10 +1,11 @@
 # Real GitHub questions
 
-1. Run `.\run.ps1` and open `http://127.0.0.1:8765`.
+1. Run `.\run_aimate.ps1` and open `http://127.0.0.1:8765`.
    The Windows launcher detects the system HTTPS proxy when no explicit proxy
    environment variable is set. Direct server commands need their own proxy
    configuration where required.
-2. Sign in using `.data/access-password.txt`.
+2. Local development opens directly. Use `.\run_aimate.ps1 -Secure` for authenticator
+   sign-in (or `.data/access-password.txt` before enrolling an authenticator).
 3. Open **Connections & settings**. Choose **ChatGPT account** and
    **Continue with ChatGPT**. Sign in on OpenAI's page and review plan permission.
    After returning, choose an available model. Alternatively, configure
@@ -78,10 +79,16 @@ demo until a real HTTPS deployment exists.
 1. Choose a server with Docker and an HTTPS reverse proxy.
 2. Copy `.env.example` to `.env`. Set a random `APP_PASSWORD` and the exact
    `APP_PUBLIC_URL`, such as `https://aimate.example.com`.
-3. Run `docker compose -f compose.live.yaml up -d --build`.
+3. Enroll an authenticator on the deployment machine before enabling production:
+   `docker compose -f compose.live.yaml -f compose.enroll.yaml up -d --build`.
+   Open the loopback address, sign in with `APP_PASSWORD`, then choose
+   **Connections & settings → Admin → Set up OTP**. Keep recovery codes privately.
+   Stop enrollment mode with
+   `docker compose -f compose.live.yaml -f compose.enroll.yaml down`
+   (keep the volume), then run `docker compose -f compose.live.yaml up -d --build`.
 4. Proxy that HTTPS origin to `127.0.0.1:8765`. Keep the upstream port private.
    Disable response buffering for `/api/chat` and allow long streamed requests.
-5. Sign in and add credentials in the app. `/healthz` reports process health;
+5. Sign in with your authenticator and add credentials in the app. `/healthz` reports process health;
    **Check repository access** checks the upstream service.
 
 Hosted mode enables secure session cookies, checks the configured origin, and
@@ -90,11 +97,61 @@ sessions, rate limits and conversation locks are process-local. Restarting
 requires sign-in again. The `live-data` volume holds the encrypted settings,
 encryption key, conversation history and audit records; protect and back it up.
 
-This deployment is for one owner. Anyone given the workspace password shares
-that owner's connections and history. A public multi-user product still needs
-per-user accounts, credential isolation and durable session/rate-limit storage.
+Production always disables development bypass and password sign-in, even if
+`AIMATE_DEV_LOGIN=1` is accidentally set. Missing owner OTP prevents startup.
+Admin assigns named Developer, Viewer or Reviewer access; each invited user has
+their own encrypted authenticator seed and a revocable, expiring access code.
+User role changes and revocation apply on the next request. Each invitation has
+its own encrypted connection settings and separate chats, records and usage.
+Users add their own AI and service credentials; owner credentials are not shared.
+Admin controls whether Developers can execute reviewed external changes.
+The original data directory remains the owner's workspace; personal workspaces
+live in `users/<invitation-id>/` within the same backed-up data volume.
+A public multi-user product still needs self-service account recovery, durable
+sessions/rate-limit storage and an operational deployment review.
 
 No remote deployment has been provisioned by these configuration files.
+
+## Public showcase with personal data
+
+Keep GitHub Pages as the public landing/demo page and link to a separately hosted
+AiMate backend. Pages cannot run the Python server.
+
+Use `compose.live.yaml` **with** `compose.public.yaml`. This uses a new
+`public-data` volume, never the existing local or private deployment data.
+For initial enrollment:
+
+```powershell
+docker compose -f compose.live.yaml -f compose.public.yaml -f compose.enroll.yaml up -d --build
+```
+
+Enroll a new owner authenticator locally on the deployment machine, stop enrollment
+without deleting the volume, then start production:
+
+```powershell
+docker compose -f compose.live.yaml -f compose.public.yaml -f compose.enroll.yaml down
+docker compose -f compose.live.yaml -f compose.public.yaml up -d --build
+```
+
+The backend enforces approved personal GitHub owners (`abhijitxroy` by default)
+and rejects Intel GitHub organizations, Intel service domains, and known Intel
+resource links in source responses and new chats/records. Jira and Jenkins
+are disabled unless the operator explicitly approves non-Intel hosts through
+`AIMATE_PUBLIC_JIRA_HOSTS` / `AIMATE_PUBLIC_JENKINS_HOSTS`.
+Personal AWS credentials are required; server IAM fallback is disabled.
+Repository additions from chat obey the same policy before any access check.
+
+Never upload or copy local `.data`, credentials, OTP seeds, keys, backups or chat
+exports. Public mode refuses an existing unmarked data directory. Add fresh
+personal credentials in the public app. Source filtering is not comprehensive
+content classification: it cannot identify every corporate detail pasted as
+plain text or embedded in an image/PDF. Only submit non-corporate material.
+
+On your office laptop, keep using the local app at `http://127.0.0.1:8765`
+without `AIMATE_PUBLIC_SHOWCASE=1`. Its authorized Intel sources continue to
+work through your office network. The public site's **Open local AiMate** link
+opens that separate running application; it does not transfer local credentials
+or data to the website. Device location never disables the public backend policy.
 
 ## GitHub + Jira + Claude through Bedrock
 
@@ -130,6 +187,6 @@ References: [AWS bearer-key permissions](https://docs.aws.amazon.com/bedrock/lat
 
 Jira Simple setup needs only the site URL and a Data Center PAT. Save & connect verifies the account and discovers visible project keys and names. The assistant can access projects/issues permitted by that account; Jira permissions still apply. Advanced setup supports Cloud email + API token and optional selected-project restrictions. Restrictions use keys (for example ONEAPICI), not display names. Existing API configurations without an access setting remain restricted to their project list.
 
-On Windows, service connections validate TLS against the Windows certificate store. The launcher preserves direct routes for saved intranet URLs while using the Windows proxy for external sites. Restart run.ps1 after adding a new intranet host so its proxy route is refreshed.
+On Windows, service connections validate TLS against the Windows certificate store. The launcher preserves direct routes for saved intranet URLs while using the Windows proxy for external sites. Restart run_aimate.ps1 after adding a new intranet host so its proxy route is refreshed.
 
 Jenkins Simple setup stores the controller URL and Jenkins username once under Controller & account; only the API token needs replacing. Local setup suggests the current Windows username (confirm it matches your Jenkins account), and JENKINS_URL can provide a default controller. Job names are optional: Simple mode discovers visible root jobs/folders and can read nested jobs/builds through account permissions. Advanced can restrict access to selected job names. Connection checks never trigger or abort a build.

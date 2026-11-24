@@ -100,7 +100,8 @@ class DemoTests(unittest.TestCase):
     def test_demo_login_never_available_in_live_mode(self):
         live = create_app(self.store, demo=False)
         with TestClient(live) as client:
-            self.assertEqual(client.get("/api/mode").json(), {"demo": False, "hosted": False})
+            self.assertEqual(client.get("/api/mode").json(), {
+                "demo": False, "hosted": False, "otp_enabled": False, "environment":"development", "dev_login": False})
             self.assertEqual(client.post("/api/demo/login").status_code, 404)
             self.assertEqual(client.get("/api/state").status_code, 401)
 
