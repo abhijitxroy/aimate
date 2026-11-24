@@ -101,6 +101,27 @@ class BrowserRegressionTests(unittest.TestCase):
         self.expect(self.page.locator("#messages .attachment-card")).to_contain_text("Pasted text.txt")
         self.expect(self.page.locator("#activity")).to_have_text("Answer complete")
 
+    def test_parallel_chats_keep_answers_and_stop_is_scoped_to_visible_chat(self):
+        self.page.locator("#newChat").click()
+        self.page.locator("#question").fill("Parallel first")
+        self.page.locator("#send").click()
+        self.expect(self.page.locator("#activity")).to_have_text("Thinking…")
+        first=self.page.evaluate("cid")
+        self.page.locator("#newChat").click()
+        self.page.locator("#question").fill("Parallel second")
+        self.page.locator("#send").click()
+        self.page.wait_for_function("window.AiMateRuns.size() === 2")
+        second=self.page.evaluate("cid")
+        self.assertNotEqual(first,second)
+        self.page.evaluate("id => openConversation(id)",first)
+        self.page.locator("#stop").click()
+        self.expect(self.page.locator("#activity")).to_contain_text("Stopped")
+        self.page.evaluate("id => openConversation(id)",second)
+        self.expect(self.page.locator("#messages")).to_contain_text("Reply: Parallel second")
+        self.expect(self.page.locator("#messages")).not_to_contain_text("Reply: Parallel first")
+        self.expect(self.page.locator("#activity")).to_have_text("Answer complete")
+        self.assertEqual(self.page.evaluate("window.AiMateRuns.size()"),0)
+
     def test_todo_expansion_preserves_text_and_visible_controls(self):
         self.page.locator("#sidebarTools").evaluate("(el) => { el.open = true; }")
         self.page.locator("#openTodos").click()

@@ -2,6 +2,14 @@ const $ = selector => document.querySelector(selector);
 let csrf = "", config = {}, cid = null, controller = null, busy = false;
 let demo = false;
 const actionStates = new Map();
+const chatRuns = window.AiMateRuns;
+function syncChatControls() {
+  const run = chatRuns.get(cid);
+  busy = Boolean(run); controller = run?.controller || null;
+  $("#send").disabled = busy; $("#modelMode").disabled = busy; $("#stop").hidden = !busy;
+  document.querySelectorAll("[data-edit-message]").forEach(button => { button.disabled = busy; });
+}
+function navigationBlocked() { return busy && !chatRuns.get(cid); }
 let initializingChat = null, openingChat = null, restoringChat = null, queuedAsk = false, navigationVersion = 0;
 const pagesPreview = Boolean(window.AiMatePagesPreview);
 let access = {role:"admin",configure:true,write:false,manage_records:true,audit:true};
@@ -163,7 +171,7 @@ $("#historySearchInput").oninput = () => {
         const excerpt = element("p"); excerpt.append(highlightHistoryText(result.snippet, query));
         button.append(title, element("small", "", meta), excerpt);
         button.onclick = async () => {
-          if (busy) { $("#historySearchStatus").textContent = "Wait for the current reply or stop it before opening another chat."; return; }
+          if (navigationBlocked()) return;
           try {
             await openConversation(result.id, result.title);
             $("#historySearchDialog").close();
@@ -444,7 +452,7 @@ async function refreshState() {
     const mobileButton = conversationButton(thread);
     mobileButton.title = thread.group_id ? groupPath(thread.group_id) : "Standalone chat";
     mobileButton.onclick = () => {
-      if (busy) return;
+      if (navigationBlocked()) return;
       $("#menuDialog").close();
       openConversation(thread.id, thread.title);
     };
@@ -490,7 +498,7 @@ function renderConversationTree(nav, activeGroup) {
       add.setAttribute("aria-label", "New chat in " + group.name);
       add.onclick = async event => {
         event.preventDefault(); event.stopPropagation();
-        if (busy) return;
+        if (navigationBlocked()) return;
         try {
           const created = await api("/api/conversations", {method:"POST",body:JSON.stringify({group_id:group.id})});
           await openConversation(created.id);
@@ -514,7 +522,7 @@ function renderConversationTree(nav, activeGroup) {
       const row = element("div", "conversation-row" + (thread.id === cid ? " active" : ""));
       const button = conversationButton(thread, thread.id === cid ? "active" : "");
       button.title = thread.title;
-      button.onclick = () => !busy && openConversation(thread.id, thread.title);
+      button.onclick = () => openConversation(thread.id, thread.title);
       const menu = element("button", "conversation-more", "⋯");
       menu.type = "button"; menu.setAttribute("aria-label", "Actions for " + thread.title);
       menu.onclick = event => { event.stopPropagation(); const rect = menu.getBoundingClientRect(); showConversationContext(thread, rect.right, rect.bottom); };
@@ -793,17 +801,32 @@ async function refreshActionCards() {
 }
 
 function openConversation(id, title = "Project conversation", allowBusy = false) {
-  if (busy && !allowBusy) return Promise.resolve();
+  if (navigationBlocked() && !allowBusy) return Promise.resolve();
   const pending = loadConversation(id, title, ++navigationVersion);
   openingChat = pending;
   return pending.finally(() => { if (openingChat === pending) openingChat = null; });
 }
 
 async function loadConversation(id, title, version) {
+  const running = chatRuns.get(id);
+  if (running) {
+    if (version !== navigationVersion) return;
+    cid=id; privateChat=running.private;
+    $("#messages").replaceChildren(...running.nodes);
+    $("#chatTitle").textContent=running.title;
+    $("#welcome").hidden=true;
+    $("#privateToggle").setAttribute("aria-pressed",String(privateChat));
+    $("#activity").textContent=running.activity || "Answering…";
+    if (running.selection) renderModelSelection(running.selection);
+    syncChatControls();
+    try { if (!privateChat) localStorage.setItem("aimate.conversation",id); } catch {}
+    await refreshState(); return;
+  }
   const conversation = await api(`/api/conversations/${id}`);
   if (version !== navigationVersion) return;
   privateChat = Boolean(conversation.private);
   cid = id;
+  syncChatControls();
   archiveView = Boolean(conversationList.find(t => t.id === id)?.archived);
   try {
     if (privateChat) localStorage.removeItem("aimate.conversation");
@@ -865,6 +888,7 @@ async function loadConversation(id, title, version) {
 
 async function ask(question) {
   if (busy || (!question.trim() && !pendingAttachments.length)) return;
+  if (chatRuns.size() >= 3) { $("#activity").textContent="Three chats are answering. Wait for one to finish."; return; }
   const pending = initializingChat || restoringChat || openingChat;
   if (pending) {
     if (queuedAsk) return;
@@ -892,8 +916,10 @@ async function ask(question) {
   $("#send").disabled = true;
   $("#modelMode").disabled = true;
   $("#stop").hidden = false;
-  controller = new AbortController();
-  let bot;
+  const runController = new AbortController();
+  controller = runController;
+  let bot, run;
+  const activity = text => { if (run) run.activity=text; if (!run || cid===run.cid) $("#activity").textContent=text; };
   try {
     if (!cid) {
       cid = (await api("/api/conversations", {method: "POST",body:JSON.stringify({private:privateChat})})).id;
@@ -902,16 +928,18 @@ async function ask(question) {
     const userMessage = addMessage("user", question.trim() || "Read the attached files.");
     if (attachments.length) renderAttachmentCards(userMessage.body, attachments, false);
     bot = addMessage("assistant");
+    run={cid,controller:runController,nodes:[...$("#messages").children],private:privateChat,title:$("#chatTitle").textContent,activity:"Reading your question…"};
+    chatRuns.start(run.cid,run);
     $("#question").value = "";
     pendingAttachments = []; renderPendingAttachments();
-    $("#activity").textContent = "Reading your question…";
+    activity("Reading your question…");
     const response = await api("/api/chat", {
-      method: "POST", body: JSON.stringify({conversation: cid, question: submittedQuestion, model_mode: $("#modelMode").value,
+      method: "POST", body: JSON.stringify({conversation: run.cid, question: submittedQuestion, model_mode: $("#modelMode").value,
         attachments:attachments.filter(file=>file.kind !== "image").map(({name,size})=>({name,size})),
         documents:attachments.filter(file=>file.kind !== "image").map(file=>({name:file.name,size:file.size,text:file.text,kind:file.kind || "text",notice:file.notice || ""})),
         images:attachments.filter(file=>file.kind === "image").map(({name,data})=>({name,data})),
         display_question:question.trim() || "Read the attached files."}),
-      signal: controller.signal, stream: true
+      signal: runController.signal, stream: true
     });
     const reader = response.body.getReader(), decoder = new TextDecoder();
     let buffer = "";
@@ -926,20 +954,21 @@ async function ask(question) {
         if (!line) continue;
         const event = JSON.parse(line.slice(6));
         if (event.event === "model") {
-          renderModelSelection(event);
+          run.selection=event;
+          if (cid===run.cid) renderModelSelection(event);
           updateModelInfo(bot, event);
-          $("#activity").textContent = "Thinking…";
+          activity("Thinking…");
         }
         if (event.event === "text") {
           bot.text += event.delta;
           // Coalesce streamed deltas into one render per animation frame.
           if (!bot.renderFrame) bot.renderFrame = requestAnimationFrame(() => {
-            bot.renderFrame = null; renderAnswer(bot.body, bot.text); scrollMessages();
+            bot.renderFrame = null; renderAnswer(bot.body, bot.text); if(cid===run.cid) scrollMessages();
           });
         }
         if (event.event === "source") addSource(bot, event.url);
         if (event.event === "tool") {
-          $("#activity").textContent = event.name === "propose_action" ? "Preparing a change for review…" : `Reading ${event.input.service}: ${event.input.path}…`;
+          activity(event.name === "propose_action" ? "Preparing a change for review…" : `Reading ${event.input.service || event.name}${event.input.path ? ": "+event.input.path : ""}…`);
           addTool(bot, event.name, event.input);
         }
         if (event.event === "tool_done" && !event.ok) {
@@ -950,23 +979,23 @@ async function ask(question) {
         if (event.event === "done") {
           renderAnswer(bot.body, bot.text);
           if (bot.modelDetails) updateModelInfo(bot, {...bot.modelDetails, usage:event.usage});
-          $("#activity").textContent = "Answer complete";
+          activity("Answer complete");
         }
-        scrollMessages();
+        if(cid===run.cid) scrollMessages();
       }
     }
-    const saved = await api(`/api/conversations/${cid}`);
+    const saved = await api(`/api/conversations/${run.cid}`);
     userMessage.turnId = saved.turns.at(-1)?.id || null;
     bot.turnId = userMessage.turnId;
     await refreshState();
   } catch (error) {
-    $("#activity").textContent = error.name === "AbortError" ? "Stopped. An incomplete answer is not saved." : bot ? "Request failed. See the details above." : error.message;
+    activity(error.name === "AbortError" ? "Stopped. An incomplete answer is not saved." : bot ? "Request failed. See the details above." : error.message);
     if (bot && error.name !== "AbortError") bot.root.append(element("p", "error", error.message));
   } finally {
     if (bot?.renderFrame) cancelAnimationFrame(bot.renderFrame);
     if (bot) renderAnswer(bot.body, bot.text);
-    busy = false; $("#send").disabled = false; $("#modelMode").disabled = false; $("#stop").hidden = true; controller = null;
-    document.querySelectorAll("[data-edit-message]").forEach(button => { button.disabled = false; });
+    if(run) chatRuns.finish(run.cid,run);
+    syncChatControls();
     void syncConnections();
   }
 }
@@ -1518,10 +1547,11 @@ $("#question").onkeydown = event => {
 };
 $("#stop").onclick = () => controller?.abort();
 $("#newChat").onclick = async () => {
-  if (busy) return;
+  if (navigationBlocked()) return;
   navigationVersion++;
   archiveView = false; pendingAttachments = []; renderPendingAttachments();
   cid = null; $("#messages").replaceChildren(); $("#welcome").hidden = false;
+  syncChatControls();
   privateChat = false;$("#privateToggle").setAttribute("aria-pressed","false");
   try { localStorage.removeItem("aimate.conversation"); } catch { /* optional browser persistence */ }
   $("#chatTitle").textContent = "Ask your project"; $("#activity").textContent = "";
@@ -1533,6 +1563,7 @@ $("#archiveView").onclick = async () => {
   await refreshState();
 };
 async function setChatArchived(thread) {
+  if (chatRuns.get(thread.id)) throw new Error("Stop this chat's answer before archiving it.");
   await api(`/api/conversations/${thread.id}`, {method:"PATCH", body:JSON.stringify({archived:!thread.archived})});
   if (!thread.archived && cid === thread.id) {
     cid = null; $("#messages").replaceChildren(); $("#welcome").hidden = false;
@@ -1562,7 +1593,7 @@ async function copyFormatted(markdown) {
   await navigator.clipboard.writeText(markdown);
 }
 function openConversationAction(action, targetId = cid) {
-  if (!targetId || busy) return;
+  if (!targetId || busy || chatRuns.get(targetId)) return;
   $("#chatMenu").open = false;
   conversationAction = action; conversationActionId = targetId;
   const removing = action === "delete";
@@ -2073,9 +2104,10 @@ document.querySelectorAll("[data-menu-action]").forEach(button => {
 });
 $("#sourceBar").onclick = openSettings;
 $("#logout").onclick = async () => {
-  controller?.abort();
+  chatRuns.abortAll();
   await api("/api/logout", {method: "POST"});
   cid = null; csrf = ""; config = {};
+  syncChatControls();
   archiveView = false; pendingAttachments = []; renderPendingAttachments();
   $("#messages").replaceChildren(); $("#welcome").hidden = false;
   $("#workspace").hidden = true; $("#loginScreen").hidden = false;

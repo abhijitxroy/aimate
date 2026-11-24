@@ -83,6 +83,7 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
     if production and not demo and not authenticator.status()["enabled"]:
         raise ValueError("Production requires an enrolled authenticator. Set up OTP locally with the same data directory before starting production.")
     sessions, attempts, chat_limits, chat_locks = {}, {}, {}, {}
+    active_streams = {}
     config_lock = asyncio.Lock()
     connection_locks = {service: asyncio.Lock() for service in SERVICES}
     # A process dying during a write leaves its outcome uncertain; never auto-replay it.
@@ -932,7 +933,11 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
         lock = chat_locks.setdefault(cid, asyncio.Lock())
         if lock.locked():
             raise HTTPException(409, "This conversation is already answering")
+        workspace_id=session.get("grant") or "owner"
+        if active_streams.get(workspace_id,0)>=3:
+            raise HTTPException(429,"Three chats are answering in this workspace. Wait for one to finish.")
         await lock.acquire()
+        active_streams[workspace_id]=active_streams.get(workspace_id,0)+1
         from app.access_lease import lease
         access_check = lease(owner_store, sessions, session)
 
@@ -996,6 +1001,7 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
                         await turn.aclose()
                 finally:
                     lock.release()
+                    active_streams[workspace_id]=max(0,active_streams.get(workspace_id,1)-1)
         return StreamingResponse(events(), media_type="text/event-stream", headers={"X-Accel-Buffering": "no"})
 
     from app.vault_lock import unlocked as vault_unlocked

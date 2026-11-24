@@ -15,6 +15,7 @@
   <script src="./app/static/vendor/highlight.min.js" defer></script>
   <script src="./app/static/vendor/highlight-powershell.min.js" defer></script>
   <script src="./app/static/markdown.js" defer></script>
+  <script src="./app/static/chat_runs.js" defer></script>
   <script src="./app/static/app.js" defer></script>
 </head>
 <body>
@@ -33,7 +34,7 @@
       <button id="demoLogin" class="primary" hidden>Try the offline demo →</button>
       <p id="demoLoginHint" class="hint" hidden>Fictional project data and scripted answers. No tokens, AI charges or external changes.</p>
       <p id="loginError" class="error" role="alert"></p>
-      <details id="localPasswordHint" class="login-help"><summary>Where is my password?</summary><p class="hint">Open <code>.data/access-password.txt</code> in your AiMate folder. If you configured <code>APP_PASSWORD</code>, use that instead.</p></details>
+      <details id="localPasswordHint" class="login-help"><summary>Where is my password?</summary><p class="hint">In your AiMate folder, run <code>.\.venv\Scripts\python.exe tools/show_workspace_password.py</code> in your private terminal. If you configured <code>APP_PASSWORD</code>, use that instead.</p></details>
     </div>
   </section>
 
@@ -85,7 +86,7 @@
         <form id="chatForm" class="composer">
           <div id="attachmentCards" class="attachment-cards" hidden aria-label="Attached files"></div>
           <textarea id="question" rows="2" maxlength="30000" placeholder="Ask AiMate" aria-label="Your question" required></textarea>
-          <div class="composer-bottom"><div class="composer-tools"><select id="modelMode" aria-label="Model selection" title="Auto selects Standard or Analysis. Manual choice overrides Auto."><option value="auto">Auto</option><option value="standard">Standard</option><option value="analysis">Analysis</option></select><button id="privateToggle" type="button" aria-pressed="false" title="Private chat: session-only history; prompts still go to your selected AI provider">Private</button><button id="attachText" type="button" title="Attach an image, PDF, text, code or log" aria-label="Attach a file"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.4 11.1-9.2 9.2a6 6 0 0 1-8.5-8.5l10-10a4 4 0 0 1 5.7 5.7l-10 10a2 2 0 0 1-2.8-2.8l9.2-9.2"/></svg></button><input id="textAttachment" type="file" hidden multiple accept=".png,.jpg,.jpeg,.webp,.gif,.pdf,.txt,.log,.md,.csv,.json,.yaml,.yml,.xml,.html,.css,.js,.ts,.tsx,.jsx,.py,.sh,.ps1,.sql,.toml,.ini,.cfg,.c,.cpp,.h,.java,.go,.rs"></div><button id="send" class="primary" type="submit">Ask <span>↑</span></button><button id="stop" type="button" hidden>Stop</button></div>
+          <div class="composer-bottom"><div class="composer-tools"><select id="modelMode" aria-label="Model selection" title="Auto selects Standard or Analysis. Manual choice overrides Auto."><option value="auto">Auto</option><option value="standard">Standard</option><option value="analysis">Analysis</option></select><button id="privateToggle" type="button" aria-pressed="false" title="Private chat: session-only history; prompts still go to your selected AI provider">Private</button><button id="attachText" type="button" title="Attach a file · documents up to 4 MB" aria-label="Attach a file"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.4 11.1-9.2 9.2a6 6 0 0 1-8.5-8.5l10-10a4 4 0 0 1 5.7 5.7l-10 10a2 2 0 0 1-2.8-2.8l9.2-9.2"/></svg></button><input id="textAttachment" type="file" hidden multiple></div><button id="send" class="primary" type="submit">Ask <span>↑</span></button><button id="stop" type="button" hidden>Stop</button></div>
         </form>
         <p class="footnote">The assistant uses your configured scope and token permissions. Review its evidence and proposed changes.</p>
       </footer>
@@ -194,6 +195,9 @@
     <div class="usage-card"><h3>Daily activity</h3><div id="usageChart" class="usage-chart"></div></div>
     <div class="usage-card"><h3>By model</h3><div id="usageModels" class="usage-table"></div></div>
     <details class="usage-card"><summary>Cost estimate rates</summary><p class="hint">Enter your provider or organization's USD rates per million tokens. Updating a rate recalculates estimates for the selected period.</p><form id="usageRateForm"><label>Model ID<input id="rateModel" list="usageModelOptions" required maxlength="200"><datalist id="usageModelOptions"></datalist></label><div class="fields two"><label>Input<input id="rateInput" type="number" min="0" max="100000" step="any" required></label><label>Output<input id="rateOutput" type="number" min="0" max="100000" step="any" required></label><label>Cache read<input id="rateRead" type="number" min="0" max="100000" step="any" required></label><label>Cache write<input id="rateWrite" type="number" min="0" max="100000" step="any" required></label></div><button class="primary" type="submit">Save rates</button></form></details>
+    <div id="usageBilling" class="usage-card"></div>
+    <details class="usage-card"><summary>Monthly budget</summary><form id="usageBudgetForm"><div class="fields two"><label>Monthly USD · 0 disables<input id="usageBudget" type="number" min="0" max="1000000" step="any" required value="0"></label><label>When reached<select id="usageBudgetMode"><option value="warn">Warn</option><option value="stop">Stop new model requests</option></select></label></div><button type="submit">Save budget</button></form></details>
+    <details class="usage-card"><summary>Compare with a provider bill</summary><p class="hint">Enter the USD amount for this model from your bill. Other apps, taxes and missing usage can explain a difference.</p><form id="usageInvoiceForm"><label>Billing month<input id="invoiceMonth" type="month" required></label><label>Model ID<input id="invoiceModel" list="usageModelOptions" maxlength="200" required></label><label>Billed USD<input id="invoiceAmount" type="number" min="0" max="1000000" step="any" required></label><button type="submit">Save comparison</button></form></details>
     <p id="usageCoverage" class="hint"></p><p id="usageError" class="error" role="alert"></p>
   </dialog>
   <dialog id="settingsDialog">
@@ -305,6 +309,9 @@
   <dialog id="vaultDialog">
     <div class="dialog-head"><h2>Private vault</h2><button class="close" data-close="vaultDialog" aria-label="Close vault">×</button></div>
     <p class="hint">Encrypted on this device. Values stay hidden until revealed. AI access is off by default.</p>
+    <p id="vaultLockStatus" class="hint">Locked</p>
+    <form id="vaultUnlockForm"><label><span id="vaultUnlockLabel">Workspace password</span><input id="vaultVerification" type="password" autocomplete="off" required maxlength="200"></label><button class="primary" type="submit">Unlock for 5 minutes</button></form>
+    <button id="lockVault" type="button" hidden>Lock now</button>
     <div id="vaultEntries" class="knowledge-grid"></div>
     <details id="vaultEditor"><summary>Add or replace an entry</summary><form id="vaultForm"><label>Name<input id="vaultName" required maxlength="100" autocomplete="off"></label><label>Secret value<input id="vaultValue" type="password" required maxlength="6000" autocomplete="new-password" spellcheck="false"></label><label class="check"><input id="vaultAiAccess" type="checkbox">Allow AI to read this entry when requested</label><p class="hint">AI-accessible values are sent to your selected provider. Keep passwords and API tokens private unless sharing is necessary. Saved answers redact vault values.</p><button class="primary" type="submit">Save entry</button></form></details>
     <p id="vaultError" class="error" role="alert"></p>

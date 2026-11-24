@@ -51,13 +51,13 @@
   },
   {
     "id": "audit-5e0e05d0b59a4c18ec097760",
-    "title": "P1 · Attachments · WIP — Files and pasted screenshots\n\nImage paste/drop/cards, text/code/log files and PDF text extraction exist. Not every file type: binary documents/ZIPs unsupported; no scanned-PDF OCR.",
-    "completed": false
+    "title": "P1 · Attachments · Done — Files and pasted screenshots\n\nValidated document/ZIP ingestion, Office/PDF text, scanned PDF images, encrypted conversation-scoped full-text paging/search, large paste cards and restart/private isolation passed CI. Six attachments/four images, explicit size/archive bounds; unsupported binaries are metadata-only, not silently interpreted.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45448311966",
+    "completed": true
   },
   {
     "id": "audit-18513c40106ee70b7d8176ec",
-    "title": "P1 · Validation · WIP — Attachment size/formats; huge paste becomes attachment\n\nSix attachments / four images; text files up to 1 MB; PDFs up to 4 MB / 80 pages; combined text limit. Frontend image compression and backend validation exist. Huge text is not automatically converted to an attachment.",
-    "completed": false
+    "title": "P1 · Validation · Done — Attachment size/formats; huge paste becomes attachment\n\nValidated document/ZIP ingestion, Office/PDF text, scanned PDF images, encrypted conversation-scoped full-text paging/search, large paste cards and restart/private isolation passed CI. Six attachments/four images, explicit size/archive bounds; unsupported binaries are metadata-only, not silently interpreted.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45448311966",
+    "completed": true
   },
   {
     "id": "audit-96206ae80f69e941a6d4d0ed",
@@ -76,8 +76,8 @@
   },
   {
     "id": "audit-ac198fd1721c14e5f01a8e84",
-    "title": "P1 · Files · Planned — Validate/extract/search/analyse ZIP\n\nNo ZIP ingestion or extraction-safety implementation found.",
-    "completed": false
+    "title": "P1 · Files · Done — Validate/extract/search/analyse ZIP\n\nValidated document/ZIP ingestion, Office/PDF text, scanned PDF images, encrypted conversation-scoped full-text paging/search, large paste cards and restart/private isolation passed CI. Six attachments/four images, explicit size/archive bounds; unsupported binaries are metadata-only, not silently interpreted.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45448311966",
+    "completed": true
   },
   {
     "id": "audit-4043d434188aa3d55f52b626",

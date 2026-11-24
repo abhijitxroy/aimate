@@ -1,5 +1,6 @@
 """Isolated browser-test server: synthetic models, no service credentials."""
 import argparse
+import asyncio
 import os
 import sys
 import tempfile
@@ -27,8 +28,8 @@ class Block:
 
 
 class Stream:
-    def __init__(self, model, text="Analysis model answered."):
-        self.model, self.text = model, text
+    def __init__(self, model, text="Analysis model answered.", slow=False):
+        self.model, self.text, self.slow = model, text, slow
 
     async def __aenter__(self):
         return self
@@ -39,6 +40,9 @@ class Stream:
     @property
     def text_stream(self):
         async def chunks():
+            if self.slow:
+                for _ in range(30):
+                    await asyncio.sleep(.1)
             yield self.text
         return chunks()
 
@@ -56,6 +60,9 @@ class AI:
                                usage=SimpleNamespace(input_tokens=20, output_tokens=6))
 
     def stream(self, **kwargs):
+        question=str(kwargs["messages"][-1]["content"])
+        if question.startswith("Parallel "):
+            return Stream(kwargs["model"],"Reply: "+question,slow=True)
         if "Which ticket" in str(kwargs["messages"][-1]["content"]):
             return Stream(kwargs["model"], "DEMO-8437 · PR #1257" if "DEMO-8437" in kwargs["system"]
                           else "Missing saved context.")
