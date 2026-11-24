@@ -83,6 +83,7 @@ class PortableBackupTests(unittest.TestCase):
             CREATE TABLE settings(id INTEGER PRIMARY KEY, encrypted TEXT);
             CREATE TABLE login_otp(id INTEGER PRIMARY KEY, encrypted TEXT);
             CREATE TABLE vault_entries(id TEXT, encrypted TEXT);
+            CREATE TABLE review_sessions(conversation TEXT, fingerprint TEXT, encrypted TEXT);
             CREATE TABLE chatgpt_auth(id INTEGER PRIMARY KEY, encrypted TEXT);
         """)
         db.execute("INSERT INTO conversations VALUES ('chat-1','Preserve me')")
@@ -93,6 +94,8 @@ class PortableBackupTests(unittest.TestCase):
             db.execute(f"INSERT INTO {table} VALUES (1,?)", (cipher.encrypt(json.dumps(value).encode()).decode(),))
         db.execute("INSERT INTO vault_entries VALUES ('vault',?)",
                    (cipher.encrypt(b"synthetic-vault-secret").decode(),))
+        db.execute("INSERT INTO review_sessions VALUES ('chat-1','scope',?)",
+                   (cipher.encrypt(b'{"path":"synthetic-review.py","ranges":[[0,100]]}').decode(),))
         oauth = b'{"accounts":{"test":{"access_token":"synthetic-oauth-secret"}}}'
         blob = self.old_device.encrypt(oauth) if os.name == "nt" else cipher.encrypt(oauth)
         db.execute("INSERT INTO chatgpt_auth VALUES (1,?)", (base64.b64encode(blob).decode(),))
@@ -117,6 +120,7 @@ class PortableBackupTests(unittest.TestCase):
         before = (self.data / "encryption.dpapi").read_bytes() if os.name == "nt" else self.keys[""]
         exported = self.export()
         self.assertEqual(len(exported["stores"]), 2)
+        self.assertEqual(exported["stores"][0]["counts"]["review_sessions"], 1)
         raw = self.backup.read_bytes()
         for secret in (b"synthetic-github-secret", b"saved chat", self.keys[""], b"synthetic-oauth-secret"):
             self.assertNotIn(secret, raw)

@@ -1,8 +1,8 @@
 [
   {
     "id": "audit-45598b108d57b500ed062e06",
-    "title": "P0 · AI · WIP — Auto routing for debug/analysis, manual override; always-Haiku complaint\n\nAI classifier, Auto/Standard/Analysis, usage accounting and mocked routing tests exist. Bedrock now shows Connected from a successful AI answer. Real Auto switching on a debugging request still needs verification. Auto falls back to Standard with a notice if classification fails or Analysis is unset/same.",
-    "completed": false
+    "title": "P0 · AI · Done — Auto routing for debug/analysis, manual override; always-Haiku complaint\n\nFixed classifier output budget (32 → 128 tokens). Live Bedrock Auto chose Opus and completed a debugging answer; routine lookup chose Haiku. Manual overrides and offline regressions passed.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45411134828",
+    "completed": true
   },
   {
     "id": "audit-05866576b3a7fce2e371fb8a",
@@ -31,8 +31,8 @@
   },
   {
     "id": "audit-a64983ae13f38e987b979a30",
-    "title": "P0 · UI bug · WIP — To-do Show more not working\n\nToggle handler and multiline expanded CSS exist. Your reported failure has not been independently reproduced or verified fixed in this audit; no dedicated browser regression test.",
-    "completed": false
+    "title": "P0 · UI bug · Done — To-do Show more not working\n\nBrowser regression verified expand/collapse, multiline detail and visible Copy/Edit/Delete controls.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45411134828",
+    "completed": true
   },
   {
     "id": "audit-7b9c4f0f48a5098accc1cb58",

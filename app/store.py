@@ -42,6 +42,8 @@ class Store:
                 status TEXT, created REAL, result TEXT);
             CREATE TABLE IF NOT EXISTS audit (id INTEGER PRIMARY KEY, action TEXT, status TEXT, result TEXT, created REAL);
             CREATE TABLE IF NOT EXISTS connection_checks (service TEXT PRIMARY KEY, fingerprint TEXT, report TEXT);
+            CREATE TABLE IF NOT EXISTS review_sessions (conversation TEXT PRIMARY KEY, fingerprint TEXT NOT NULL,
+                encrypted TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS turn_usage (turn INTEGER PRIMARY KEY, metadata TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS attachment_previews (turn INTEGER PRIMARY KEY, encrypted TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS conversation_revisions (id INTEGER PRIMARY KEY, conversation TEXT NOT NULL,

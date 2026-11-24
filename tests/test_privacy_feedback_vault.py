@@ -41,7 +41,8 @@ class PrivacyTests(unittest.TestCase):
         cid=self.client.post("/api/conversations",headers=self.headers,json={"private":True}).json()["id"]
         async def answer(store,cid,question,**kwargs):
             self.assertTrue(store.config()["_private"])
-            self.assertEqual({t["name"] for t in tools_for(store.config())},{"api_read"})
+            self.assertEqual({t["name"] for t in tools_for(store.config())},
+                             {"api_read", "read_github_file", "read_pr_manifest", "review_coverage"})
             store.save_turn(cid,[{"role":"user","content":question},{"role":"assistant","content":[{"type":"text","text":"Private reply"}]}],{"model":"test"})
             store.execute("UPDATE conversations SET title=? WHERE id=? AND title='New conversation'",(question,cid))
             yield {"event":"done"}

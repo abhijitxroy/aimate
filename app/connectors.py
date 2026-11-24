@@ -269,7 +269,11 @@ class Services:
         if service == "github" and isinstance(result, dict) and result.get("encoding") == "base64":
             result = dict(result)
             try:
-                result["text"] = base64.b64decode(result.pop("content")).decode("utf-8")[:24_000]
+                text = base64.b64decode(result.pop("content")).decode("utf-8")
+                result["text"] = text[:24_000]
+                if len(text) > 24_000:
+                    result.update(truncated=True, total_characters=len(text),
+                                  note="Use read_github_file at an exact commit SHA and follow its cursors for complete source.")
             except (ValueError, UnicodeError):
                 result["text"] = "[binary file]"
         return {"source": self.section(service)["url"].rstrip("/") + path, "data": scrub(result, self.config)}

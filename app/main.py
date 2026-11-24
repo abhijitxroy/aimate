@@ -795,6 +795,7 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
                 store.db.execute("DELETE FROM conversation_icons WHERE conversation=?", (cid,))
                 store.db.execute("DELETE FROM conversation_references WHERE conversation=? OR source=?", (cid, cid))
                 store.db.execute("DELETE FROM memory_index WHERE conversation=?", (cid,))
+                store.db.execute("DELETE FROM review_sessions WHERE conversation=?", (cid,))
                 store.db.execute("DELETE FROM conversation_revisions WHERE conversation=?", (cid,))
                 store.db.execute("DELETE FROM conversations WHERE id=?", (cid,))
             chat_locks.pop(cid, None)
@@ -841,6 +842,7 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
                 store.db.execute(f"DELETE FROM {table} WHERE {column} IN "
                                  "(SELECT id FROM turns WHERE conversation=? AND id>=?)", (cid, turn_id))
             store.db.execute("DELETE FROM turns WHERE conversation=? AND id>=?", (cid, turn_id))
+            store.db.execute("DELETE FROM review_sessions WHERE conversation=?", (cid,))
             store.db.execute("UPDATE actions SET status='cancelled' WHERE conversation=? AND status='pending' AND created>=?",
                              (cid, selected[0]["created"]))
         return {"id": cid}

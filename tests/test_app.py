@@ -1,5 +1,6 @@
 """Boundary and workflow tests: no external network, credentials or AI billing."""
 import asyncio
+import atexit
 import base64
 import json
 import os
@@ -25,6 +26,8 @@ from app.store import Store
 def tearDownModule():
     entrypoint.state.store.db.close()
     _import_directory.cleanup()
+
+atexit.register(tearDownModule)
 
 
 def fixture_config():
