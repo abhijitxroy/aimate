@@ -117,6 +117,7 @@ class BrowserRegressionTests(unittest.TestCase):
         self.page.locator("#stop").click()
         self.expect(self.page.locator("#activity")).to_contain_text("Stopped")
         self.page.evaluate("id => openConversation(id)",second)
+        self.page.evaluate("() => api('/api/test/parallel/release',{method:'POST'})")
         self.expect(self.page.locator("#messages")).to_contain_text("Reply: Parallel second")
         self.expect(self.page.locator("#messages")).not_to_contain_text("Reply: Parallel first")
         self.expect(self.page.locator("#activity")).to_have_text("Answer complete")

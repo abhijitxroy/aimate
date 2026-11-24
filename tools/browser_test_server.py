@@ -18,6 +18,7 @@ os.environ.pop("APP_PUBLIC_URL", None)
 
 from app.main import create_app, app as import_app
 from app.store import Store
+parallel_release = asyncio.Event()
 
 
 class Block:
@@ -41,8 +42,7 @@ class Stream:
     def text_stream(self):
         async def chunks():
             if self.slow:
-                for _ in range(30):
-                    await asyncio.sleep(.1)
+                await parallel_release.wait()
             yield self.text
         return chunks()
 
@@ -88,8 +88,13 @@ if __name__ == "__main__":
     store.save_turn(legacy, [{"role": "user", "content": "Investigate DEMO-8437 and PR #1257."}])
     for index in range(18):
         store.save_turn(legacy, [{"role": "user", "content": f"Follow-up detail {index}"}])
+    fixture = create_app(store, client_factory=AI)
+    @fixture.post("/api/test/parallel/release")
+    async def release_parallel():
+        parallel_release.set()
+        return {"released":True}
     try:
-        uvicorn.run(create_app(store, client_factory=AI), host="127.0.0.1", port=args.port,
+        uvicorn.run(fixture, host="127.0.0.1", port=args.port,
                     log_level="warning")
     finally:
         store.db.close()
