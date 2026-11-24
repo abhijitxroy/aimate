@@ -88,6 +88,14 @@ class BrowserRegressionTests(unittest.TestCase):
         self.expect(self.page.locator("#usageBilling")).to_contain_text("billed $0.50")
         self.expect(self.page.locator("#usageError")).to_have_text("")
 
+    def test_admin_diagnostics_opens_sanitized_request_information(self):
+        self.page.evaluate("openSettings()")
+        self.page.locator("#tab-changes").click()
+        self.page.locator("#openDiagnostics").click()
+        self.expect(self.page.locator("#auditDialog")).to_be_visible()
+        self.expect(self.page.locator("#auditContent")).to_contain_text("duration_ms")
+        self.expect(self.page.locator("#auditContent")).not_to_contain_text("browser-regression-password")
+
     def test_large_paste_is_a_document_card_and_saved_message_keeps_card(self):
         self.page.evaluate("""() => {
             const transfer = new DataTransfer();

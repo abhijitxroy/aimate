@@ -17,6 +17,8 @@
   <script src="./app/static/markdown.js" defer></script>
   <script src="./app/static/chat_runs.js" defer></script>
   <script src="./app/static/app.js" defer></script>
+  <script src="./app/static/usage_ui.js" defer></script>
+  <script src="./app/static/diagnostics_ui.js" defer></script>
 </head>
 <body>
   <section id="loginScreen" class="login-screen">
@@ -289,7 +291,7 @@
         <div class="test-row"><button type="button" data-test="jenkins">Save &amp; connect</button></div>
         <div id="test-jenkins" class="connection-result" aria-live="polite"></div>
       </fieldset>
-      <fieldset class="write-setting" id="settings-changes" data-settings-panel="changes" role="tabpanel" aria-labelledby="tab-changes" hidden><legend>Admin</legend><div id="adminWriteControls"><label class="check"><input name="allow_writes" type="checkbox">Allow the assistant to prepare changes</label><p class="hint">Every change still requires Confirm. File edits use a working branch; pull requests start as drafts. Proposals expire after 30 minutes.</p></div><button id="openAudit" type="button">Audit log</button><button id="openAccess" type="button">Workspace access</button><button id="openVault" type="button">Private vault</button><button id="openFeedbackLog" type="button">Feedback</button><div class="admin-security"><h3>Sign-in security</h3><p id="otpStatus" class="hint">Authenticator OTP</p><button id="openOtpSetup" type="button">Set up OTP</button></div></fieldset>
+      <fieldset class="write-setting" id="settings-changes" data-settings-panel="changes" role="tabpanel" aria-labelledby="tab-changes" hidden><legend>Admin</legend><div id="adminWriteControls"><label class="check"><input name="allow_writes" type="checkbox">Allow the assistant to prepare changes</label><p class="hint">Every change still requires Confirm. File edits use a working branch; pull requests start as drafts. Proposals expire after 30 minutes.</p></div><button id="openAudit" type="button">Audit log</button><button id="openDiagnostics" type="button">Diagnostics</button><button id="openAccess" type="button">Workspace access</button><button id="openVault" type="button">Private vault</button><button id="openFeedbackLog" type="button">Feedback</button><div class="admin-security"><h3>Sign-in security</h3><p id="otpStatus" class="hint">Authenticator OTP</p><button id="openOtpSetup" type="button">Set up OTP</button></div></fieldset>
       <div class="dialog-footer"><span id="settingsStatus" role="status"></span><button id="saveConnection" class="primary" type="submit">Save AI connection</button></div>
     </form>
   </dialog>

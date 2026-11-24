@@ -1,5 +1,7 @@
 import asyncio
 import tempfile
+import datetime as dt
+import json
 import unittest
 from types import SimpleNamespace
 from app.store import Store
@@ -67,3 +69,13 @@ class MeterTests(unittest.TestCase):
         self.assertEqual(data["totals"]["input_tokens"],60)
         self.assertEqual(data["totals"]["unpriced_requests"],1)
         self.assertTrue(any(r["status"]=="failed / usage unavailable" for r in data["calls"]))
+
+    def test_past_invoice_is_visible_without_changing_current_month_budget(self):
+        self.store.execute("INSERT INTO usage_events VALUES (?,?,?,?,?,?)",
+            ("past",dt.datetime(2020,1,12,tzinfo=dt.timezone.utc).timestamp(),"bedrock","fixture",
+             json.dumps({"input_tokens":1000000}),"Historical fixture"))
+        reconcile(self.store,{"month":"2020-01","model":"fixture","amount":5})
+        data=report(self.store)
+        self.assertEqual(data["monthly"]["estimated_usd"],0)
+        self.assertEqual(data["bill_comparisons"][0]["estimated_usd"],2)
+        self.assertEqual(data["bill_comparisons"][0]["difference_usd"],3)

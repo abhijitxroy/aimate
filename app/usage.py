@@ -26,6 +26,11 @@ def save_budget(store, body):
 def reconcile(store, body):
     if not isinstance(body, dict) or not re.fullmatch(r"\d{4}-(0[1-9]|1[0-2])", str(body.get("month", ""))):
         raise ValueError("Use a billing month as YYYY-MM.")
+    try:
+        parsed=dt.datetime.strptime(body["month"],"%Y-%m")
+        if not 1900<=parsed.year<=2100: raise ValueError()
+    except ValueError:
+        raise ValueError("Use a valid billing month.") from None
     model, amount = body.get("model"), body.get("amount")
     if not isinstance(model, str) or not 1 <= len(model.strip()) <= 200:
         raise ValueError("Provide the invoice's exact model ID.")
@@ -36,12 +41,14 @@ def reconcile(store, body):
     return {"saved": key}
 
 
-def monthly(store):
-    month = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m")
-    start = dt.datetime.strptime(month, "%Y-%m").replace(tzinfo=dt.timezone.utc).timestamp()
+def monthly(store, month=None):
+    month = month or dt.datetime.now(dt.timezone.utc).strftime("%Y-%m")
+    first = dt.datetime.strptime(month, "%Y-%m").replace(tzinfo=dt.timezone.utc)
+    start = first.timestamp()
+    end = (first + dt.timedelta(days=32)).replace(day=1).timestamp()
     rates = {r["model"]: r for r in store.rows("SELECT * FROM usage_rates")}
     values, unpriced = {}, 0
-    for row in store.rows("SELECT * FROM usage_events WHERE created>=?", (start,)):
+    for row in store.rows("SELECT * FROM usage_events WHERE created>=? AND created<?", (start,end)):
         rate, tokens = rates.get(row["model"]), json.loads(row["tokens"])
         if rate and row["provider"] != "chatgpt":
             value = sum(tokens.get(k, 0)*rate[r] for k,r in (
@@ -113,6 +120,8 @@ def report(store, days=30, offset=0):
             "daily": [{"date": key, **value} for key, value in sorted(daily.items())],
             "models": sorted(models.values(), key=lambda row: row["input_tokens"] + row["output_tokens"], reverse=True),
             "rates": list(rates.values()), "monthly": monthly(store),
+            "bill_comparisons": [item for row in store.rows("SELECT DISTINCT month FROM usage_invoices ORDER BY month DESC LIMIT 24")
+                                 for item in monthly(store,row["month"])["invoices"]],
             "calls": store.rows("SELECT origin,status,count(*) AS count FROM usage_calls WHERE created>=? GROUP BY origin,status", (start,)),
             "coverage": "Chat, routing and billable connection tests are tracked. Interrupted/failed calls without provider usage appear separately; their tokens and cost are unknown. Estimates use your current rates. Monthly budgets use UTC and check before each request; they cannot cap a request already in progress or unknown/unpriced spend. Invoice amounts are manually entered for comparison, not fetched from AWS. ChatGPT plan limits and organization spend remain with your provider."}
 

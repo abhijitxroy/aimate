@@ -61,8 +61,8 @@
   },
   {
     "id": "audit-96206ae80f69e941a6d4d0ed",
-    "title": "P1 · Concurrency · WIP — Multiple asks in parallel\n\nBackend concurrent workspace streams have isolation tests. Frontend has one global busy/controller and blocks another ask while running; tool calls are sequential.",
-    "completed": false
+    "title": "P1 · Concurrency · Done — Multiple asks in parallel\n\nThree separate chats can answer concurrently with isolated conversation IDs/live views and a Stop button scoped to the visible chat. Server enforces three streams per workspace and one per conversation. Cancellation, navigation and CSP-compatible browser regressions passed Windows/Linux/browser CI.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45451165844",
+    "completed": true
   },
   {
     "id": "audit-4e74cf072dc30234a10e3170",

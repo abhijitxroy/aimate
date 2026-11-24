@@ -29,8 +29,8 @@ from app.access import authorize, capabilities, permits_operation, change_role, 
 
 class OAuthLogFilter(logging.Filter):
     def filter(self, record):
-        # Uvicorn's access log otherwise includes the authorization code and state.
-        return "/auth/callback" not in record.getMessage()
+        # Structured request traces replace raw URLs, including search/OAuth query data.
+        return False
 
 
 logging.getLogger("uvicorn.access").addFilter(OAuthLogFilter())
@@ -188,6 +188,9 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
         except PermissionError as exc:
             raise HTTPException(403, str(exc)) from None
         return session
+
+    from app.request_trace import register as register_trace
+    register_trace(app, owner_store, store, auth)
 
     @app.exception_handler(ValueError)
     async def bad_input(request, exc):
@@ -574,29 +577,8 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
             store.execute("DELETE FROM todos WHERE id=?", (task_id,))
         return {"deleted": task_id}
 
-    @app.get("/api/usage")
-    def usage(days: int = 30, offset: int = 0, session=Depends(auth)):
-        from app.usage import report
-        return report(store, days, offset)
-
-    @app.post("/api/usage/rates")
-    async def usage_rate(request: Request, session=Depends(auth)):
-        from app.usage import save_rate
-        body = await request.json()
-        async with config_lock:
-            return save_rate(store, body)
-
-    @app.post("/api/usage/budget")
-    async def usage_budget(request: Request, session=Depends(auth)):
-        from app.usage import save_budget
-        async with config_lock:
-            return save_budget(store, await request.json())
-
-    @app.post("/api/usage/invoice")
-    async def usage_invoice(request: Request, session=Depends(auth)):
-        from app.usage import reconcile
-        async with config_lock:
-            return reconcile(store, await request.json())
+    from app.usage_routes import register as register_usage
+    register_usage(app, store, auth, config_lock)
 
     @app.post("/api/knowledge")
     async def add_knowledge(request: Request, session=Depends(auth)):

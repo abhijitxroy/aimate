@@ -90,8 +90,9 @@ def authorize(role, method, path):
         raise PermissionError("Audit log requires Developer or Administrator access.")
     if role in {"viewer", "reviewer"} and method not in {"GET", "HEAD"}:
         permitted = {"/api/chat", "/api/conversations", "/api/logout", "/api/connections/sync",
-                     "/api/attachments/pdf", "/api/feedback", "/api/settings",
-                     "/api/chatgpt/start", "/api/chatgpt/disconnect", "/api/usage/rates"}
+                     "/api/attachments/pdf", "/api/attachments/document", "/api/feedback", "/api/settings",
+                     "/api/chatgpt/start", "/api/chatgpt/disconnect", "/api/usage/rates",
+                     "/api/usage/budget", "/api/usage/invoice"}
         personal_records = any(path == prefix or path.startswith(prefix + "/") for prefix in
                                ("/api/conversations", "/api/groups", "/api/knowledge", "/api/todos"))
         connections = path.startswith("/api/settings/") or (
