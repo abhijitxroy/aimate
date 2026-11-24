@@ -93,3 +93,13 @@ class BrowserRegressionTests(unittest.TestCase):
         self.page.reload()
         self.expect(self.page.locator("#workspace")).to_be_visible()
         self.expect(self.page.locator("#conversations")).to_contain_text("Debug this failing pipeline")
+
+    def test_old_chat_recall_after_reload_and_history_window(self):
+        self.page.locator("#conversations").get_by_role("button", name="Old continuity reference", exact=True).click()
+        self.page.reload()
+        self.page.locator("#conversations").get_by_role("button", name="Old continuity reference", exact=True).click()
+        self.page.locator("#question").fill("Which ticket and pull request were we discussing?")
+        self.page.locator("#send").click()
+        self.expect(self.page.locator("#send")).to_be_enabled(timeout=15000)
+        self.expect(self.page.locator("#messages")).to_contain_text("DEMO-8437 · PR #1257")
+        self.expect(self.page.locator("#chatTitle")).to_have_text("Old continuity reference")

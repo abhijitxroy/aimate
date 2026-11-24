@@ -273,7 +273,8 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
     outcomes = store.rows("SELECT id,operation,status,result FROM actions WHERE conversation=? ORDER BY created DESC LIMIT 12", (cid,))
     scope = {name: {k: v for k, v in config.get(name, {}).items() if k not in {"token", "api_key"}}
              for name in ("github", "jira", "jenkins")}
-    system = SYSTEM + action_capabilities(config) + ("" if config.get("_private") else memory_context(store, cid)) + "\nConfigured sources:\n" + json.dumps(scope) + "\nRecent proposal outcomes:\n" + json.dumps(outcomes)
+    context_reference = "" if config.get("_private") else scrub(memory_context(store, cid, question), config)
+    system = SYSTEM + action_capabilities(config) + context_reference + "\nConfigured sources:\n" + json.dumps(scope) + "\nRecent proposal outcomes:\n" + json.dumps(outcomes)
     services = services_factory(config)
     if hasattr(services, "enable_reuse"):
         services.enable_reuse()
@@ -288,7 +289,7 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
         async def classify():
             response = await client.messages.create(
                 model=config["ai"]["model"], max_tokens=ROUTER_MAX_TOKENS, system=ROUTER_SYSTEM,
-                messages=[{"role": "user", "content": scrub(route_input(question, messages[:-1]), config)}])
+                messages=[{"role": "user", "content": scrub(route_input(question, messages[:-1], context_reference), config)}])
             return ("".join(b.text for b in response.content if getattr(b, "type", "") == "text"),
                     {"input_tokens": response.usage.input_tokens, "output_tokens": response.usage.output_tokens})
         selection = await select_model(config["ai"], model_mode, classify)
@@ -341,7 +342,7 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
                         card = await propose(store, config, services, cid, args)
                         result = {"proposal": card["id"], "status": "pending", "note": "Not executed. User must confirm."}
                         yield {"event": "action", "action": card}
-                    elif call["name"] in {"search_knowledge", "read_past_conversation"}:
+                    elif call["name"] in {tool["name"] for tool in MEMORY_TOOLS}:
                         result = recall(store, cid, call["name"], args)
                     elif call["name"] in {tool["name"] for tool in REVIEW_TOOLS}:
                         result = await read_review(services, call["name"], args, store, cid)
@@ -454,7 +455,8 @@ async def _run_chatgpt_turn(store, cid, question, connection, services_factory, 
     scope = {name: {k: v for k, v in config.get(name, {}).items() if k not in {"token", "api_key"}}
              for name in ("github", "jira", "jenkins")}
     outcomes = store.rows("SELECT id,operation,status,result FROM actions WHERE conversation=? ORDER BY created DESC LIMIT 12", (cid,))
-    instructions = SYSTEM + action_capabilities(config) + ("" if config.get("_private") else memory_context(store, cid)) + "\nConfigured sources:\n" + json.dumps(scope) + "\nRecent proposal outcomes:\n" + json.dumps(outcomes)
+    context_reference = "" if config.get("_private") else scrub(memory_context(store, cid, question), config)
+    instructions = SYSTEM + action_capabilities(config) + context_reference + "\nConfigured sources:\n" + json.dumps(scope) + "\nRecent proposal outcomes:\n" + json.dumps(outcomes)
     tools = tools_for(config)
     namespace = {"type": "namespace", "name": "project", "description": "Scoped engineering project tools",
                  "tools": [{"type": "function", "name": t["name"], "description": t["description"],
@@ -465,7 +467,7 @@ async def _run_chatgpt_turn(store, cid, question, connection, services_factory, 
     by_model = {}
     async def classify():
         payload = {"model": model, "instructions": ROUTER_SYSTEM,
-                   "input": [{"role": "user", "content": scrub(route_input(question, history), config)}],
+                   "input": [{"role": "user", "content": scrub(route_input(question, history, context_reference), config)}],
                    "store": False, "stream": True}
         text, totals = "", None
         async for event in response_events(connection, payload, expected_account=account_id):
@@ -535,7 +537,7 @@ async def _run_chatgpt_turn(store, cid, question, connection, services_factory, 
                 if name == "api_read":
                     result = await read_evidence(services, args, evidence)
                     yield {"event": "source", "url": result["source"]}
-                elif name in {"search_knowledge", "read_past_conversation"}:
+                elif name in {tool["name"] for tool in MEMORY_TOOLS}:
                     result = recall(store, cid, name, args)
                 elif name in {tool["name"] for tool in REVIEW_TOOLS}:
                     result = await read_review(services, name, args, store, cid)

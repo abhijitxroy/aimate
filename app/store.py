@@ -44,6 +44,8 @@ class Store:
             CREATE TABLE IF NOT EXISTS connection_checks (service TEXT PRIMARY KEY, fingerprint TEXT, report TEXT);
             CREATE TABLE IF NOT EXISTS review_sessions (conversation TEXT PRIMARY KEY, fingerprint TEXT NOT NULL,
                 encrypted TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS conversation_briefs (conversation TEXT PRIMARY KEY, encrypted TEXT NOT NULL,
+                updated REAL NOT NULL);
             CREATE TABLE IF NOT EXISTS turn_usage (turn INTEGER PRIMARY KEY, metadata TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS attachment_previews (turn INTEGER PRIMARY KEY, encrypted TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS conversation_revisions (id INTEGER PRIMARY KEY, conversation TEXT NOT NULL,
@@ -83,6 +85,8 @@ class Store:
             CREATE INDEX IF NOT EXISTS feedback_by_date ON feedback(created DESC);
         """)
         from app.memory import readable_text
+        from app.context_brief import backfill
+        backfill(self)
         for row in self.db.execute("SELECT id,conversation,messages FROM turns WHERE id NOT IN (SELECT turn FROM memory_index)").fetchall():
             self.db.execute("INSERT INTO memory_index VALUES (?,?,?)",
                             (readable_text(json.loads(row["messages"])), row["conversation"], row["id"]))
@@ -280,6 +284,8 @@ class Store:
                             (readable_text(messages), cid, cur.lastrowid))
             if metadata:
                 self.db.execute("INSERT INTO turn_usage VALUES (?,?)", (cur.lastrowid, json.dumps(metadata)))
+            from app.context_brief import record
+            record(self, cid, messages)
             self.db.commit()
 
     def action(self, aid):

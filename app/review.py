@@ -250,6 +250,10 @@ async def read(services, name, args, store=None, cid=None):
         if persistent:
             rows = store.rows("SELECT encrypted FROM review_sessions WHERE conversation=? AND fingerprint=?",
                               (cid, fingerprint))
+            if not rows:
+                rows = store.rows(
+                    "SELECT r.encrypted FROM review_sessions r JOIN conversation_references c ON c.source=r.conversation "
+                    "WHERE c.conversation=? AND r.fingerprint=?", (cid, fingerprint))
             if rows:
                 progress = json.loads(store.cipher.decrypt(rows[0]["encrypted"].encode()))
         services._review_reader = ReviewReader(services, progress)

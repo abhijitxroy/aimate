@@ -55,6 +55,8 @@ class RoutingTests(unittest.TestCase):
         self.assertNotIn("not-context", packed)
         self.assertIn("PR 123", packed)
         self.assertEqual(len(json.loads(packed)["request"]), 4000)
+        with_reference = json.loads(route_input("Continue", [], "saved " * 1000))
+        self.assertEqual(len(with_reference["saved_reference"]), 1600)
 
     def test_simple_bedrock_keeps_optional_analysis_id_and_saved_key(self):
         raw = {"ai": {"provider": "bedrock", "bedrock_mode": "simple",

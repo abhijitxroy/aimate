@@ -6,8 +6,8 @@
   },
   {
     "id": "audit-05866576b3a7fce2e371fb8a",
-    "title": "P0 · Analysis · WIP — Comprehensive large-file/PR reviews\n\nAPI paging and Jenkins progressive logs exist. GitHub decoded files cap at 24,000 characters; no line-range file reader or complete review coverage tracking.",
-    "completed": false
+    "title": "P0 · Analysis · Done — Comprehensive large-file/PR reviews\n\nPinned line/column readers, full PR manifests, merge-base versions, explicit gaps and encrypted resumable checkpoints. Live GitHub/model checks and Linux/Windows/browser CI passed. Source/API/model limits remain explicit; a read is not a correctness verdict.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45415024500",
+    "completed": true
   },
   {
     "id": "audit-bc575b0a1ce95434f2f6e7c0",
