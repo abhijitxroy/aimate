@@ -693,6 +693,28 @@ function addTool(message, name, input = {}) {
 function drawAction(action, parent) {
   const card = element("section", "action-card");
   card.dataset.action = action.id;
+  if (action.service === "settings" && action.operation === "update_github_repositories" && action.status === "completed") {
+    card.classList.add("action-completed");
+    card.append(element("span", "success", demo ? "✓ Simulated change completed" : "✓ Completed"));
+    const connection = element("button", "", "Check connection");
+    connection.type = "button";
+    connection.onclick = () => {
+      activeSettings = "github";
+      openSettings();
+      const details = $("#test-github .connection-details");
+      if (details) details.open = true;
+      const repository = action.preview?.repository;
+      const target = [...$("#test-github").querySelectorAll(".connection-target")]
+        .find(item => item.dataset.target === repository);
+      if (target) {
+        target.open = true;
+        target.scrollIntoView({block: "nearest"});
+      }
+    };
+    card.append(connection);
+    if (parent) parent.append(card);
+    return card;
+  }
   const label = action.operation.replaceAll("_", " ") + (demo ? " (simulated)" : "");
   card.append(element("h3", "", `${action.service} · ${label}`),
     element("p", "", `Status: ${action.status} · proposals expire after 30 minutes`),
@@ -2092,6 +2114,7 @@ function renderConnection(service, override) {
   }
   for (const target of report.targets || []) {
     const card = element("details", "connection-target");
+    card.dataset.target = target.target;
     const targetStatus = target.status || (target.ok ? "passed" : "failed");
     card.dataset.state = targetStatus;
     card.append(element("summary", "", (targetStatus === "partial" ? "◐ " : target.ok ? "✓ " : "✕ ") + target.target),

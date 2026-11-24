@@ -83,6 +83,47 @@ class BrowserRegressionTests(unittest.TestCase):
         row.get_by_role("button", name="Show less", exact=True).click()
         self.expect(row).to_have_class("todo-row")
 
+    def test_confirmed_repository_change_collapses_and_opens_github_details(self):
+        action = {"id": "browser-repo-change", "service": "settings",
+                  "operation": "update_github_repositories", "status": "pending",
+                  "preview": {"repository": "demo/project", "before": [], "after": ["demo/project"]}}
+        completed = dict(action, status="completed", result={"saved": True})
+        self.page.route("**/api/actions/browser-repo-change/confirm",
+                        lambda route: route.fulfill(json=completed))
+        self.page.evaluate("""action => {
+            connectionReports.github = {status: "passed", message: "Read access verified.",
+                targets: [{target: "demo/project", ok: true, message: "Accessible",
+                           details: ["Default branch: main"]}]};
+            drawAction(action, document.querySelector("#messages"));
+        }""", action)
+        card = self.page.locator('[data-action="browser-repo-change"]')
+        self.expect(card.locator("pre")).to_be_visible()
+        card.get_by_role("button", name="Confirm change", exact=True).click()
+        self.expect(card).to_have_class("action-card action-completed")
+        self.expect(card).to_contain_text("Completed")
+        self.assertEqual(card.locator("pre").count(), 0)
+        self.assertEqual(card.get_by_role("button", name="Confirm change", exact=True).count(), 0)
+        # refreshState replaces the reports; supply the saved verification for navigation.
+        self.page.evaluate("""() => { connectionReports.github = {status: "passed",
+            message: "Read access verified.", targets: [{target: "demo/project", ok: true,
+            message: "Accessible", details: ["Default branch: main"]}]}; }""")
+        card.get_by_role("button", name="Check connection", exact=True).click()
+        self.expect(self.page.locator("#settingsDialog")).to_be_visible()
+        self.expect(self.page.locator('[data-settings-tab="github"]')).to_have_attribute("aria-selected", "true")
+        self.expect(self.page.locator("#test-github .connection-target p").first).to_be_visible()
+        self.expect(self.page.locator("#test-github")).to_contain_text("demo/project")
+        # History reconstruction uses the same compact completed view.
+        self.page.evaluate("""action => {
+            document.querySelector("#settingsDialog").close();
+            document.querySelector("#messages").replaceChildren();
+            drawAction(action, document.querySelector("#messages"));
+        }""", completed)
+        self.expect(self.page.locator(".action-completed")).to_be_visible()
+        self.assertEqual(self.page.locator(".action-completed pre").count(), 0)
+        # Failed confirmations still retain their diagnostic preview.
+        self.page.evaluate("action => drawAction({...action, id: 'failed-change', status: 'failed'}, document.querySelector('#messages'))", action)
+        self.expect(self.page.locator('[data-action="failed-change"] pre')).to_be_visible()
+
     def test_auto_uses_analysis_over_http_stream_and_survives_reload(self):
         self.page.locator("#question").fill("Debug this failing pipeline and analyse the root cause.")
         self.page.locator("#send").click()
