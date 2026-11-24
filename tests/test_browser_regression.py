@@ -144,3 +144,44 @@ class BrowserRegressionTests(unittest.TestCase):
         self.expect(self.page.locator("#send")).to_be_enabled(timeout=15000)
         self.expect(self.page.locator("#messages")).to_contain_text("DEMO-8437 · PR #1257")
         self.expect(self.page.locator("#chatTitle")).to_have_text("Old continuity reference")
+
+    def test_early_ask_waits_for_chat_restore_without_creating_duplicate(self):
+        button = self.page.locator("#conversations").get_by_role("button", name="Old continuity reference", exact=True)
+        button.click()
+        self.expect(self.page.locator("#chatTitle")).to_have_text("Old continuity reference")
+        before = self.context.request.get(self.url + "/api/state").json()["conversations"]
+        existing = self.page.evaluate("cid")
+        turns = len(self.context.request.get(self.url + "/api/conversations/" + existing).json()["turns"])
+        # Hold the real navigation fetch while submitting a follow-up twice.
+        self.page.evaluate("""() => {
+            const original = window.fetch;
+            window.fetch = async (...args) => {
+                if (/^\\/api\\/conversations\\/[^/]+$/.test(String(args[0])))
+                    await new Promise(resolve => setTimeout(resolve, 350));
+                return original(...args);
+            };
+            cid = null;
+            restoreConversation();
+            ask('Which ticket and pull request were we discussing?');
+            ask('Which ticket and pull request were we discussing?');
+        }""")
+        self.expect(self.page.locator("#messages")).to_contain_text("DEMO-8437 · PR #1257", timeout=15000)
+        self.expect(self.page.locator("#send")).to_be_enabled(timeout=15000)
+        after = self.context.request.get(self.url + "/api/state").json()["conversations"]
+        self.assertEqual({row["id"] for row in before}, {row["id"] for row in after})
+        self.assertEqual(self.page.evaluate("cid"), existing)
+        self.assertEqual(len(self.context.request.get(self.url + "/api/conversations/" + existing).json()["turns"]), turns + 1)
+
+    def test_edit_resend_keeps_chat_and_group(self):
+        self.page.locator("#conversations").get_by_role("button", name="Old continuity reference", exact=True).click()
+        self.expect(self.page.locator("#chatTitle")).to_have_text("Old continuity reference")
+        existing = self.page.evaluate("cid")
+        before = self.context.request.get(self.url + "/api/state").json()["conversations"]
+        self.page.get_by_role("button", name="Edit your message", exact=True).last.click()
+        self.page.get_by_role("textbox", name="Edit message", exact=True).fill("Debug my corrected task.")
+        self.page.get_by_role("button", name="Save & resend", exact=True).click()
+        self.expect(self.page.locator("#messages")).to_contain_text("Debug my corrected task.", timeout=15000)
+        self.expect(self.page.locator("#send")).to_be_enabled(timeout=15000)
+        after = self.context.request.get(self.url + "/api/state").json()["conversations"]
+        self.assertEqual({row["id"] for row in before}, {row["id"] for row in after})
+        self.assertEqual(self.page.evaluate("cid"), existing)

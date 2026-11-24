@@ -11,13 +11,13 @@
   },
   {
     "id": "audit-bc575b0a1ce95434f2f6e7c0",
-    "title": "P0 · Memory · WIP — Restart continuity, carry previous knowledge, global project context, hold context until asked\n\nPersisted turns, FTS search, recall tools and explicit continuation references exist. Active history is limited to ten turns / roughly 140,000 serialized characters. No durable project summaries or complete indefinite context.",
-    "completed": false
+    "title": "P0 · Memory · Done — Restart continuity, carry previous knowledge, global project context, hold context until asked\n\nEncrypted reference briefs, project/subgroup recall, relevant Diary notes, full saved-text paging and continued-review checkpoints. Restart/window/privacy/browser checks passed, including live model recall after 18 later turns. Saved references are not current verified facts.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45422422473",
+    "completed": true
   },
   {
     "id": "audit-d39c9efd2acfdd5f751e9452",
-    "title": "P0 · Security · WIP — Data safety for chats, diary, tasks, secrets and configuration\n\nLocal SQLite; configuration/vault values encrypted with Fernet; Windows key protected by DPAPI; encrypted portable backups. Chat text, diary, tasks and search index are not fully encrypted at rest. Workspace development password is a local plain-text file.",
-    "completed": false
+    "title": "P0 · Security · Done — Data safety for chats, diary, tasks, secrets and configuration\n\nSQLCipher chats, Diary, tasks and search; protected password; Windows DPAPI key. Migration preserved every saved-record count and verified protected credentials. Interrupted migration, encrypted restore and Linux/Windows/browser checks passed. CI: https://github.com/abhijitxroy/aimate/actions/runs/45428297613",
+    "completed": true
   },
   {
     "id": "audit-00d98fdbf7d43c72568dce90",

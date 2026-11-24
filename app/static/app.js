@@ -1,6 +1,7 @@
 const $ = selector => document.querySelector(selector);
 let csrf = "", config = {}, cid = null, controller = null, busy = false;
 let demo = false;
+let initializingChat = null, openingChat = null, restoringChat = null, queuedAsk = false, navigationVersion = 0;
 const pagesPreview = Boolean(window.AiMatePagesPreview);
 let access = {role:"admin",configure:true,write:false,manage_records:true,audit:true};
 let privateChat = false, feedbackMessage = null, feedbackRating = "positive", vaultEditId = null;
@@ -315,6 +316,16 @@ function conversationButton(thread, className = "") {
   const label = !/^[A-Za-z0-9]{1,3}$/.test(emoji) && thread.title.trimStart().startsWith(emoji)
     ? thread.title.trimStart().slice(emoji.length).trimStart() : thread.title;
   button.append(icon, element("span", "conversation-label", label));
+  const sameTitles = conversationList.filter(item => item.title === thread.title &&
+    (item.group_id || null) === (thread.group_id || null) && Boolean(item.archived) === Boolean(thread.archived))
+    .sort((a, b) => a.created - b.created || a.id.localeCompare(b.id));
+  if (sameTitles.length > 1) {
+    const number = sameTitles.findIndex(item => item.id === thread.id) + 1;
+    const marker = element("span", "conversation-duplicate", String(number));
+    marker.title = `Separate chat ${number} of ${sameTitles.length} · ${new Date(thread.created * 1000).toLocaleString()}`;
+    marker.setAttribute("aria-label", marker.title);
+    button.append(marker);
+  }
   if (thread.pinned) {
     const pin = element("span", "conversation-pin", "★");
     pin.setAttribute("aria-hidden", "true");
@@ -560,7 +571,7 @@ function addMessage(role, text = "", turnId = null) {
   const body = element("div", "body");
   if (role === "assistant") renderAnswer(body, text);
   else renderDataValue(body, text);
-  const message = {root, body, text, turnId, reads: 0};
+  const message = {root, body, text, turnId, conversationId: cid, reads: 0};
   if (role === "user") {
     const edit = element("button", "message-action", "Edit");
     edit.type = "button";
@@ -620,7 +631,7 @@ function editMessage(message, action) {
     send.disabled = cancel.disabled = true;
     try {
       if (message.turnId) {
-        const updated = await api(`/api/conversations/${cid}/edit`, {method: "POST",
+        const updated = await api(`/api/conversations/${message.conversationId}/edit`, {method: "POST",
           body: JSON.stringify({turn_id: message.turnId, question})});
         await openConversation(updated.id, $("#chatTitle").textContent);
       } else close();
@@ -758,9 +769,16 @@ function drawAction(action, parent) {
   return card;
 }
 
-async function openConversation(id, title = "Project conversation", allowBusy = false) {
-  if (busy && !allowBusy) return;
+function openConversation(id, title = "Project conversation", allowBusy = false) {
+  if (busy && !allowBusy) return Promise.resolve();
+  const pending = loadConversation(id, title, ++navigationVersion);
+  openingChat = pending;
+  return pending.finally(() => { if (openingChat === pending) openingChat = null; });
+}
+
+async function loadConversation(id, title, version) {
   const conversation = await api(`/api/conversations/${id}`);
+  if (version !== navigationVersion) return;
   privateChat = Boolean(conversation.private);
   cid = id;
   archiveView = Boolean(conversationList.find(t => t.id === id)?.archived);
@@ -823,6 +841,15 @@ async function openConversation(id, title = "Project conversation", allowBusy = 
 
 async function ask(question) {
   if (busy || (!question.trim() && !pendingAttachments.length)) return;
+  const pending = initializingChat || restoringChat || openingChat;
+  if (pending) {
+    if (queuedAsk) return;
+    queuedAsk = true;
+    try { await pending; }
+    catch (error) { $("#activity").textContent = error.message; return; }
+    finally { queuedAsk = false; }
+    return ask(question);
+  }
   if (pagesPreview) {
     $("#activity").textContent = "Backend not connected. Open your local AiMate workspace for live AI and project access.";
     return;
@@ -1428,6 +1455,7 @@ $("#question").onkeydown = event => {
 $("#stop").onclick = () => controller?.abort();
 $("#newChat").onclick = async () => {
   if (busy) return;
+  navigationVersion++;
   archiveView = false; pendingAttachments = []; renderPendingAttachments();
   cid = null; $("#messages").replaceChildren(); $("#welcome").hidden = false;
   privateChat = false;$("#privateToggle").setAttribute("aria-pressed","false");
@@ -2250,12 +2278,21 @@ $("#openAudit").onclick = async () => {
     $("#auditContent").textContent = data.entries.length ? JSON.stringify(data.entries, null, 2) : "No confirmed actions yet.";
   } catch (error) { $("#auditContent").textContent = error.message; }
 };
-async function restoreConversation() {
+function restoreConversation() {
+  if (restoringChat) return restoringChat;
+  const pending = loadPreviousConversation();
+  restoringChat = pending;
+  return pending.finally(() => { if (restoringChat === pending) restoringChat = null; });
+}
+
+async function loadPreviousConversation() {
   if (cid || $("#workspace").hidden) return;
+  const version = navigationVersion;
   let previous;
   try { previous = localStorage.getItem("aimate.conversation"); } catch { return; }
   if (!previous) return;
   const state = await api("/api/state");
+  if (version !== navigationVersion) return;
   const conversation = state.conversations.find(item => item.id === previous);
   if (conversation) await openConversation(previous, conversation.title);
 }
@@ -2294,4 +2331,5 @@ async function initialize() {
 setInterval(() => { void syncConnections(); }, 60_000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) void syncConnections(); });
 window.addEventListener("focus", () => { void syncConnections(); });
-initialize().catch(error => { $("#loginError").textContent = error.message; });
+initializingChat = initialize().catch(error => { $("#loginError").textContent = error.message; })
+  .finally(() => { initializingChat = null; });
