@@ -1294,8 +1294,23 @@ $("#feedbackForm").onsubmit=async event=>{
 $("#openFeedbackLog").onclick=async()=>{try{
   const data=await api("/api/feedback");$("#auditContent").textContent=data.entries.length ? JSON.stringify(data.entries,null,2) : "No feedback yet.";$("#auditDialog").querySelector("h2").textContent="Feedback";$("#auditDialog").showModal();
 }catch(error){$("#settingsStatus").textContent=error.message;}};
+let vaultTimer = null, vaultViewVersion = 0;
 async function loadVault() {
-  const data=await api("/api/vault"),list=$("#vaultEntries");list.replaceChildren();
+  const version = ++vaultViewVersion;
+  clearTimeout(vaultTimer);
+  const status = await api("/api/vault/status");
+  if (version !== vaultViewVersion || !$("#vaultDialog").open) return;
+  $("#vaultUnlockForm").hidden = status.unlocked;
+  $("#lockVault").hidden = !status.unlocked;
+  $("#vaultEditor").hidden = !status.unlocked;
+  $("#vaultEntries").replaceChildren();
+  $("#vaultLockStatus").textContent = status.unlocked ? "Unlocked · locks automatically after 5 minutes" : "Locked · AI access also disabled";
+  $("#vaultUnlockLabel").textContent = status.otp ? "Fresh authenticator code" : "Workspace password";
+  if (!status.unlocked) return;
+  vaultTimer = setTimeout(() => { void lockPrivateVault(); }, Math.max(1,status.seconds_remaining) * 1000);
+  const data=await api("/api/vault"),list=$("#vaultEntries");
+  if (version !== vaultViewVersion || !$("#vaultDialog").open) return;
+  list.replaceChildren();
   for(const entry of data.entries) {
     const card=element("article","knowledge-card");card.append(element("h3","",entry.name),element("p","hint",entry.ai_access ? "AI access allowed" : "Private"));
     const value=element("pre","vault-revealed");value.hidden=true;card.append(value);
@@ -1304,7 +1319,9 @@ async function loadVault() {
     for(const button of [reveal,edit,remove])button.type="button";
     reveal.onclick=async()=>{try{
       if(!value.hidden){value.textContent="";value.hidden=true;reveal.textContent="Reveal";return;}
-      const result=await api(`/api/vault/${entry.id}/reveal`,{method:"POST"});value.textContent=result.value;value.hidden=false;reveal.textContent="Hide";
+      const result=await api(`/api/vault/${entry.id}/reveal`,{method:"POST"});
+      if (version !== vaultViewVersion || !$("#vaultDialog").open) return;
+      value.textContent=result.value;value.hidden=false;reveal.textContent="Hide";
       setTimeout(()=>{value.textContent="";value.hidden=true;reveal.textContent="Reveal";},30000);
     }catch(error){$("#vaultError").textContent=error.message;}};
     edit.onclick=()=>{vaultEditId=entry.id;$("#vaultName").value=entry.name;$("#vaultValue").value="";$("#vaultAiAccess").checked=Boolean(entry.ai_access);$("#vaultEditor").open=true;$("#vaultValue").focus();};
@@ -1319,7 +1336,36 @@ $("#vaultForm").onsubmit=async event=>{
     vaultEditId=null;$("#vaultForm").reset();$("#vaultEditor").open=false;await loadVault();
   }catch(error){$("#vaultError").textContent=error.message;}
 };
-$("#vaultDialog").onclose=()=>{$("#vaultValue").value="";$("#vaultEntries").replaceChildren();};
+async function lockPrivateVault() {
+  vaultViewVersion++;
+  clearTimeout(vaultTimer);
+  $("#vaultVerification").value = ""; $("#vaultValue").value = "";
+  $("#vaultEntries").replaceChildren(); $("#vaultEditor").hidden = true;
+  $("#lockVault").hidden = true; $("#vaultUnlockForm").hidden = false;
+  $("#vaultLockStatus").textContent = "Locked · AI access also disabled";
+  try { await api("/api/vault/lock", {method:"POST"}); }
+  catch (error) { if ($("#vaultDialog").open) $("#vaultError").textContent = error.message; }
+}
+$("#lockVault").onclick = lockPrivateVault;
+$("#vaultUnlockForm").onsubmit = async event => {
+  event.preventDefault();
+  const button = event.currentTarget.querySelector("button"); button.disabled = true;
+  try {
+    await api("/api/vault/unlock", {method:"POST",body:JSON.stringify({verification:$("#vaultVerification").value})});
+    $("#vaultVerification").value = ""; $("#vaultError").textContent = "";
+    if (!$("#vaultDialog").open) { await lockPrivateVault(); return; }
+    await loadVault();
+  } catch (error) { $("#vaultError").textContent = error.message; }
+  finally { button.disabled = false; }
+};
+$("#vaultDialog").onclose=()=>{
+  vaultViewVersion++;
+  $("#vaultVerification").value = ""; $("#vaultValue").value = "";
+  $("#vaultEntries").replaceChildren(); $("#vaultEditor").hidden = true;
+};
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden && !$("#lockVault").hidden) void lockPrivateVault();
+});
 function chatInputAvailable(target) {
   return !$("#workspace").hidden && !document.querySelector("dialog[open], .conversation-context:not([hidden])") &&
     !target?.closest?.('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"]');

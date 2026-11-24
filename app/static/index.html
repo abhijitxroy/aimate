@@ -303,6 +303,9 @@
   <dialog id="vaultDialog">
     <div class="dialog-head"><h2>Private vault</h2><button class="close" data-close="vaultDialog" aria-label="Close vault">×</button></div>
     <p class="hint">Encrypted on this device. Values stay hidden until revealed. AI access is off by default.</p>
+    <p id="vaultLockStatus" class="hint">Locked</p>
+    <form id="vaultUnlockForm"><label><span id="vaultUnlockLabel">Workspace password</span><input id="vaultVerification" type="password" autocomplete="off" required maxlength="200"></label><button class="primary" type="submit">Unlock for 5 minutes</button></form>
+    <button id="lockVault" type="button" hidden>Lock now</button>
     <div id="vaultEntries" class="knowledge-grid"></div>
     <details id="vaultEditor"><summary>Add or replace an entry</summary><form id="vaultForm"><label>Name<input id="vaultName" required maxlength="100" autocomplete="off"></label><label>Secret value<input id="vaultValue" type="password" required maxlength="6000" autocomplete="new-password" spellcheck="false"></label><label class="check"><input id="vaultAiAccess" type="checkbox">Allow AI to read this entry when requested</label><p class="hint">AI-accessible values are sent to your selected provider. Keep passwords and API tokens private unless sharing is necessary. Saved answers redact vault values.</p><button class="primary" type="submit">Save entry</button></form></details>
     <p id="vaultError" class="error" role="alert"></p>

@@ -910,7 +910,8 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
                         require_local_chatgpt()
                     turn = run_turn(chat_store, cid, question, client_factory=client_factory,
                                     services_factory=services_factory, chatgpt=chatgpt, model_mode=model_mode,
-                                    images=image_blocks, role=session.get("role", "admin"))
+                                    images=image_blocks, role=session.get("role", "admin"),
+                                    vault_access=lambda: chat_store is store and valid_session(session["token"]) and vault_unlocked(session))
                 async for event in turn:
                     if event["event"] == "done" and chat_store is not store and (attachment_meta or image_cards) and chat_store.turns:
                         metadata = chat_store.turns[-1].get("usage") or {}
@@ -951,13 +952,40 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
                 lock.release()
         return StreamingResponse(events(), media_type="text/event-stream", headers={"X-Accel-Buffering": "no"})
 
+    from app.vault_lock import unlocked as vault_unlocked
+
+    def require_vault(session):
+        if not vault_unlocked(session):
+            raise HTTPException(423, "Unlock your private vault first.")
+
+    @app.get("/api/vault/status")
+    def vault_status(session=Depends(auth)):
+        from app.vault_lock import status
+        return status(session, authenticator)
+
+    @app.post("/api/vault/unlock")
+    async def unlock_vault(request: Request, session=Depends(auth)):
+        from app.vault_lock import unlock
+        body = await request.json()
+        if not isinstance(body, dict):
+            raise ValueError("Provide your vault verification.")
+        return unlock(session, body.get("verification"), authenticator, store.password)
+
+    @app.post("/api/vault/lock")
+    def lock_vault(session=Depends(auth)):
+        from app.vault_lock import lock
+        lock(session)
+        return {"unlocked": False}
+
     @app.get("/api/vault")
     def vault_entries(session=Depends(auth)):
+        require_vault(session)
         from app.vault import entries
         return {"entries":entries(store)}
 
     @app.post("/api/vault")
     async def add_vault(request: Request, session=Depends(auth)):
+        require_vault(session)
         from app.vault import save
         body=await request.json()
         if not isinstance(body,dict):
@@ -966,6 +994,7 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
 
     @app.patch("/api/vault/{ident}")
     async def update_vault(ident: str, request: Request, session=Depends(auth)):
+        require_vault(session)
         from app.vault import save
         body=await request.json()
         if not isinstance(body,dict):
@@ -974,6 +1003,7 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
 
     @app.post("/api/vault/{ident}/reveal")
     def reveal_vault(ident: str, session=Depends(auth)):
+        require_vault(session)
         from app.vault import read
         rows=store.rows("SELECT name FROM vault_entries WHERE id=?",(ident,))
         if not rows:
@@ -982,6 +1012,7 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
 
     @app.delete("/api/vault/{ident}")
     def delete_vault(ident: str, session=Depends(auth)):
+        require_vault(session)
         store.execute("DELETE FROM vault_entries WHERE id=?",(ident,))
         return {"deleted":ident}
 

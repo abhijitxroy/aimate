@@ -24,6 +24,8 @@ class PrivacyTests(unittest.TestCase):
 
     def test_vault_encryption_ai_opt_in_and_redaction(self):
         secret="a-unique-vault-private-value"
+        unlocked = self.client.post("/api/vault/unlock",headers=self.headers,json={"verification":self.store.password})
+        self.assertEqual(unlocked.status_code,200)
         result=self.client.post("/api/vault",headers=self.headers,json={"name":"Test secret","value":secret})
         self.assertEqual(result.status_code,200)
         ident=result.json()["id"]

@@ -250,16 +250,16 @@ async def propose(store, config, services, cid, args):
     return public_action(store.action(aid))
 
 
-async def run_turn(store, cid, question, *, client_factory=ai_client, services_factory=Services, chatgpt=None, model_mode="auto", images=None, role="admin"):
+async def run_turn(store, cid, question, *, client_factory=ai_client, services_factory=Services, chatgpt=None, model_mode="auto", images=None, role="admin", vault_access=None):
     config = store.config()
     config["_role"] = role
     config["_vault_secrets"] = vault_redactions(store)
-    config["_vault_ai_access"] = bool(store.rows("SELECT id FROM vault_entries WHERE ai_access=1 LIMIT 1"))
+    config["_vault_ai_access"] = bool(vault_access and vault_access() and store.rows("SELECT id FROM vault_entries WHERE ai_access=1 LIMIT 1"))
     config["allow_writes"] = bool(config.get("allow_writes")) and role in {"admin", "developer"}
     if config.get("ai", {}).get("provider") == "chatgpt":
         if not chatgpt:
             raise ValueError("ChatGPT sign-in is available in local live mode")
-        async for event in run_chatgpt_turn(store, cid, question, chatgpt, services_factory, model_mode=model_mode, images=images, role=role):
+        async for event in run_chatgpt_turn(store, cid, question, chatgpt, services_factory, model_mode=model_mode, images=images, role=role, vault_access=vault_access):
             yield event
         return
     question = scrub(question, config)
@@ -354,7 +354,10 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
                         result = {"proposal": card["id"], "status": "pending", "note": "Access validated. User must confirm the settings change."}
                         yield {"event": "action", "action": card}
                     elif call["name"] == "read_vault_entry":
+                        if role != "admin" or not vault_access or not vault_access():
+                            raise ValueError("Private vault is locked. Ask the administrator to unlock it.")
                         result = {"value":read_vault(store,args.get("name"),ai=True)}
+                        config["_vault_secrets"].append(result["value"])
                     else:
                         raise ValueError("Unknown tool")
                     text = json.dumps(result if call["name"] == "read_vault_entry" else scrub(result, config), ensure_ascii=False)
@@ -421,25 +424,25 @@ def responses_history(messages):
     return items
 
 
-async def run_chatgpt_turn(store, cid, question, connection, services_factory, *, model_mode="auto", images=None, role="admin"):
+async def run_chatgpt_turn(store, cid, question, connection, services_factory, *, model_mode="auto", images=None, role="admin", vault_access=None):
     services = services_factory(store.config())
     if hasattr(services,"enable_reuse"):
         services.enable_reuse()
     try:
         async for event in _run_chatgpt_turn(store,cid,question,connection,lambda config:services,
-                                           model_mode=model_mode,images=images,role=role):
+                                           model_mode=model_mode,images=images,role=role,vault_access=vault_access):
             yield event
     finally:
         if hasattr(services,"aclose"):
             await services.aclose()
 
 
-async def _run_chatgpt_turn(store, cid, question, connection, services_factory, *, model_mode="auto", images=None, role="admin"):
+async def _run_chatgpt_turn(store, cid, question, connection, services_factory, *, model_mode="auto", images=None, role="admin", vault_access=None):
     from app.chatgpt import response_events
     config = store.config()
     config["_role"] = role
     config["_vault_secrets"] = vault_redactions(store)
-    config["_vault_ai_access"] = bool(store.rows("SELECT id FROM vault_entries WHERE ai_access=1 LIMIT 1"))
+    config["_vault_ai_access"] = bool(vault_access and vault_access() and store.rows("SELECT id FROM vault_entries WHERE ai_access=1 LIMIT 1"))
     config["allow_writes"] = bool(config.get("allow_writes")) and role in {"admin", "developer"}
     question = scrub(question, config)
     account_id = connection.status()["active"]
@@ -553,7 +556,10 @@ async def _run_chatgpt_turn(store, cid, question, connection, services_factory, 
                     result = {"proposal": card["id"], "status": "pending", "note": "User must confirm; not executed."}
                     yield {"event": "action", "action": card}
                 elif name == "read_vault_entry":
+                    if role != "admin" or not vault_access or not vault_access():
+                        raise ValueError("Private vault is locked. Ask the administrator to unlock it.")
                     result = {"value":read_vault(store,args.get("name"),ai=True)}
+                    config["_vault_secrets"].append(result["value"])
                 else:
                     raise ValueError("Unknown tool")
                 value = json.dumps(result if name == "read_vault_entry" else scrub(result, config), ensure_ascii=False)

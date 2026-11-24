@@ -185,3 +185,23 @@ class BrowserRegressionTests(unittest.TestCase):
         after = self.context.request.get(self.url + "/api/state").json()["conversations"]
         self.assertEqual({row["id"] for row in before}, {row["id"] for row in after})
         self.assertEqual(self.page.evaluate("cid"), existing)
+
+    def test_vault_requires_unlock_and_explicit_lock_clears_revealed_values(self):
+        self.page.locator("#headerSettings").click()
+        self.page.locator('[data-settings-tab="changes"]').click()
+        self.page.locator("#openVault").click()
+        self.expect(self.page.locator("#vaultUnlockForm")).to_be_visible()
+        self.page.locator("#vaultVerification").fill("browser-regression-password")
+        self.page.locator("#vaultUnlockForm button").click()
+        self.expect(self.page.locator("#lockVault")).to_be_visible()
+        self.page.locator("#vaultEditor summary").click()
+        self.page.locator("#vaultName").fill("Browser synthetic entry")
+        self.page.locator("#vaultValue").fill("synthetic-browser-secret")
+        self.page.locator("#vaultForm button").click()
+        card = self.page.locator("#vaultEntries .knowledge-card").filter(has_text="Browser synthetic entry")
+        card.get_by_role("button", name="Reveal", exact=True).click()
+        self.expect(card.locator(".vault-revealed")).to_have_text("synthetic-browser-secret")
+        self.page.locator("#lockVault").click()
+        self.expect(self.page.locator("#vaultEntries")).to_be_empty()
+        self.expect(self.page.locator("#vaultUnlockForm")).to_be_visible()
+        self.assertFalse(self.context.request.get(self.url + "/api/vault/status").json()["unlocked"])
