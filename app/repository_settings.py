@@ -56,6 +56,8 @@ async def propose_repository(store, config, cid, args, services_factory, access_
     from app.access_lease import bind_factory
     services_factory = bind_factory(services_factory, access_check)
     from app.agent import public_action
+    if config["_version"] != store.config()["_version"]:
+        raise ValueError("Settings changed while this chat was answering. Ask again to review a fresh proposal.")
 
     payload = {key: args[key] for key in ("repo", "replace") if args.get(key)}
     if scrub(payload, config) != payload:
@@ -63,6 +65,8 @@ async def propose_repository(store, config, cid, args, services_factory, access_
     _, preview = await prepare_repository(config, payload, services_factory)
     if access_check:
         access_check()
+    if config["_version"] != store.config()["_version"]:
+        raise ValueError("Settings changed during access validation. Ask again to review a fresh proposal.")
     for pending in store.rows("""SELECT id FROM actions WHERE conversation=? AND service='settings'
             AND operation='update_github_repositories' AND status='pending' AND config_version=? AND created>?""",
                               (cid, config["_version"], time.time() - 1800)):

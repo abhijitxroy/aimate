@@ -729,7 +729,19 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
         return {"id": cid, "group_id": store.conversation_group(cid), "title": store.rows("SELECT title FROM conversations WHERE id=?", (cid,))[0]["title"], "turns": [{"id": t["id"], "messages": json.loads(t["messages"]), "created": t["created"],
                                     "attachment_previews": preview_rows.get(t["id"], []),
                                     "usage": json.loads(t["metadata"]) if t["metadata"] else None} for t in turns],
-                "actions": [public_action(store.action(r["id"])) for r in store.rows("SELECT id FROM actions WHERE conversation=? ORDER BY created", (cid,))]}
+                "actions": conversation_actions(cid)}
+
+    def conversation_actions(cid):
+        config = store.config()
+        return [public_action(store.action(r["id"]), config) for r in
+                store.rows("SELECT id FROM actions WHERE conversation=? ORDER BY created", (cid,))]
+
+    @app.get("/api/conversations/{cid}/actions")
+    def action_cards(cid: str, session=Depends(auth)):
+        if cid in session["private_chats"]:
+            return {"actions": []}
+        store.require_conversation(cid)
+        return {"actions": conversation_actions(cid)}
 
     @app.patch("/api/conversations/{cid}")
     async def rename_conversation(cid: str, request: Request, session=Depends(auth)):

@@ -347,7 +347,7 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; }
 #attachText { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; flex-shrink: 0; padding: 8px; border-radius: 50%; background: transparent; color: var(--muted); }
 #attachText:hover { color: var(--text); background: #ffffff09; }
 #privateToggle { padding: 5px 8px; font-size: 10px; background: transparent; border-radius: 14px; color: var(--muted); }
-#privateToggle[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
+#privateToggle[aria-pressed="true"] { color: #fff1f3; border-color: #b94a64; background: #75263c; }
 .vault-revealed { font-size: 12px; overflow-wrap: anywhere; white-space: pre-wrap; padding: 10px; border: 1px solid var(--line); border-radius: 8px; }
 #vaultForm, #feedbackForm { display: grid; gap: 14px; margin-top: 16px; }
 .attachment-cards { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }

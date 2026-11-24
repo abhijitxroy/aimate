@@ -221,8 +221,14 @@ def ai_error(exc):
     }.get(status, "AI connection failed. Check credentials, AWS session expiry, region and network connectivity.")
 
 
-def public_action(row):
-    return {k: row[k] for k in ("id", "conversation", "service", "operation", "preview", "status", "created", "result")}
+def public_action(row, config=None):
+    card = {k: row[k] for k in ("id", "conversation", "service", "operation", "preview", "status", "created", "result")}
+    if config is not None and card["status"] == "pending":
+        if time.time() - card["created"] > 1800:
+            card["status"] = "expired"
+        elif row["config_version"] != config["_version"]:
+            card["status"] = "superseded"
+    return card
 
 
 async def propose(store, config, services, cid, args, access_check=None):

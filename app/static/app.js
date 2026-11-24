@@ -1,6 +1,7 @@
 const $ = selector => document.querySelector(selector);
 let csrf = "", config = {}, cid = null, controller = null, busy = false;
 let demo = false;
+const actionStates = new Map();
 let initializingChat = null, openingChat = null, restoringChat = null, queuedAsk = false, navigationVersion = 0;
 const pagesPreview = Boolean(window.AiMatePagesPreview);
 let access = {role:"admin",configure:true,write:false,manage_records:true,audit:true};
@@ -449,6 +450,7 @@ async function refreshState() {
     };
     mobileNav.append(mobileButton);
   }
+  if (cid && !privateChat && $("#messages").querySelector("[data-action]")) await refreshActionCards();
   return state;
 }
 
@@ -702,11 +704,28 @@ function addTool(message, name, input = {}) {
 }
 
 function drawAction(action, parent) {
+  const previous = actionStates.get(action.id);
+  if (previous && previous.status !== "pending" && action.status === "pending") action = previous;
+  actionStates.set(action.id, action);
+  const existing = [...$("#messages").querySelectorAll("[data-action]")]
+    .filter(item => item.dataset.action === action.id);
   const card = element("section", "action-card");
   card.dataset.action = action.id;
-  if (action.service === "settings" && action.operation === "update_github_repositories" && action.status === "completed") {
+  const mount = () => {
+    if (existing.length) {
+      existing[0].replaceWith(card);
+      existing.slice(1).forEach(item => item.remove());
+    } else if (parent) parent.append(card);
+    return card;
+  };
+  if (action.service === "settings" && action.operation === "update_github_repositories" &&
+      ["completed", "superseded", "expired", "cancelled"].includes(action.status)) {
     card.classList.add("action-completed");
-    card.append(element("span", "success", demo ? "✓ Simulated change completed" : "✓ Completed"));
+    card.hidden = action.status !== "completed";
+    const labels = {completed: demo ? "✓ Simulated change completed" : "✓ Completed",
+      superseded: "Settings changed · ask again to review", expired: "Proposal expired · ask again to review",
+      cancelled: "Cancelled"};
+    card.append(element("span", action.status === "completed" ? "success" : "muted", labels[action.status]));
     const connection = element("button", "", "Check connection");
     connection.type = "button";
     connection.onclick = () => {
@@ -723,8 +742,7 @@ function drawAction(action, parent) {
       }
     };
     card.append(connection);
-    if (parent) parent.append(card);
-    return card;
+    return mount();
   }
   const label = action.operation.replaceAll("_", " ") + (demo ? " (simulated)" : "");
   card.append(element("h3", "", `${action.service} · ${label}`),
@@ -751,8 +769,7 @@ function drawAction(action, parent) {
         for (const b of buttons.children) b.disabled = true;
         try {
           const next = await api(`/api/actions/${action.id}/${decision}`, {method: "POST"});
-          const replacement = drawAction(next);
-          card.replaceWith(replacement);
+          drawAction(next);
           if (next.service === "settings" && next.status === "completed") await refreshState();
           $("#activity").textContent = next.status === "completed" ? (demo ? "Simulated change completed. No external service was changed." : "Change completed. Ask a follow-up to continue.") : `Action ${next.status}.`;
         } catch (error) {
@@ -765,8 +782,14 @@ function drawAction(action, parent) {
     }
     card.append(buttons);
   }
-  if (parent) parent.append(card);
-  return card;
+  return mount();
+}
+
+async function refreshActionCards() {
+  const conversationId = cid;
+  const response = await api(`/api/conversations/${conversationId}/actions`);
+  if (cid !== conversationId) return;
+  for (const action of response.actions) drawAction(action);
 }
 
 function openConversation(id, title = "Project conversation", allowBusy = false) {
@@ -787,6 +810,7 @@ async function loadConversation(id, title, version) {
     else localStorage.setItem("aimate.conversation", id);
   } catch { /* storage may be unavailable */ }
   $("#messages").replaceChildren();
+  actionStates.clear();
   $("#chatTitle").textContent = conversation.title || title;
   $("#privateToggle").setAttribute("aria-pressed",String(privateChat));
   $("#welcome").hidden = Boolean(conversation.turns.length || conversation.actions.length);

@@ -80,6 +80,45 @@ class RepositorySettingsTests(unittest.TestCase):
             self.proposal(repo="team/new-repo")
         self.assertEqual(self.store.config()["github"]["repos"], ["team/repo"])
 
+    def test_confirmation_makes_other_old_proposals_non_actionable_in_history(self):
+        first = self.proposal(repo="team/first-new")
+        second = self.proposal(repo="team/second-new")
+        self.client.post(f"/api/actions/{first['id']}/confirm", headers=self.headers).raise_for_status()
+        for path in (f"/api/conversations/{self.cid}", f"/api/conversations/{self.cid}/actions"):
+            cards = {card["id"]: card for card in self.client.get(path).json()["actions"]}
+            self.assertEqual(cards[first["id"]]["status"], "completed")
+            self.assertEqual(cards[second["id"]]["status"], "superseded")
+        self.assertNotIn("team/second-new", self.store.config()["github"]["repos"])
+        # Presentation does not pretend the unconfirmed operation completed.
+        self.assertEqual(self.store.action(second["id"])["status"], "pending")
+        self.assertEqual(self.client.post(f"/api/actions/{second['id']}/confirm", headers=self.headers).status_code, 409)
+        self.store.execute("UPDATE actions SET created=created-1900 WHERE id=?", (second["id"],))
+        cards = self.client.get(f"/api/conversations/{self.cid}/actions").json()["actions"]
+        self.assertEqual(next(card for card in cards if card["id"] == second["id"])["status"], "expired")
+
+    def test_settings_change_during_validation_does_not_create_stale_proposal(self):
+        original = self.factory
+        changed = False
+        def factory(config):
+            source = original(config)
+            request = source.request
+            async def changing_request(*args, **kwargs):
+                nonlocal changed
+                result = await request(*args, **kwargs)
+                if not changed:
+                    changed = True
+                    current = self.store.config()
+                    current["github"]["token"] = "synthetic-rotated-token"
+                    self.store.save_config(current)
+                return result
+            source.request = changing_request
+            return source
+        with self.assertRaisesRegex(ValueError, "Settings changed"):
+            asyncio.run(propose_repository(self.store, self.store.config(), self.cid,
+                                          {"repo": "team/new"}, factory))
+        self.assertEqual(self.store.rows("SELECT id FROM actions"), [])
+        self.assertEqual(self.store.config()["github"]["repos"], ["team/repo"])
+
     def test_bad_ai_request_is_recorded_without_credentials_and_does_not_mark_connection_failed(self):
         import anthropic
         class RejectAI:

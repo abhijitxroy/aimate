@@ -39,6 +39,15 @@ class BrowserRegressionTests(unittest.TestCase):
                     raise RuntimeError("Fixture server did not start.")
             cls.playwright = sync_playwright().start()
             cls.browser = cls.playwright.chromium.launch()
+            from playwright.sync_api import expect
+            login_context = cls.browser.new_context()
+            login_page = login_context.new_page()
+            login_page.goto(cls.url)
+            login_page.locator("#password").fill("browser-regression-password")
+            login_page.locator("#loginForm button[type=submit]").click()
+            expect(login_page.locator("#workspace")).to_be_visible()
+            cls.login_state = login_context.storage_state()
+            login_context.close()
         except Exception:
             cls.server.terminate()
             cls.server.wait(timeout=10)
@@ -55,11 +64,9 @@ class BrowserRegressionTests(unittest.TestCase):
     def setUp(self):
         from playwright.sync_api import expect
         self.expect = expect
-        self.context = self.browser.new_context(viewport={"width": 1280, "height": 800})
+        self.context = self.browser.new_context(viewport={"width": 1280, "height": 800}, storage_state=self.login_state)
         self.page = self.context.new_page()
         self.page.goto(self.url)
-        self.page.locator("#password").fill("browser-regression-password")
-        self.page.locator("#loginForm button[type=submit]").click()
         self.expect(self.page.locator("#workspace")).to_be_visible()
 
     def tearDown(self):
@@ -95,14 +102,19 @@ class BrowserRegressionTests(unittest.TestCase):
                 targets: [{target: "demo/project", ok: true, message: "Accessible",
                            details: ["Default branch: main"]}]};
             drawAction(action, document.querySelector("#messages"));
+            drawAction(action, document.querySelector("#messages"));
         }""", action)
         card = self.page.locator('[data-action="browser-repo-change"]')
+        self.assertEqual(card.count(), 1)
         self.expect(card.locator("pre")).to_be_visible()
         card.get_by_role("button", name="Confirm change", exact=True).click()
         self.expect(card).to_have_class("action-card action-completed")
         self.expect(card).to_contain_text("Completed")
         self.assertEqual(card.locator("pre").count(), 0)
         self.assertEqual(card.get_by_role("button", name="Confirm change", exact=True).count(), 0)
+        self.page.evaluate("action => drawAction(action, document.querySelector('#messages'))", action)
+        self.assertEqual(card.count(), 1)
+        self.assertEqual(card.locator("pre").count(), 0)
         # refreshState replaces the reports; supply the saved verification for navigation.
         self.page.evaluate("""() => { connectionReports.github = {status: "passed",
             message: "Read access verified.", targets: [{target: "demo/project", ok: true,
@@ -123,6 +135,40 @@ class BrowserRegressionTests(unittest.TestCase):
         # Failed confirmations still retain their diagnostic preview.
         self.page.evaluate("action => drawAction({...action, id: 'failed-change', status: 'failed'}, document.querySelector('#messages'))", action)
         self.expect(self.page.locator('[data-action="failed-change"] pre')).to_be_visible()
+
+    def test_other_obsolete_proposal_collapses_when_confirmation_refreshes_actions(self):
+        first = {"id": "first-review", "service": "settings", "operation": "update_github_repositories",
+                 "status": "pending", "preview": {"repository": "demo/first"}}
+        second = dict(first, id="second-review", preview={"repository": "demo/second"})
+        completed = dict(first, status="completed")
+        obsolete = dict(second, status="superseded")
+        self.page.route("**/api/actions/first-review/confirm", lambda route: route.fulfill(json=completed))
+        self.page.route("**/api/conversations/browser-reviews/actions",
+                        lambda route: route.fulfill(json={"actions": [completed, obsolete]}))
+        self.page.evaluate("""cards => {
+            cid = 'browser-reviews';
+            for (const card of cards) drawAction(card, document.querySelector('#messages'));
+        }""", [first, second])
+        self.page.locator('[data-action="first-review"]').get_by_role("button", name="Confirm change", exact=True).click()
+        stale = self.page.locator('[data-action="second-review"]')
+        self.expect(stale).to_contain_text("Settings changed")
+        self.expect(stale).to_be_hidden()
+        self.assertEqual(self.page.locator(".action-card pre").count(), 0)
+        self.assertEqual(self.page.get_by_role("button", name="Confirm change", exact=True).count(), 0)
+        # A genuinely separate, valid pending request still needs approval.
+        self.page.evaluate("card => drawAction(card, document.querySelector('#messages'))",
+                           dict(second, id="valid-new-review"))
+        self.expect(self.page.locator('[data-action="valid-new-review"]').get_by_role("button", name="Confirm change", exact=True)).to_be_visible()
+
+    def test_private_mode_active_colour_in_all_themes(self):
+        toggle = self.page.locator("#privateToggle")
+        for theme in ("navy", "beige", "black-blue"):
+            self.page.evaluate("theme => document.documentElement.dataset.theme = theme", theme)
+            toggle.click()
+            self.expect(toggle).to_have_attribute("aria-pressed", "true")
+            self.page.wait_for_function("() => getComputedStyle(document.querySelector('#privateToggle')).backgroundColor === 'rgb(117, 38, 60)'")
+            toggle.click()
+            self.expect(toggle).to_have_attribute("aria-pressed", "false")
 
     def test_auto_uses_analysis_over_http_stream_and_survives_reload(self):
         self.page.locator("#question").fill("Debug this failing pipeline and analyse the root cause.")
