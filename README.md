@@ -134,9 +134,14 @@ python -m venv .venv
 .\run_aimate.ps1
 ```
 
-Open http://127.0.0.1:8765. Sign in with the password in
-`.data/access-password.txt`, generated at the first startup. Alternatively, set
+Open http://127.0.0.1:8765. The generated password is encrypted. Display it in
+your private terminal with `.\.venv\Scripts\python.exe tools/show_workspace_password.py`. Alternatively, set
 `APP_PASSWORD` to a password of at least 12 characters before startup.
+
+Chats, tasks, My Diary and the search index use SQLCipher encryption. Existing
+data requires a verified migration with the server stopped; see
+[encrypted storage](docs/encrypted-storage.md). Portable restore also encrypts
+old backups and protects the key for the new Windows account.
 
 For authenticator login, open **Settings → Admin → Set up OTP**. Verify your
 development password, scan the QR code with an authenticator app, and confirm a

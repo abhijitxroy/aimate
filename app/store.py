@@ -3,7 +3,7 @@ import json
 import hashlib
 import os
 import secrets
-import sqlite3
+from app.database import driver as sqlite3, connect as connect_database, password as protected_password, plaintext
 import threading
 import time
 from pathlib import Path
@@ -17,19 +17,18 @@ class Store:
         self.directory.mkdir(parents=True, exist_ok=True)
         if os.name != "nt":
             self.directory.chmod(0o700)
+        if os.environ.get("AIMATE_ENV") == "production" and plaintext(self.directory / "app.sqlite3"):
+            raise ValueError("Stop AiMate and run tools/migrate_storage.py --application-stopped before production startup.")
         from app.device_key import load_key
-        self.cipher = Fernet(load_key(self.directory))
+        device_key = load_key(self.directory)
+        self.cipher = Fernet(device_key)
         self.password = os.environ.get("APP_PASSWORD")
         if not self.password:
-            password_file = self.directory / "access-password.txt"
-            if not password_file.exists():
-                with password_file.open("x") as f:
-                    f.write(secrets.token_urlsafe(24))
-            self.password = password_file.read_text().strip()
+            self.password = protected_password(self.directory, self.cipher)
         if len(self.password) < 12:
             raise ValueError("APP_PASSWORD must have at least 12 characters")
         self.lock = threading.RLock()
-        self.db = sqlite3.connect(self.directory / "app.sqlite3", check_same_thread=False)
+        self.db = connect_database(self.directory / "app.sqlite3", device_key)
         self.db.row_factory = sqlite3.Row
         self.db.create_function("casefold", 1, lambda value: str(value or "").casefold(), deterministic=True)
         self.db.execute("PRAGMA journal_mode=WAL")

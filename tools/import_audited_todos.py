@@ -2,10 +2,14 @@
 import argparse
 import hashlib
 import json
-import sqlite3
+import sys
 import time
 from collections import Counter
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from app.database import connect
+from app.device_key import load_key
+from contextlib import closing
 
 
 def main():
@@ -32,10 +36,11 @@ def main():
     database = data / "app.sqlite3"
     if not database.is_file():
         raise ValueError("Restore the workspace before importing tasks.")
-    db = sqlite3.connect(database, timeout=30)
+    key = load_key(data)
+    db = connect(database, key)
     snapshot = data / f"before-todo-import-{time.time_ns()}.sqlite3"
     try:
-        with sqlite3.connect(snapshot) as backup:
+        with closing(connect(snapshot, key)) as backup:
             db.backup(backup)
             if backup.execute("PRAGMA integrity_check").fetchone()[0] != "ok":
                 raise ValueError("Pre-import snapshot verification failed.")

@@ -7,7 +7,7 @@
 3. Run `.\backup.ps1`.
 4. Enter and confirm a new backup password of at least 12 characters. Keep it in your password manager; it cannot be recovered.
 5. Wait for **Encrypted backup verified and saved** and **Full restore check: PASS**. The complete **AiMate-Migration** folder is saved at the top level of your work OneDrive.
-6. Wait for OneDrive to finish syncing. Open OneDrive **in your browser** and confirm the `.aimate-backup`, `Restore-AiMate.ps1`, `portable_backup.py`, `device_key.py` and `START-HERE.md` files are present. Download the backup once from the browser to confirm it is available independently of this laptop. Saving locally does not prove cloud sync.
+6. Wait for OneDrive to finish syncing. Open OneDrive **in your browser** and confirm the `.aimate-backup`, `Restore-AiMate.ps1`, `portable_backup.py`, `device_key.py`, `database.py` and `START-HERE.md` files are present. Download the backup once from the browser to confirm it is available independently of this laptop. Saving locally does not prove cloud sync.
 7. Keep your backup password somewhere you can access after surrendering this laptop, such as your password manager on your phone. Do not keep the only copy on the old laptop.
 
 ## New laptop
@@ -39,6 +39,10 @@ Existing destination folders are never overwritten.
 - Saved ChatGPT accounts, protected again for the new Windows account. Expired/revoked provider sessions may still require signing in again.
 
 Windows encryption is re-created on the new device. You do not need the old laptop's Windows password to restore.
+Restored databases are encrypted with SQLCipher, including restores from older
+backups. Generated passwords are protected in `access-password.fernet`; use
+`.\.venv\Scripts\python.exe tools/show_workspace_password.py` in a private
+terminal if you need the password.
 Dependencies are installed fresh; the old `.venv` and Git history are excluded.
 
 Private/session-only chats, browser theme/sidebar preferences, unsent drafts and files outside the app/data folders are not included. Machine-level proxy, certificates, VPN and environment overrides must be configured separately; the tool lists relevant environment variable **names**, never their secret values. Restored data is always inside the new app's `.data` folder. If `APP_DATA_DIR` is set on the new laptop, point it there or unset it before starting.

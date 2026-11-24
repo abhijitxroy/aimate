@@ -14,6 +14,7 @@ $OutputFolder = [System.IO.Path]::GetFullPath($OutputFolder)
 New-Item -ItemType Directory -Path $OutputFolder -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot "tools\portable_backup.py") -Destination $OutputFolder
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot "app\device_key.py") -Destination $OutputFolder
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot "app\database.py") -Destination $OutputFolder
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot "tools\Restore-AiMate.ps1") -Destination $OutputFolder
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot "docs\laptop-migration.md") -Destination (Join-Path $OutputFolder "START-HERE.md")
 $backupPath = Join-Path $OutputFolder ("AiMate-" + (Get-Date -Format "yyyyMMdd-HHmmss") + ".aimate-backup")

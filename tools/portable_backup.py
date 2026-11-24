@@ -27,6 +27,11 @@ except ImportError:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
     from app.device_key import dpapi
 
+try:
+    from app.database import connect as connect_database, snapshot as memory_snapshot, migrate, password as protected_password
+except ImportError:
+    from database import connect as connect_database, snapshot as memory_snapshot, migrate, password as protected_password
+
 MAGIC = b"AIMATE-BACKUP-1\n"
 EXCLUDED = {".git", ".venv", ".data", ".demo-data", ".public-data", "_site",
             "__pycache__", ".pytest_cache", "node_modules", ".migration-venv"}
@@ -138,9 +143,8 @@ def export_backup(source, data_dir, output, password):
         protected, legacy = path.parent / "encryption.dpapi", path.parent / "encryption.key"
         key = dpapi(protected.read_bytes(), decrypt=True) if protected.exists() else legacy.read_bytes()
         Fernet(key)
-        with closing(sqlite3.connect(path.as_uri() + "?mode=ro", uri=True, timeout=15)) as original:
-            with closing(sqlite3.connect(":memory:")) as snapshot:
-                original.backup(snapshot)
+        with closing(connect_database(path, key, readonly=True)) as original:
+            with closing(memory_snapshot(original)) as snapshot:
                 verify_db(snapshot, key)
                 inventory = counts(snapshot)
                 convert_oauth(snapshot, key, exporting=True)
@@ -176,14 +180,18 @@ def export_backup(source, data_dir, output, password):
             if path.name in ("encryption.dpapi", "encryption.key") or path.name.endswith(("-wal", "-shm")):
                 continue
             if relative not in snapshots:
-                content = (os.environ["APP_PASSWORD"].encode()
-                           if relative == "access-password.txt" and os.environ.get("APP_PASSWORD")
-                           else path.read_bytes())
+                content = path.read_bytes()
+                if os.environ.get("APP_PASSWORD") and relative in ("access-password.txt", "access-password.fernet"):
+                    content = os.environ["APP_PASSWORD"].encode()
+                    if relative.endswith(".fernet"):
+                        owner = next(store for store in stores if store["database"] == "app.sqlite3")
+                        content = Fernet(owner["key"].encode()).encrypt(content)
                 add("data/" + relative, content)
         for relative, content in snapshots.items():
             add("data/" + relative, content)
         # Preserve an environment-only workspace password without exposing its value.
-        if os.environ.get("APP_PASSWORD") and "data/access-password.txt" not in manifest["files"]:
+        if os.environ.get("APP_PASSWORD") and not any(
+                "data/" + name in manifest["files"] for name in ("access-password.txt", "access-password.fernet")):
             name = "data/access-password.txt"
             content = os.environ["APP_PASSWORD"].encode()
             add(name, content)
@@ -260,6 +268,16 @@ def restore_backup(backup, destination, password):
                 else:
                     (path.parent / "encryption.key").write_bytes(key)
                     (path.parent / "encryption.key").chmod(0o600)
+                migrate(path, key)
+                cipher = Fernet(key)
+                protected_password(path.parent, cipher)
+                legacy = path.parent / "access-password.txt"
+                if legacy.exists():
+                    legacy.unlink()
+                with closing(connect_database(path, key, readonly=True)) as db:
+                    verify_db(db, key)
+                    if counts(db) != store["counts"]:
+                        raise ValueError("Encrypted restore changed saved-record counts.")
             # Race-safe on Windows: rename fails if destination has appeared.
             stage.rename(destination)
         except BaseException:

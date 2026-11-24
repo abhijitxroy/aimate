@@ -36,6 +36,8 @@ def load_key(directory):
     directory=Path(directory).resolve()
     legacy=directory/"encryption.key"
     protected=directory/"encryption.dpapi"
+    if (directory / "app.sqlite3").exists() and not legacy.exists() and not protected.exists():
+        raise ValueError("Saved data has no encryption key. Preserve this directory and restore its verified backup.")
     if os.name != "nt":
         if not legacy.exists():
             with legacy.open("xb") as file:

@@ -7,3 +7,4 @@ PyJWT[crypto]>=2.10,<3
 qrcode>=8,<9
 Pillow>=11,<14
 pypdf>=5,<7
+sqlcipher3-wheels==0.5.7

@@ -13,6 +13,7 @@ from contextlib import closing
 from unittest.mock import patch
 
 from cryptography.fernet import Fernet
+from app.database import connect, plaintext, migrate
 
 SCRIPT = Path(__file__).resolve().parents[1] / "tools" / "portable_backup.py"
 spec = importlib.util.spec_from_file_location("portable_backup", SCRIPT)
@@ -141,7 +142,9 @@ class PortableBackupTests(unittest.TestCase):
                 with self.assertRaises(Exception):
                     self.old_device.decrypt(blob)
                 self.assertFalse((folder / "encryption.key").exists())
-            with closing(sqlite3.connect(folder / "app.sqlite3")) as db:
+            self.assertFalse(plaintext(folder / "app.sqlite3"))
+            self.assertFalse((folder / "access-password.txt").exists())
+            with closing(connect(folder / "app.sqlite3", key)) as db:
                 with patch.object(migration, "dpapi", self.device(self.new_device)):
                     migration.verify_db(db, key)
                 self.assertEqual(json.loads(Fernet(key).decrypt(db.execute("SELECT encrypted FROM settings").fetchone()[0].encode())),
@@ -176,8 +179,25 @@ class PortableBackupTests(unittest.TestCase):
         with patch.dict(os.environ, {"APP_PASSWORD": "synthetic override password"}):
             self.export()
         self.restore()
-        self.assertEqual((self.destination / ".data/access-password.txt").read_text(),
+        self.assertEqual(Fernet(self.keys[""]).decrypt((self.destination / ".data/access-password.fernet").read_bytes()).decode(),
                          "synthetic override password")
+
+    def test_encrypted_source_and_password_override_roundtrip(self):
+        db = self.store("")
+        db.close()
+        key = self.keys[""]
+        migrate(self.data / "app.sqlite3", key)
+        (self.data / "access-password.fernet").write_bytes(Fernet(key).encrypt(b"synthetic old password"))
+        (self.data / "access-password.txt").unlink()
+        with patch.dict(os.environ, {"APP_PASSWORD": "synthetic current override"}):
+            self.export()
+        self.restore()
+        restored = self.destination / ".data"
+        self.assertFalse(plaintext(restored / "app.sqlite3"))
+        self.assertEqual(Fernet(key).decrypt((restored / "access-password.fernet").read_bytes()),
+                         b"synthetic current override")
+        with closing(connect(restored / "app.sqlite3", key)) as db:
+            self.assertEqual(db.execute("SELECT count(*) FROM conversations").fetchone()[0], 1)
 
     def test_unsafe_paths_rejected(self):
         for name in ("../escape", "/escape", "app/../escape", "C:/escape",
@@ -212,7 +232,7 @@ class PortableBackupTests(unittest.TestCase):
         migration.export_backup(self.source, self.data, self.backup, PASSWORD)
         migration.restore_backup(self.backup, self.destination, PASSWORD)
         self.assertEqual(migration.dpapi((self.destination / ".data/encryption.dpapi").read_bytes(), decrypt=True), key)
-        with closing(sqlite3.connect(self.destination / ".data/app.sqlite3")) as restored:
+        with closing(connect(self.destination / ".data/app.sqlite3", key)) as restored:
             migration.verify_db(restored, key)
             encoded = restored.execute("SELECT encrypted FROM chatgpt_auth").fetchone()[0]
             self.assertEqual(migration.dpapi(base64.b64decode(encoded), decrypt=True), oauth)

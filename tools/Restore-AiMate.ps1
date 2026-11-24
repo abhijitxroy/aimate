@@ -20,7 +20,7 @@ if (-not (Test-Path -LiteralPath (Join-Path $bootstrap "Scripts\python.exe"))) {
     if ($LASTEXITCODE -ne 0) { throw "Could not create the migration Python environment." }
 }
 $pythonPath = Join-Path $bootstrap "Scripts\python.exe"
-& $pythonPath -m pip install "cryptography>=43,<47"
+& $pythonPath -m pip install "cryptography>=43,<47" "sqlcipher3-wheels==0.5.7"
 if ($LASTEXITCODE -ne 0) { throw "Dependency download failed. Check internet/proxy access and rerun; nothing has been restored yet." }
 & $pythonPath (Join-Path $PSScriptRoot "portable_backup.py") restore --backup $Backup --destination $Destination
 if ($LASTEXITCODE -ne 0) { throw "Restore failed. No existing workspace was replaced." }
