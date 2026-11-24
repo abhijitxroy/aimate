@@ -5,6 +5,8 @@ const actionStates = new Map();
 const chatRuns = window.AiMateRuns;
 function syncChatControls() {
   const run = chatRuns.get(cid);
+  $("#workspace").dataset.answering=String(chatRuns.size());
+  $("#newChat").title=chatRuns.size() ? `${chatRuns.size()} chats answering · start another` : "New conversation";
   busy = Boolean(run); controller = run?.controller || null;
   $("#send").disabled = busy; $("#modelMode").disabled = busy; $("#stop").hidden = !busy;
   document.querySelectorAll("[data-edit-message]").forEach(button => { button.disabled = busy; });
@@ -930,6 +932,7 @@ async function ask(question) {
     bot = addMessage("assistant");
     run={cid,controller:runController,nodes:[...$("#messages").children],private:privateChat,title:$("#chatTitle").textContent,activity:"Reading your question…"};
     chatRuns.start(run.cid,run);
+    syncChatControls();
     $("#question").value = "";
     pendingAttachments = []; renderPendingAttachments();
     activity("Reading your question…");

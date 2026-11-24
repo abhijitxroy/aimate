@@ -110,7 +110,7 @@ class BrowserRegressionTests(unittest.TestCase):
         self.page.locator("#newChat").click()
         self.page.locator("#question").fill("Parallel second")
         self.page.locator("#send").click()
-        self.page.wait_for_function("window.AiMateRuns.size() === 2")
+        self.expect(self.page.locator("#workspace")).to_have_attribute("data-answering","2")
         second=self.page.evaluate("cid")
         self.assertNotEqual(first,second)
         self.page.evaluate("id => openConversation(id)",first)
@@ -121,7 +121,7 @@ class BrowserRegressionTests(unittest.TestCase):
         self.expect(self.page.locator("#messages")).to_contain_text("Reply: Parallel second")
         self.expect(self.page.locator("#messages")).not_to_contain_text("Reply: Parallel first")
         self.expect(self.page.locator("#activity")).to_have_text("Answer complete")
-        self.assertEqual(self.page.evaluate("window.AiMateRuns.size()"),0)
+        self.expect(self.page.locator("#workspace")).to_have_attribute("data-answering","0")
 
     def test_todo_expansion_preserves_text_and_visible_controls(self):
         self.page.locator("#sidebarTools").evaluate("(el) => { el.open = true; }")
