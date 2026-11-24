@@ -21,8 +21,8 @@
   },
   {
     "id": "audit-00d98fdbf7d43c72568dce90",
-    "title": "P0 · Privacy · WIP — Ultra privacy for tokens/passwords\n\nPrivate/session chats, masked fields, redaction and AI opt-in vault entries exist. Full DB encryption and separate vault unlock/auto-lock remain. AI-shared entry values leave the device for the selected model provider.",
-    "completed": false
+    "title": "P0 · Privacy · Done — Ultra privacy for tokens/passwords\n\nFull database encryption plus session vault reauthentication, 5-minute expiry, Lock now/tab-hide locking, per-entry AI opt-in and live per-read lock checks. Windows/Linux/browser workflow passed: https://github.com/abhijitxroy/aimate/actions/runs/45431479032",
+    "completed": true
   },
   {
     "id": "audit-183794f3203014a68fbac474",

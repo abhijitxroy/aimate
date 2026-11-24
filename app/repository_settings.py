@@ -52,13 +52,17 @@ async def prepare_repository(config, payload, services_factory):
                        "access": report, "note": "Uses the saved GitHub connection. No GitHub repository is created or modified."}
 
 
-async def propose_repository(store, config, cid, args, services_factory):
+async def propose_repository(store, config, cid, args, services_factory, access_check=None):
+    from app.access_lease import bind_factory
+    services_factory = bind_factory(services_factory, access_check)
     from app.agent import public_action
 
     payload = {key: args[key] for key in ("repo", "replace") if args.get(key)}
     if scrub(payload, config) != payload:
         raise ValueError("Do not put credentials in chat. Use the saved GitHub token in Settings.")
     _, preview = await prepare_repository(config, payload, services_factory)
+    if access_check:
+        access_check()
     for pending in store.rows("""SELECT id FROM actions WHERE conversation=? AND service='settings'
             AND operation='update_github_repositories' AND status='pending' AND config_version=? AND created>?""",
                               (cid, config["_version"], time.time() - 1800)):

@@ -64,6 +64,7 @@ class Services:
         self._reuse = False
         self._clients = {}
         self._tls = None
+        self.access_check = None
 
     def enable_reuse(self):
         self._reuse = True
@@ -116,6 +117,8 @@ class Services:
         return "".join("/job/" + quote(part, safe="") for part in value.split("/"))
 
     async def request(self, service, method, path, *, params=None, body=None, form=None):
+        if self.access_check:
+            self.access_check()
         cfg = self.section(service)
         if method != "GET" and not cfg.get("token"):
             raise ValueError("Add a GitHub token with write access before preparing or executing changes")
@@ -144,6 +147,8 @@ class Services:
                 elif crumb.status_code not in (403, 404):
                     raise ValueError(f"Jenkins crumb request returned HTTP {crumb.status_code}")
             async with client.stream(method, base + path, params=params, json=body, data=form, headers=headers) as r:
+                if self.access_check:
+                    self.access_check()
                 if r.status_code >= 300:
                     # Do not echo response bodies: provider errors can contain credentials.
                     hint = {301: "API redirected; check the site URL and corporate network/proxy routing",
@@ -160,6 +165,8 @@ class Services:
                     raise ValueError(f"{service}: HTTP {r.status_code}; {hint}")
                 data, capped = bytearray(), False
                 async for chunk in r.aiter_bytes():
+                    if self.access_check:
+                        self.access_check()
                     remaining = 2_000_000 - len(data)
                     data.extend(chunk[:remaining])
                     if len(chunk) > remaining:

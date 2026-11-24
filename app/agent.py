@@ -224,7 +224,7 @@ def public_action(row):
     return {k: row[k] for k in ("id", "conversation", "service", "operation", "preview", "status", "created", "result")}
 
 
-async def propose(store, config, services, cid, args):
+async def propose(store, config, services, cid, args, access_check=None):
     if not config.get("allow_writes"):
         raise ValueError("Enable change proposals in Settings first")
     service, operation, payload = args["service"], args["operation"], args["payload"]
@@ -242,6 +242,8 @@ async def propose(store, config, services, cid, args):
         display["body"] = {k: v for k, v in plan["body"].items() if k != "content"}
     display["reason"] = str(args.get("reason", ""))[:1000]
     aid = secrets.token_hex(16)
+    if access_check:
+        access_check()
     store.execute("""INSERT INTO actions
         (id,conversation,service,operation,payload,preview,config_version,status,created)
         VALUES (?,?,?,?,?,?,?,'pending',?)""",
@@ -250,7 +252,9 @@ async def propose(store, config, services, cid, args):
     return public_action(store.action(aid))
 
 
-async def run_turn(store, cid, question, *, client_factory=ai_client, services_factory=Services, chatgpt=None, model_mode="auto", images=None, role="admin", vault_access=None):
+async def run_turn(store, cid, question, *, client_factory=ai_client, services_factory=Services, chatgpt=None, model_mode="auto", images=None, role="admin", vault_access=None, access_check=None):
+    if access_check:
+        access_check()
     config = store.config()
     config["_role"] = role
     config["_vault_secrets"] = vault_redactions(store)
@@ -259,7 +263,7 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
     if config.get("ai", {}).get("provider") == "chatgpt":
         if not chatgpt:
             raise ValueError("ChatGPT sign-in is available in local live mode")
-        async for event in run_chatgpt_turn(store, cid, question, chatgpt, services_factory, model_mode=model_mode, images=images, role=role, vault_access=vault_access):
+        async for event in run_chatgpt_turn(store, cid, question, chatgpt, services_factory, model_mode=model_mode, images=images, role=role, vault_access=vault_access, access_check=access_check):
             yield event
         return
     question = scrub(question, config)
@@ -276,6 +280,8 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
     context_reference = "" if config.get("_private") else scrub(memory_context(store, cid, question), config)
     system = SYSTEM + action_capabilities(config) + context_reference + "\nConfigured sources:\n" + json.dumps(scope) + "\nRecent proposal outcomes:\n" + json.dumps(outcomes)
     services = services_factory(config)
+    if hasattr(services, "access_check"):
+        services.access_check = access_check
     if hasattr(services, "enable_reuse"):
         services.enable_reuse()
     evidence = {}
@@ -287,6 +293,8 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
     completed = False
     try:
         async def classify():
+            if access_check:
+                access_check()
             response = await client.messages.create(
                 model=config["ai"]["model"], max_tokens=ROUTER_MAX_TOKENS, system=ROUTER_SYSTEM,
                 messages=[{"role": "user", "content": scrub(route_input(question, messages[:-1], context_reference), config)}])
@@ -297,6 +305,8 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
         record_usage(store, config, config["ai"]["model"], selection["routing_usage"], "Auto routing")
         yield selection
         for round_no in range(9):
+            if access_check:
+                access_check()
             params = {"model": selection["model"], "max_tokens": 4096,
                       "system": system, "messages": messages, "tools": available_tools}
             if round_no == 8:
@@ -305,6 +315,8 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
                 first_delta = True
                 protected_text = ""
                 async for delta in stream.text_stream:
+                    if access_check:
+                        access_check()
                     if first_delta and answer:
                         delta = "\n\n" + delta
                     first_delta = False
@@ -314,6 +326,8 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
                     else:
                         yield {"event": "text", "delta": scrub(delta, config)}
                 msg = await stream.get_final_message()
+            if access_check:
+                access_check()
             if protected_text:
                 yield {"event": "text", "delta": scrub(protected_text, config)}
             blocks = [block.model_dump(exclude_none=True) for block in msg.content]
@@ -330,6 +344,8 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
                 break
             results = []
             for call in calls:
+                if access_check:
+                    access_check()
                 args = call.get("input", {})
                 yield {"event": "tool", "name": call["name"], "input": scrub(args, config)}
                 try:
@@ -339,7 +355,7 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
                         result = await read_evidence(services, args, evidence)
                         yield {"event": "source", "url": result["source"]}
                     elif call["name"] == "propose_action":
-                        card = await propose(store, config, services, cid, args)
+                        card = await propose(store, config, services, cid, args, access_check=access_check)
                         result = {"proposal": card["id"], "status": "pending", "note": "Not executed. User must confirm."}
                         yield {"event": "action", "action": card}
                     elif call["name"] in {tool["name"] for tool in MEMORY_TOOLS}:
@@ -350,7 +366,7 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
                             yield {"event": "source", "url": result["source"]}
                     elif call["name"] == "configure_repository":
                         from app.repository_settings import propose_repository
-                        card = await propose_repository(store, config, cid, args, services_factory)
+                        card = await propose_repository(store, config, cid, args, services_factory, access_check=access_check)
                         result = {"proposal": card["id"], "status": "pending", "note": "Access validated. User must confirm the settings change."}
                         yield {"event": "action", "action": card}
                     elif call["name"] == "read_vault_entry":
@@ -424,20 +440,22 @@ def responses_history(messages):
     return items
 
 
-async def run_chatgpt_turn(store, cid, question, connection, services_factory, *, model_mode="auto", images=None, role="admin", vault_access=None):
+async def run_chatgpt_turn(store, cid, question, connection, services_factory, *, model_mode="auto", images=None, role="admin", vault_access=None, access_check=None):
     services = services_factory(store.config())
+    if hasattr(services, "access_check"):
+        services.access_check = access_check
     if hasattr(services,"enable_reuse"):
         services.enable_reuse()
     try:
         async for event in _run_chatgpt_turn(store,cid,question,connection,lambda config:services,
-                                           model_mode=model_mode,images=images,role=role,vault_access=vault_access):
+                                           model_mode=model_mode,images=images,role=role,vault_access=vault_access,access_check=access_check):
             yield event
     finally:
         if hasattr(services,"aclose"):
             await services.aclose()
 
 
-async def _run_chatgpt_turn(store, cid, question, connection, services_factory, *, model_mode="auto", images=None, role="admin", vault_access=None):
+async def _run_chatgpt_turn(store, cid, question, connection, services_factory, *, model_mode="auto", images=None, role="admin", vault_access=None, access_check=None):
     from app.chatgpt import response_events
     config = store.config()
     config["_role"] = role
@@ -469,6 +487,8 @@ async def _run_chatgpt_turn(store, cid, question, connection, services_factory, 
     usage = {"input_tokens": 0, "output_tokens": 0}
     by_model = {}
     async def classify():
+        if access_check:
+            access_check()
         payload = {"model": model, "instructions": ROUTER_SYSTEM,
                    "input": [{"role": "user", "content": scrub(route_input(question, history, context_reference), config)}],
                    "store": False, "stream": True}
@@ -489,6 +509,8 @@ async def _run_chatgpt_turn(store, cid, question, connection, services_factory, 
         raise ValueError("The selected Analysis model is unavailable. Choose an available model in Settings.")
     yield selection
     for round_no in range(9):
+        if access_check:
+            access_check()
         payload = {"model": model, "instructions": instructions, "input": input_items,
                    "store": False, "stream": True, "tools": [namespace],
                    "include": ["reasoning.encrypted_content"]}
@@ -496,6 +518,8 @@ async def _run_chatgpt_turn(store, cid, question, connection, services_factory, 
             payload["tool_choice"] = "none"
         output, text = None, ""
         async for event in response_events(connection, payload, expected_account=account_id):
+            if access_check:
+                access_check()
             if event["type"] == "response.output_text.delta":
                 delta = event.get("delta", "")
                 if not text and round_no:
@@ -529,6 +553,8 @@ async def _run_chatgpt_turn(store, cid, question, connection, services_factory, 
             return
         results = []
         for call in calls:
+            if access_check:
+                access_check()
             name = call["name"]
             try:
                 if call.get("namespace") not in {None, "project"} or name not in {t["name"] for t in tools}:
@@ -548,11 +574,11 @@ async def _run_chatgpt_turn(store, cid, question, connection, services_factory, 
                         yield {"event": "source", "url": result["source"]}
                 elif name == "configure_repository":
                     from app.repository_settings import propose_repository
-                    card = await propose_repository(store, config, cid, args, services_factory)
+                    card = await propose_repository(store, config, cid, args, services_factory, access_check=access_check)
                     result = {"proposal": card["id"], "status": "pending", "note": "Access validated. User must confirm the settings change."}
                     yield {"event": "action", "action": card}
                 elif name == "propose_action":
-                    card = await propose(store, config, services, cid, args)
+                    card = await propose(store, config, services, cid, args, access_check=access_check)
                     result = {"proposal": card["id"], "status": "pending", "note": "User must confirm; not executed."}
                     yield {"event": "action", "action": card}
                 elif name == "read_vault_entry":

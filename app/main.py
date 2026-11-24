@@ -895,6 +895,8 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
         if lock.locked():
             raise HTTPException(409, "This conversation is already answering")
         await lock.acquire()
+        from app.access_lease import lease
+        access_check = lease(owner_store, sessions, session)
 
         async def events():
             turn_config = store.config()
@@ -911,8 +913,10 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
                     turn = run_turn(chat_store, cid, question, client_factory=client_factory,
                                     services_factory=services_factory, chatgpt=chatgpt, model_mode=model_mode,
                                     images=image_blocks, role=session.get("role", "admin"),
-                                    vault_access=lambda: chat_store is store and valid_session(session["token"]) and vault_unlocked(session))
+                                    vault_access=lambda: chat_store is store and valid_session(session["token"]) and vault_unlocked(session),
+                                    access_check=access_check)
                 async for event in turn:
+                    access_check()
                     if event["event"] == "done" and chat_store is not store and (attachment_meta or image_cards) and chat_store.turns:
                         metadata = chat_store.turns[-1].get("usage") or {}
                         metadata.update(attachments=attachment_meta + [{k:v for k,v in card.items() if k!="preview"} for card in image_cards],
@@ -949,7 +953,11 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
                     message += " Reference: " + reference
                 yield "data: " + json.dumps({"event": "error", "message": scrub(message, store.config())}) + "\n\n"
             finally:
-                lock.release()
+                try:
+                    if "turn" in locals() and hasattr(turn, "aclose"):
+                        await turn.aclose()
+                finally:
+                    lock.release()
         return StreamingResponse(events(), media_type="text/event-stream", headers={"X-Accel-Buffering": "no"})
 
     from app.vault_lock import unlocked as vault_unlocked
