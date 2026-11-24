@@ -882,7 +882,7 @@ async function ask(question) {
     openSettings(); $("#settingsStatus").textContent = "Add your AI credentials and model ID to start."; return;
   }
   const attachments = [...pendingAttachments];
-  const submittedQuestion = [question.trim() || "Read the attached files.", ...attachments.map(file => `\nAttached ${file.kind === "image" ? "image" : "file"}: ${file.name}\n${file.text || ""}`)].join("\n");
+  const submittedQuestion = question.trim() || "Read the attached files.";
   if (submittedQuestion.length > 30000) {
     $("#activity").textContent = "Message and attached files exceed 30,000 characters. Remove a file or shorten the message.";
     return;
@@ -908,6 +908,7 @@ async function ask(question) {
     const response = await api("/api/chat", {
       method: "POST", body: JSON.stringify({conversation: cid, question: submittedQuestion, model_mode: $("#modelMode").value,
         attachments:attachments.filter(file=>file.kind !== "image").map(({name,size})=>({name,size})),
+        documents:attachments.filter(file=>file.kind !== "image").map(file=>({name:file.name,size:file.size,text:file.text,kind:file.kind || "text",notice:file.notice || ""})),
         images:attachments.filter(file=>file.kind === "image").map(({name,data})=>({name,data})),
         display_question:question.trim() || "Read the attached files."}),
       signal: controller.signal, stream: true
@@ -1396,6 +1397,10 @@ function chatInputAvailable(target) {
 }
 function insertQuestion(text) {
   const field = $("#question");
+  if (text.length > 4000) {
+    void addTextFiles([new File([text],"Pasted text.txt",{type:"text/plain"})]);
+    return;
+  }
   const room = field.maxLength - (field.value.length - (field.selectionEnd - field.selectionStart));
   field.setRangeText(text.slice(0, Math.max(0, room)), field.selectionStart, field.selectionEnd, "end");
   field.focus({preventScroll: true});
@@ -1428,31 +1433,19 @@ async function addTextFiles(files) {
       } catch { $("#activity").textContent = "This image could not be read. Try a PNG or JPEG."; }
       continue;
     }
-    if (/\.pdf$/i.test(file.name)) {
-      if (file.size > 4 * 1024 * 1024) { $("#activity").textContent = "Use a PDF under 4 MB."; continue; }
-      try {
-        $("#activity").textContent = "Reading PDF…";
-        const data = (await fileDataUrl(file)).split(",")[1];
-        const result = await api("/api/attachments/pdf",{method:"POST",body:JSON.stringify({name:file.name,data})});
-        if (result.text.length + pendingAttachments.reduce((n,item)=>n+(item.text?.length || 0),0) > 28000) throw new Error("Combined file text exceeds 28,000 characters.");
-        pendingAttachments.push({...result,id:crypto.randomUUID()});
-        renderPendingAttachments(); $("#activity").textContent = "PDF attached."; $("#question").focus({preventScroll:true});
-      } catch(error) { $("#activity").textContent = error.message; }
-      continue;
-    }
-    if (!/\.(txt|log|md|csv|json|ya?ml|xml|html|css|[jt]sx?|py|sh|ps1|sql|toml|ini|cfg|c|cpp|h|java|go|rs)$/i.test(file.name) || file.size > 1024 * 1024) {
-      $("#activity").textContent = "Attach an image, PDF, or text/code/log file. Binary files cannot be read.";
-      continue;
-    }
-    const text = await file.text();
-    if (text.includes("\0")) { $("#activity").textContent = "This file contains binary data. Use a text file."; continue; }
-    if (pendingAttachments.length >= 6) { $("#activity").textContent = "Attach up to 6 files per message."; break; }
-    if (text.length + pendingAttachments.reduce((total, item) => total + (item.text?.length || 0), 0) > 28000) {
-      $("#activity").textContent = "Attached files exceed 28,000 characters. Use a smaller file or excerpt."; continue;
-    }
-    pendingAttachments.push({id:crypto.randomUUID(), name:file.name, size:file.size, text});
-    renderPendingAttachments();
-    $("#question").focus({preventScroll:true});
+    if (file.size > 4*1024*1024) { $("#activity").textContent="Use a document under 4 MB."; continue; }
+    try {
+      $("#activity").textContent = "Validating attachment…";
+      const data=(await fileDataUrl(file)).split(",")[1];
+      const result=await api("/api/attachments/document",{method:"POST",body:JSON.stringify({name:file.name,data})});
+      if (result.text.length + pendingAttachments.reduce((n,item)=>n+(item.text?.length || 0),0)>3_000_000) throw new Error("Combined document text exceeds 3,000,000 characters.");
+      if (pendingAttachments.length+1+(result.images?.length || 0)>6 || pendingAttachments.filter(f=>f.kind==="image").length+(result.images?.length || 0)>4) throw new Error("Use up to six attachments, including four images/scanned pages.");
+      pendingAttachments.push({...result,images:undefined,id:crypto.randomUUID()});
+      for (const image of result.images || []) pendingAttachments.push({id:crypto.randomUUID(),...image,size:Math.ceil(image.data.length*.75),kind:"image",preview:"data:image/jpeg;base64,"+image.data});
+      renderPendingAttachments();
+      $("#activity").textContent=result.notice || "File attached.";
+      $("#question").focus({preventScroll:true});
+    } catch(error) { $("#activity").textContent=error.message; }
   }
 }
 function fileDataUrl(file) {
@@ -1468,7 +1461,8 @@ function renderAttachmentCards(container, files, removable = true) {
     icon.setAttribute("aria-hidden", "true");
     const info = element("div", "attachment-info");
     const name = element("strong", "", file.name); name.title = file.name;
-    info.append(name, element("small", "", `${file.size < 1024 ? file.size + " B" : (file.size / 1024).toFixed(1) + " KB"} · ${file.kind === "image" ? "Image" : file.kind === "pdf" ? "PDF" : "Text file"}`));
+    info.append(name, element("small", "", `${file.size < 1024 ? file.size + " B" : (file.size / 1024).toFixed(1) + " KB"} · ${file.kind || "text"}`));
+    card.title=file.notice || file.name;
     card.append(icon, info);
     if (removable) {
       const remove = element("button", "attachment-remove", "×"); remove.type = "button";
@@ -1508,7 +1502,7 @@ document.addEventListener("paste", event => {
     event.preventDefault(); void addTextFiles(files); return;
   }
   const text = event.clipboardData?.getData("text/plain");
-  if (text && event.target !== $("#question")) { event.preventDefault(); insertQuestion(text); }
+  if (text && (event.target !== $("#question") || text.length>4000)) { event.preventDefault(); insertQuestion(text); }
 });
 document.addEventListener("dragover", event => {
   if (!$("#workspace").hidden && !document.querySelector("dialog[open]") && event.dataTransfer?.types.includes("Files")) event.preventDefault();

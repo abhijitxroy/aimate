@@ -88,6 +88,19 @@ class BrowserRegressionTests(unittest.TestCase):
         self.expect(self.page.locator("#usageBilling")).to_contain_text("billed $0.50")
         self.expect(self.page.locator("#usageError")).to_have_text("")
 
+    def test_large_paste_is_a_document_card_and_saved_message_keeps_card(self):
+        self.page.evaluate("""() => {
+            const transfer = new DataTransfer();
+            transfer.setData("text/plain", "Large pasted evidence\\n".repeat(400));
+            document.querySelector("#question").dispatchEvent(new ClipboardEvent("paste", {clipboardData:transfer,bubbles:true,cancelable:true}));
+        }""")
+        self.expect(self.page.locator("#attachmentCards")).to_contain_text("Pasted text.txt")
+        self.expect(self.page.locator("#question")).to_have_value("")
+        self.page.locator("#question").fill("Summarize the attachment")
+        self.page.locator("#send").click()
+        self.expect(self.page.locator("#messages .attachment-card")).to_contain_text("Pasted text.txt")
+        self.expect(self.page.locator("#activity")).to_have_text("Answer complete")
+
     def test_todo_expansion_preserves_text_and_visible_controls(self):
         self.page.locator("#sidebarTools").evaluate("(el) => { el.open = true; }")
         self.page.locator("#openTodos").click()

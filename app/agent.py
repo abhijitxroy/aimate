@@ -14,6 +14,7 @@ from app.vault import TOOL as VAULT_TOOL, read as read_vault, redactions as vaul
 from app.review import TOOLS as REVIEW_TOOLS, read as read_review
 from app.read_batch import read_evidence, prefetch_reads
 from app.evidence_cache import EvidenceCache
+from app.documents import TOOLS as DOCUMENT_TOOLS, read as read_document
 
 SYSTEM = """You are AiMate, a project assistant for GitHub, Jira and Jenkins, created by Abhijit Roy.
 When asked your name, answer: "My name is AiMate, and my creator is Abhijit Roy."
@@ -133,9 +134,9 @@ REPOSITORY_TOOL = {
 
 def tools_for(config):
     if config.get("_private"):
-        return TOOLS[:1] + REVIEW_TOOLS
+        return TOOLS[:1] + REVIEW_TOOLS + DOCUMENT_TOOLS
     admin_tools = ([REPOSITORY_TOOL] + ([VAULT_TOOL] if config.get("_vault_ai_access") else [])) if config.get("_role", "admin") == "admin" else []
-    return (TOOLS if config.get("allow_writes") else TOOLS[:1]) + admin_tools + MEMORY_TOOLS + REVIEW_TOOLS
+    return (TOOLS if config.get("allow_writes") else TOOLS[:1]) + admin_tools + MEMORY_TOOLS + REVIEW_TOOLS + DOCUMENT_TOOLS
 
 
 def action_capabilities(config):
@@ -370,6 +371,8 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
                         yield {"event": "action", "action": card}
                     elif call["name"] in {tool["name"] for tool in MEMORY_TOOLS}:
                         result = recall(store, cid, call["name"], args)
+                    elif call["name"] == "read_attachment":
+                        result = read_document(store,cid,args)
                     elif call["name"] in {tool["name"] for tool in REVIEW_TOOLS}:
                         result = await read_review(services, call["name"], args, store, cid)
                         if result.get("source"):
@@ -571,6 +574,8 @@ async def _run_chatgpt_turn(store, cid, question, connection, services_factory, 
                     yield {"event": "source", "url": result["source"]}
                 elif name in {tool["name"] for tool in MEMORY_TOOLS}:
                     result = recall(store, cid, name, args)
+                elif name == "read_attachment":
+                    result = read_document(store,cid,args)
                 elif name in {tool["name"] for tool in REVIEW_TOOLS}:
                     result = await read_review(services, name, args, store, cid)
                     if result.get("source"):

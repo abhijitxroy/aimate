@@ -83,6 +83,8 @@ class Store:
             CREATE TABLE IF NOT EXISTS migrations (name TEXT PRIMARY KEY);
             CREATE TABLE IF NOT EXISTS evidence_cache (id TEXT PRIMARY KEY, encrypted TEXT NOT NULL,
                 created REAL NOT NULL, expires REAL NOT NULL);
+            CREATE TABLE IF NOT EXISTS documents (id TEXT PRIMARY KEY, conversation TEXT NOT NULL,
+                name TEXT NOT NULL, size INTEGER NOT NULL, kind TEXT NOT NULL, encrypted TEXT NOT NULL, created REAL NOT NULL);
             CREATE TABLE IF NOT EXISTS ai_failures (id TEXT PRIMARY KEY, conversation TEXT,
                 status INTEGER, diagnosis TEXT NOT NULL, created REAL NOT NULL);
             CREATE INDEX IF NOT EXISTS turns_by_conversation ON turns(conversation,id DESC);

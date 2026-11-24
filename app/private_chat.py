@@ -7,6 +7,7 @@ class PrivateChat:
     def __init__(self, store, ident):
         self.store, self.ident, self.turns = store, ident, []
         self.sequence = 0
+        self.documents = {}
 
     def __getattr__(self, name):
         return getattr(self.store, name)

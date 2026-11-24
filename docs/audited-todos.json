@@ -46,8 +46,8 @@
   },
   {
     "id": "audit-687f51deb551f73dfaceb762",
-    "title": "P1 · Usage · WIP — Bill details; day/model usage dashboard\n\nToken ledger, day/model totals, charts/tables, CSV export and editable price estimates exist. Not provider invoices; connection checks and calls without usage reports are excluded. No provider billing reconciliation or budget enforcement.",
-    "completed": false
+    "title": "P1 · Usage · Done — Bill details; day/model usage dashboard\n\nDay/model ledger now includes billable connection tests and incomplete-call notices, cache-aware prices, monthly UTC warn/stop budgets and manual invoice comparisons. Unknown usage and other clients cannot be capped; provider invoice retrieval is not available with an inference key.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45446415311",
+    "completed": true
   },
   {
     "id": "audit-5e0e05d0b59a4c18ec097760",
