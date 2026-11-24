@@ -13,6 +13,7 @@ from app.memory import TOOLS as MEMORY_TOOLS, context as memory_context, recall
 from app.usage import record as record_usage
 from app.vault import TOOL as VAULT_TOOL, read as read_vault, redactions as vault_redactions
 from app.review import TOOLS as REVIEW_TOOLS, read as read_review
+from app.read_batch import read_evidence, prefetch_reads
 
 SYSTEM = """You are AiMate, a project assistant for GitHub, Jira and Jenkins, created by Abhijit Roy.
 When asked your name, answer: "My name is AiMate, and my creator is Abhijit Roy."
@@ -343,7 +344,8 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
                 completed = True
                 break
             results = []
-            for call in calls:
+            prefetched = await prefetch_reads(calls, services, evidence)
+            for call_index, call in enumerate(calls):
                 if access_check:
                     access_check()
                 args = call.get("input", {})
@@ -352,7 +354,9 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
                     if call["name"] not in {tool["name"] for tool in available_tools}:
                         raise ValueError("This tool is unavailable for your role.")
                     if call["name"] == "api_read":
-                        result = await read_evidence(services, args, evidence)
+                        result = prefetched[call_index] if prefetched is not None else await read_evidence(services, args, evidence)
+                        if isinstance(result, BaseException):
+                            raise result
                         yield {"event": "source", "url": result["source"]}
                     elif call["name"] == "propose_action":
                         card = await propose(store, config, services, cid, args, access_check=access_check)
@@ -402,19 +406,6 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
         finally:
             if hasattr(services, "aclose"):
                 await services.aclose()
-
-
-async def read_evidence(services, args, cache):
-    key = json.dumps([args["service"],args["path"],args.get("params")],sort_keys=True)
-    if key in cache:
-        earlier = cache[key]
-        return {"source":earlier["source"],"data":{"reused_this_turn":True,
-                "note":"This exact source was already read in this turn. Use the earlier full result.",
-                "excerpt":json.dumps(earlier["data"],ensure_ascii=False)[:1200]}}
-    result = await services.read(args["service"],args["path"],args.get("params"))
-    if len(cache) < 40:
-        cache[key] = result
-    return result
 
 
 def responses_history(messages):
@@ -552,7 +543,8 @@ async def _run_chatgpt_turn(store, cid, question, connection, services_factory, 
             yield {"event": "done", "usage": usage, "model": model, "mode": model_mode, "by_model": by_model}
             return
         results = []
-        for call in calls:
+        prefetched = await prefetch_reads(calls, services, evidence, responses=True)
+        for call_index, call in enumerate(calls):
             if access_check:
                 access_check()
             name = call["name"]
@@ -564,7 +556,9 @@ async def _run_chatgpt_turn(store, cid, question, connection, services_factory, 
                     raise ValueError("Tool arguments must be an object")
                 yield {"event": "tool", "name": name, "input": scrub(args, config)}
                 if name == "api_read":
-                    result = await read_evidence(services, args, evidence)
+                    result = prefetched[call_index] if prefetched is not None else await read_evidence(services, args, evidence)
+                    if isinstance(result, BaseException):
+                        raise result
                     yield {"event": "source", "url": result["source"]}
                 elif name in {tool["name"] for tool in MEMORY_TOOLS}:
                     result = recall(store, cid, name, args)

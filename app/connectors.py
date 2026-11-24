@@ -1,5 +1,6 @@
 """Scoped service clients and explicit write operations. No arbitrary URL/tool execution."""
 import base64
+import asyncio
 import hashlib
 import json
 import re
@@ -65,6 +66,7 @@ class Services:
         self._clients = {}
         self._tls = None
         self.access_check = None
+        self._tls_lock = asyncio.Lock()
 
     def enable_reuse(self):
         self._reuse = True
@@ -72,7 +74,9 @@ class Services:
     @asynccontextmanager
     async def http_client(self, service, **kwargs):
         if self._tls is None:
-            self._tls = ssl.create_default_context() if os.name == "nt" else True
+            async with self._tls_lock:
+                if self._tls is None:
+                    self._tls = await asyncio.to_thread(ssl.create_default_context) if os.name == "nt" else True
         kwargs["verify"] = self._tls
         if not self._reuse:
             async with httpx.AsyncClient(**kwargs) as client:

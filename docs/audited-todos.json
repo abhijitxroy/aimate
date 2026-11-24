@@ -26,8 +26,8 @@
   },
   {
     "id": "audit-183794f3203014a68fbac474",
-    "title": "P0 · Access · WIP — Further role/access improvements\n\nBackend roles, scoped workspaces, revocation, role updates and OTP exist. Enterprise identity/SSO and project-level shared permissions are additional work.",
-    "completed": false
+    "title": "P0 · Access · Done — Further role/access improvements\n\nServer roles and isolated accounts plus live session, expiry, revocation and role-change checks throughout model/tool/HTTP requests; resource cleanup verified. Enterprise SSO and cross-account project sharing remain optional future integrations. CI passed: https://github.com/abhijitxroy/aimate/actions/runs/45437361523",
+    "completed": true
   },
   {
     "id": "audit-a64983ae13f38e987b979a30",
