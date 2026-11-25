@@ -333,6 +333,33 @@ class BrowserRegressionTests(unittest.TestCase):
         self.expect(self.page.locator("#bedrockEndpointLabel")).to_be_visible()
         self.expect(self.page.locator('input[name="ai.model"]')).not_to_have_value("us.openai.gpt-6.1-sol")
 
+    def test_opencode_presets_download_and_provider_switching(self):
+        self.page.evaluate("activeSettings='ai';openSettings()")
+        provider=self.page.locator('select[name="ai.provider"]')
+        provider.select_option("opencode")
+        self.expect(self.page.locator("#opencodeModel")).to_have_value("bedrock-runtime-openai/us.openai.gpt-6.2-sol")
+        self.expect(self.page.locator("#opencodeAnalysis")).to_have_value("")
+        self.expect(self.page.locator("#bedrockSettings")).to_be_hidden()
+        self.expect(self.page.locator("#apiModelLabel")).to_be_hidden()
+        choices=self.page.locator("#opencodeModel option").all_text_contents()
+        self.assertTrue(any("Kimi" in item for item in choices))
+        self.assertTrue(any("GLM" in item and "text only" in item for item in choices))
+        self.assertTrue(any("premium" in item for item in choices))
+        self.page.locator("#opencodeAnalysis").select_option("bedrock-runtime-anthropic/us.anthropic.claude-sonnet-5-5")
+        self.expect(self.page.locator('input[name="ai.analysis_model"]')).to_have_value(
+            "bedrock-runtime-anthropic/us.anthropic.claude-sonnet-5-5")
+        with self.page.expect_download() as download:
+            self.page.locator("#downloadOpenCode").click()
+        self.assertEqual(download.value.suggested_filename,"opencode.json")
+        data=json.loads(Path(download.value.path()).read_text())
+        for connection in data["provider"].values():
+            self.assertEqual(connection["options"]["apiKey"],"{env:AWS_BEARER_TOKEN_BEDROCK}")
+        provider.select_option("bedrock-openai")
+        self.expect(self.page.locator("#opencodeModels")).to_be_hidden()
+        self.expect(self.page.locator("#bedrockGPTModels")).to_be_visible()
+        provider.select_option("bedrock")
+        self.expect(self.page.locator("#opencodeModels")).to_be_hidden()
+
     def test_tools_toggle_keeps_chat_and_composer_fixed_with_long_sidebar(self):
         self.page.locator("#conversations").get_by_role("button",name="Old continuity reference",exact=True).click()
         self.expect(self.page.locator("#chatTitle")).to_have_text("Old continuity reference")

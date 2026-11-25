@@ -17,6 +17,7 @@
   <script src="/static/chat_runs.js" defer></script>
   <script src="/static/record_locks.js" defer></script>
   <script src="/static/bedrock_gpt_ui.js" defer></script>
+  <script src="/static/opencode_ui.js" defer></script>
   <script src="/static/field_help.js" defer></script>
   <script src="/static/recent_chats.js" defer></script>
   <script src="/static/import_progress.js" defer></script>
@@ -251,7 +252,13 @@
             <label>Setup<select name="ai.bedrock_mode"><option value="simple">Simple · token access</option><option value="advanced">Advanced · model &amp; AWS settings</option></select></label>
             <p id="bedrockSimpleHint" class="hint">Claude Haiku 5.5 · us-east-2 · Bedrock API key. Just add your token.</p>
           </div>
-        <div class="fields two"><label>Provider<select name="ai.provider"><option value="chatgpt">ChatGPT account</option><option value="anthropic">Anthropic API</option><option value="bedrock">AWS Bedrock Runtime · Claude</option><option value="bedrock-openai">GPT via Bedrock</option></select></label><label id="apiModelLabel">Exact model / inference profile ID<input name="ai.model" placeholder="Model ID available to your account"></label><label id="chatgptModelLabel" hidden>Available model<select id="chatgptModel"><option value="">Connect your account first</option></select></label></div>
+        <div class="fields two"><label>Provider<select name="ai.provider"><option value="chatgpt">ChatGPT account</option><option value="anthropic">Anthropic API</option><option value="bedrock">AWS Bedrock Runtime · Claude</option><option value="bedrock-openai">GPT via Bedrock</option><option value="opencode">OpenCode · Bedrock</option></select></label><label id="apiModelLabel">Exact model / inference profile ID<input name="ai.model" placeholder="Model ID available to your account"></label><label id="chatgptModelLabel" hidden>Available model<select id="chatgptModel"><option value="">Connect your account first</option></select></label></div>
+        <div id="opencodeModels" hidden>
+          <div class="fields two"><label>Standard model<select id="opencodeModel"></select></label><label>Analysis model<select id="opencodeAnalysis"></select></label></div>
+          <p class="hint">GPT, Claude, Kimi and GLM · us-east-2 · your saved Bedrock key.</p>
+          <button id="downloadOpenCode" type="button">Download opencode.json</button>
+          <p id="opencodeHint" class="hint" role="status"></p>
+        </div>
         <div id="bedrockGPTModels" hidden><label>Standard model<select id="bedrockGPTModel"><option value="custom">Custom profile ID</option></select></label><p class="hint">GPT-6.2 Sol is the default. Choose GPT-6.1 Sol if its access check fails. Profile access varies by account; inference uses AWS billing.</p><p id="bedrockGPTHint" class="hint" role="status"></p></div>
         <div id="bedrockModelChoices" hidden>
           <label>Standard model<select id="bedrockModel"><option value="custom">Custom model / profile ID</option></select></label>

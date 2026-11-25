@@ -198,6 +198,7 @@ function aiReady() {
 
 function shortModelName(model) {
   if (!model) return "Not configured";
+  model=model.split("/").pop();
   const claude = model.match(/claude-(haiku|sonnet|opus|fable)-(\d+)(?:[-.](\d{1,2})(?!\d))?/i);
   if (claude) return `${claude[1][0].toUpperCase() + claude[1].slice(1)} ${claude[2]}${claude[3] ? "." + claude[3] : ""}`;
   const gpt=model.match(/gpt-(\d+)(?:[.-](\d+))?-(sol|terra|luna|astra)/i);
@@ -393,7 +394,7 @@ function renderSourceBar() {
     if (["jira", "jenkins"].includes(key) && !config[key]?.token_configured) continue;
     bar.append(sourceBadge(label, key));
   }
-  bar.append(sourceBadge(pagesPreview ? "ChatGPT" : demo ? "Scripted demo" : config.ai?.provider === "chatgpt" ? "ChatGPT" : config.ai?.provider === "bedrock-openai" ? "GPT · Bedrock" : config.ai?.provider === "bedrock" ? "Claude · Bedrock" : "Claude", "ai"));
+  bar.append(sourceBadge(pagesPreview ? "ChatGPT" : demo ? "Scripted demo" : config.ai?.provider === "chatgpt" ? "ChatGPT" : config.ai?.provider === "opencode" ? "OpenCode · Bedrock" : config.ai?.provider === "bedrock-openai" ? "GPT · Bedrock" : config.ai?.provider === "bedrock" ? "Claude · Bedrock" : "Claude", "ai"));
 }
 
 async function syncConnections() {
@@ -1216,6 +1217,7 @@ function updateBedrock() {
   if (iam) form.elements["ai.bedrock_endpoint"].value = "runtime";
   if (bedrock) void populateBedrockModels();
   void window.AiMateBedrockGPT?.update(form,config);
+  void window.AiMateOpenCode?.update(form,config);
 }
 function renderBedrockModels() {
   const form = $("#settingsForm");

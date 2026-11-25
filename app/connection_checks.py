@@ -39,12 +39,14 @@ async def check_connection(service, config, services, client_factory, chatgpt):
         client = None
         try:
             ai = config.get("ai", {})
-            if ai.get("provider") in {"bedrock", "bedrock-openai"}:
+            if ai.get("provider") in {"bedrock", "bedrock-openai", "opencode"}:
                 report["details"] = ["Region: " + str(ai.get("region", "")),
                                      "Endpoint: Bedrock " + str(ai.get("bedrock_endpoint", "runtime")),
                                      "Requested model: " + str(ai.get("model", ""))]
                 if ai.get("provider") == "bedrock-openai":
                     report["details"].append("Protocol: Bedrock OpenAI-compatible Responses API")
+                if ai.get("provider") == "opencode":
+                    report["details"].append("Protocol: OpenCode gateway · Anthropic Messages or Chat Completions")
             model = ai.get("model")
             if not model:
                 raise ValueError("Choose an AI model before checking access.")

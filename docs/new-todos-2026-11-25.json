@@ -15,8 +15,8 @@
   },
   {
     "id": "backlog-59bda3f8ee98128d543572e0",
-    "title": "P1 · Planned — Feedback analysis and replies\n\nPersist likes/feedback, classify real issues, track improvement/reply status and support explaining already available functionality.",
-    "completed": false,
+    "title": "P1 · Done — Feedback analysis and replies\n\nFeedback review, scoped replies and idempotent confirmed-issue To-dos verified: 249 integration tests, 45 browser tests and all seven CI workflows passed.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45579991565",
+    "completed": true,
     "type": "enhancement",
     "priority": "P1"
   },

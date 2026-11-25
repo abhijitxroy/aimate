@@ -1,0 +1,603 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "autoupdate": true,
+  "model": "bedrock-runtime-openai/us.openai.gpt-6.2-sol",
+  "enabled_providers": [
+    "bedrock-runtime-openai",
+    "bedrock-runtime-kimi",
+    "bedrock-runtime-glm",
+    "bedrock-runtime-anthropic"
+  ],
+  "provider": {
+    "bedrock-runtime-openai": {
+      "npm": "@ai-sdk/openai",
+      "name": "Amazon Bedrock Runtime (OpenAI, us-east-2)",
+      "env": [
+        "AWS_BEARER_TOKEN_BEDROCK"
+      ],
+      "options": {
+        "baseURL": "https://bedrock-runtime.us-east-2.amazonaws.com/openai/v1",
+        "apiKey": "{env:AWS_BEARER_TOKEN_BEDROCK}"
+      },
+      "models": {
+        "us.openai.gpt-5.6-terra": {
+          "name": "GPT-5.6 Terra (US)",
+          "attachment": true,
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "global.openai.gpt-5.6-terra": {
+          "name": "GPT-5.6 Terra (Global)",
+          "attachment": true,
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "us.openai.gpt-6-sol": {
+          "name": "GPT-6 Sol (US)",
+          "attachment": true,
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "global.openai.gpt-6-sol": {
+          "name": "GPT-6 Sol (Global)",
+          "attachment": true,
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "us.openai.gpt-6.1-sol": {
+          "name": "GPT-6.1 Sol (US)",
+          "attachment": true,
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "global.openai.gpt-6.1-sol": {
+          "name": "GPT-6.1 Sol (Global)",
+          "attachment": true,
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "us.openai.gpt-6.2-sol": {
+          "name": "GPT-6.2 Sol (US)",
+          "attachment": true,
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "global.openai.gpt-6.2-sol": {
+          "name": "GPT-6.2 Sol (Global)",
+          "attachment": true,
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "us.openai.gpt-6.1-terra": {
+          "name": "GPT-6.1 Terra (US)",
+          "attachment": true,
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "global.openai.gpt-6.1-terra": {
+          "name": "GPT-6.1 Terra (Global)",
+          "attachment": true,
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "us.openai.gpt-6-luna": {
+          "name": "GPT-6 Luna (US)",
+          "attachment": true,
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "global.openai.gpt-6-luna": {
+          "name": "GPT-6 Luna (Global)",
+          "attachment": true,
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "us.openai.gpt-6-astra": {
+          "name": "GPT-6 Astra (US)",
+          "attachment": true,
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "global.openai.gpt-6-astra": {
+          "name": "GPT-6 Astra (Global)",
+          "attachment": true,
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "us.openai.gpt-6.2-astra": {
+          "name": "GPT-6.2 Astra (US)",
+          "attachment": true,
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "global.openai.gpt-6.2-astra": {
+          "name": "GPT-6.2 Astra (Global)",
+          "attachment": true,
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        }
+      }
+    },
+    "bedrock-runtime-kimi": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Amazon Bedrock Runtime (Kimi, us-east-2)",
+      "env": [
+        "AWS_BEARER_TOKEN_BEDROCK"
+      ],
+      "options": {
+        "baseURL": "https://bedrock-runtime.us-east-2.amazonaws.com/openai/v1",
+        "apiKey": "{env:AWS_BEARER_TOKEN_BEDROCK}"
+      },
+      "models": {
+        "us.moonshotai.kimi-k3.1": {
+          "name": "Kimi K3.1 Pro (US)",
+          "attachment": true,
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "global.moonshotai.kimi-k3.1": {
+          "name": "Kimi K3.1 Pro (Global)",
+          "attachment": true,
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "us.moonshotai.kimi-k3": {
+          "name": "Kimi K3 (US)",
+          "attachment": true,
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "global.moonshotai.kimi-k3": {
+          "name": "Kimi K3 (Global)",
+          "attachment": true,
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        }
+      }
+    },
+    "bedrock-runtime-glm": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Amazon Bedrock Runtime (GLM, us-east-2)",
+      "env": [
+        "AWS_BEARER_TOKEN_BEDROCK"
+      ],
+      "options": {
+        "baseURL": "https://bedrock-runtime.us-east-2.amazonaws.com/openai/v1",
+        "apiKey": "{env:AWS_BEARER_TOKEN_BEDROCK}"
+      },
+      "models": {
+        "us.zai.glm-5.3": {
+          "name": "GLM-5.3 (US)",
+          "attachment": false,
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "global.zai.glm-5.3": {
+          "name": "GLM-5.3 (Global)",
+          "attachment": false,
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        }
+      }
+    },
+    "bedrock-runtime-anthropic": {
+      "npm": "@ai-sdk/anthropic",
+      "name": "Amazon Bedrock Runtime (Anthropic, us-east-2)",
+      "env": [
+        "AWS_BEARER_TOKEN_BEDROCK"
+      ],
+      "options": {
+        "baseURL": "https://bedrock-runtime.us-east-2.amazonaws.com/anthropic/v1",
+        "apiKey": "{env:AWS_BEARER_TOKEN_BEDROCK}"
+      },
+      "models": {
+        "us.anthropic.claude-haiku-4-5-20251001-v1:0": {
+          "name": "Claude Haiku 4.5 (US)",
+          "attachment": true,
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "us.anthropic.claude-haiku-5-5": {
+          "name": "Claude Haiku 5.5 (US)",
+          "attachment": true,
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "global.anthropic.claude-haiku-5-5": {
+          "name": "Claude Haiku 5.5 (Global)",
+          "attachment": true,
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "us.anthropic.claude-sonnet-5": {
+          "name": "Claude Sonnet 5 (US)",
+          "attachment": true,
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "global.anthropic.claude-sonnet-5": {
+          "name": "Claude Sonnet 5 (Global)",
+          "attachment": true,
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "us.anthropic.claude-sonnet-5-5": {
+          "name": "Claude Sonnet 5.5 (US)",
+          "attachment": true,
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "global.anthropic.claude-sonnet-5-5": {
+          "name": "Claude Sonnet 5.5 (Global)",
+          "attachment": true,
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "us.anthropic.claude-fable-5-1": {
+          "name": "Claude Fable 5.1 (US)",
+          "attachment": true,
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "global.anthropic.claude-fable-5-1": {
+          "name": "Claude Fable 5.1 (Global)",
+          "attachment": true,
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "us.anthropic.claude-fable-5-2": {
+          "name": "Claude Fable 5.2 (US)",
+          "attachment": true,
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "global.anthropic.claude-fable-5-2": {
+          "name": "Claude Fable 5.2 (Global)",
+          "attachment": true,
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "us.anthropic.claude-opus-5-5": {
+          "name": "Claude Opus 5.5 (US)",
+          "attachment": true,
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "global.anthropic.claude-opus-5-5": {
+          "name": "Claude Opus 5.5 (Global)",
+          "attachment": true,
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "us.anthropic.claude-opus-5": {
+          "name": "Claude Opus 5 (US)",
+          "attachment": true,
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

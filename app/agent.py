@@ -160,6 +160,9 @@ def action_capabilities(config):
 
 
 def ai_client(config):
+    if config.get("ai", {}).get("provider") == "opencode":
+        from app.opencode_bedrock import Client
+        return Client(config)
     if config.get("ai", {}).get("provider") == "bedrock-openai":
         from app.bedrock_gpt import Connection
         return Connection(config)
