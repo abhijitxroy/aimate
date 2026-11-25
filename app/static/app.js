@@ -412,6 +412,8 @@ async function syncConnections() {
 
 async function refreshState() {
   const state = await api("/api/state");
+  $("#attachText").dataset.documentBytes = state.attachment_limits?.document_bytes || 4*1024*1024;
+  $("#attachText").title = `Attach a file · documents up to ${Number($("#attachText").dataset.documentBytes)/(1024*1024)} MB`;
   csrf = state.csrf;
   config = state.config;
   $(".footnote").textContent = state.public_showcase
@@ -1537,7 +1539,8 @@ async function addTextFiles(files) {
       } catch { $("#activity").textContent = "This image could not be read. Try a PNG or JPEG."; }
       continue;
     }
-    if (file.size > 4*1024*1024) { $("#activity").textContent="Use a document under 4 MB."; continue; }
+    const documentBytes=Number($("#attachText").dataset.documentBytes) || 4*1024*1024;
+    if (file.size > documentBytes) { $("#activity").textContent=`Use a document up to ${documentBytes/(1024*1024)} MB.`; continue; }
     try {
       $("#activity").textContent = "Validating attachment…";
       const data=(await fileDataUrl(file)).split(",")[1];

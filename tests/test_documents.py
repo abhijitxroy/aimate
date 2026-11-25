@@ -4,11 +4,14 @@ import json
 import tempfile
 import unittest
 import zipfile
+from unittest.mock import patch
 from PIL import Image
 from fastapi.testclient import TestClient
 from app.documents import ingest,save,read
 from app.private_chat import PrivateChat
 from app.store import Store
+from app.attachment_limits import document_bytes
+from app.attachments import decode_file
 from test_app import create_app
 
 
@@ -24,6 +27,30 @@ def zipped(entries,compression=zipfile.ZIP_STORED):
 
 
 class DocumentTests(unittest.TestCase):
+    def test_larger_document_http_upload_encrypted_storage_and_legacy_limit(self):
+        raw=zipped([("word/document.xml",'<document><t>Large upload evidence</t></document>'),
+                    ("word/media/one.bin",b"x"*(3*1024*1024)),
+                    ("word/media/two.bin",b"x"*(3*1024*1024))])
+        with tempfile.TemporaryDirectory() as directory:
+            store=Store(directory)
+            with TestClient(create_app(store)) as client:
+                csrf=client.post("/api/login",json={"password":store.password}).json()["csrf"]
+                headers={"X-CSRF-Token":csrf}
+                self.assertEqual(client.get("/api/state").json()["attachment_limits"]["document_bytes"],20*1024*1024)
+                response=client.post("/api/attachments/document",headers=headers,json=item("large.docx",raw))
+                self.assertEqual(response.status_code,200,response.text)
+                document=response.json()
+                cid=store.new_conversation()
+                manifest=save(store,cid,[document])
+                self.assertIn("Large upload evidence",read(store,cid,{"id":manifest[0]["id"]})["text"])
+                with patch.dict("os.environ",{"AIMATE_LARGE_UPLOADS_ENABLED":"0"}):
+                    self.assertEqual(document_bytes(),4*1024*1024)
+                    self.assertEqual(client.get("/api/state").json()["attachment_limits"]["document_bytes"],4*1024*1024)
+                    self.assertEqual(client.post("/api/attachments/document",headers=headers,json=item("large.docx",raw)).status_code,413)
+            store.db.close()
+        with self.assertRaisesRegex(ValueError,"20 MB"):
+            decode_file(item("too-large.txt",b"x"*(20*1024*1024+1)),document_bytes())
+
     def test_zip_validates_paths_bombs_and_binary_entries_before_reading(self):
         text=ingest(item("demo.zip",zipped([("src/app.py","print('hello')"),("binary.dat",b"\xff\0")])))
         self.assertIn("print('hello')",text["text"])
@@ -84,6 +111,6 @@ class DocumentTests(unittest.TestCase):
                 response=client.post("/api/attachments/document",headers=headers,json=item("file.bin",b"\xff\0"))
                 self.assertEqual(response.status_code,200)
                 self.assertIn("Metadata only",response.json()["notice"])
-                too_big={"name":"big","data":"a"*(6*1024*1024)}
-                self.assertEqual(client.post("/api/attachments/document",headers=headers,json=too_big).status_code,400)
+                too_big={"name":"big","data":"a"*(28*1024*1024)}
+                self.assertEqual(client.post("/api/attachments/document",headers=headers,json=too_big).status_code,413)
             store.db.close()

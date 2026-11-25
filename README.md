@@ -445,9 +445,15 @@ go to your selected AI provider; token counts remain in the usage ledger.
 
 The paperclip and clipboard paste accept images as removable preview cards
 (PNG, JPEG, WebP and GIF, first frame). Images are resized before sending; up to
-four per question. PDFs up to 4 MB / 80 pages use selectable text; scanned PDFs
-need screenshots. Text/code/log files allow 1 MB each with a combined 28,000-character
-limit. Original image bytes are not replayed on later questions.
+four per question. Documents allow up to 20 MB each (PDF, Office, ZIP and text).
+PDFs allow 80 pages; scanned PDFs allow four pages per message through vision.
+Extracted text allows 1,000,000 characters per file and 3,000,000 per message.
+The AI reads saved text using search and 8,000-character pages, rather than loading
+the whole file into each prompt. ZIPs retain separate expansion, entry and
+compression-ratio limits; a larger upload does not bypass those checks.
+Set `AIMATE_LARGE_UPLOADS_ENABLED=0` to restore the 4 MB upload cap without
+disabling attachments. The UI reads the server's limit. Original image bytes
+are not replayed on later questions.
 
 Within an answer, identical source reads are reused and HTTP connections pooled.
 Repeated tool evidence uses a compact reference. Each new question reads fresh

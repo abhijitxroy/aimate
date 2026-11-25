@@ -2,22 +2,23 @@
 import base64
 import io
 import warnings
+from app.attachment_limits import document_bytes
 
 MAX_BYTES = 4 * 1024 * 1024
 
 
-def decode_file(item):
+def decode_file(item, max_bytes=MAX_BYTES):
     if not isinstance(item, dict) or set(item) != {"name", "data"}:
         raise ValueError("Provide an attachment name and base64 data.")
     name, data = item["name"], item["data"]
-    if not isinstance(name, str) or not 1 <= len(name) <= 255 or not isinstance(data, str) or len(data) > MAX_BYTES * 4 // 3 + 8:
-        raise ValueError("Use an attachment under 4 MB.")
+    if not isinstance(name, str) or not 1 <= len(name) <= 255 or not isinstance(data, str) or len(data) > max_bytes * 4 // 3 + 8:
+        raise ValueError(f"Use an attachment up to {max_bytes // (1024 * 1024)} MB.")
     try:
         raw = base64.b64decode(data, validate=True)
     except (ValueError, TypeError):
         raise ValueError("Invalid attachment data.") from None
-    if not raw or len(raw) > MAX_BYTES:
-        raise ValueError("Use an attachment under 4 MB.")
+    if not raw or len(raw) > max_bytes:
+        raise ValueError(f"Use an attachment up to {max_bytes // (1024 * 1024)} MB.")
     return name, raw
 
 
@@ -50,7 +51,7 @@ def image(item):
 
 def pdf(item):
     from pypdf import PdfReader
-    name, raw = decode_file(item)
+    name, raw = decode_file(item, document_bytes())
     if not raw.startswith(b"%PDF-"):
         raise ValueError("This file is not a PDF.")
     try:

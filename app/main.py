@@ -23,6 +23,7 @@ from app.store import Store
 from app.validation import validate_config
 from app.connection_checks import SERVICES, check_connection
 from app.model_routing import MODES
+from app.attachment_limits import document_bytes, upload_body_bytes
 from app.otp import Authenticator
 from app.access import authorize, capabilities, permits_operation, change_role, verify_otp as verify_access_otp, issue as issue_access, verify as verify_access
 
@@ -130,6 +131,8 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
         if request.headers.get("sec-fetch-site") == "cross-site" and not (oauth_callback or entry_navigation):
             return Response("Cross-site requests are refused", status_code=403)
         body_limit = 12_000_000 if request.url.path in {"/api/chat", "/api/attachments/pdf", "/api/attachments/document"} else 250_000
+        if request.url.path in {"/api/attachments/pdf", "/api/attachments/document"}:
+            body_limit = upload_body_bytes()
         if request.headers.get("content-length", "0").isdigit() and int(request.headers.get("content-length", "0")) > body_limit:
             return Response("Request too large", status_code=413)
         if public_policy and request.method not in {"GET", "HEAD"} and request.url.path in {
@@ -364,6 +367,7 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
         return {"csrf": session["csrf"], "config": public_config, "demo": bool(demo), "access": rights,
                 "workspace": {"personal": bool(session.get("grant"))},
                 "public_showcase": public_showcase,
+                "attachment_limits": {"document_bytes": document_bytes()},
                 "connection_checks": store.connection_checks(),
                 "connection_defaults": {"jenkins": {"username": getpass.getuser() if not public_url and not demo else "",
                                                       "url": "" if public_showcase else os.environ.get("JENKINS_URL", "")}},
@@ -936,7 +940,7 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
         for item in attachment_meta:
             if (not isinstance(item, dict) or set(item) != {"name", "size"} or
                 not isinstance(item["name"], str) or not 1 <= len(item["name"]) <= 255 or
-                type(item["size"]) is not int or not 0 <= item["size"] <= 4 * 1024 * 1024):
+                type(item["size"]) is not int or not 0 <= item["size"] <= document_bytes()):
                 raise ValueError("Invalid attachment details.")
         documents = body.get("documents", [])
         if not isinstance(documents,list) or len(documents) > len(attachment_meta):

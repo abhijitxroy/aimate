@@ -779,6 +779,17 @@ class BrowserRegressionTests(unittest.TestCase):
         self.assertIn("Attachment: Screenshot\\.png",exported)
         self.expect(self.page.locator("#messages .attachment-card")).to_contain_text("Screenshot.png")
 
+    def test_document_upload_over_four_mb_uses_server_limit_and_card(self):
+        self.expect(self.page.locator("#attachText")).to_have_attribute("title","Attach a file · documents up to 20 MB")
+        self.page.locator("#textAttachment").set_input_files({
+            "name":"large.dat","mimeType":"application/octet-stream","buffer":b"\xff"*(5*1024*1024)})
+        self.expect(self.page.locator("#attachmentCards")).to_contain_text("large.dat")
+        self.expect(self.page.locator("#activity")).to_contain_text("Metadata only")
+        self.page.locator("#question").fill("Describe this file's metadata")
+        self.page.locator("#send").click()
+        self.expect(self.page.locator("#messages .attachment-card")).to_contain_text("large.dat")
+        self.expect(self.page.locator("#activity")).to_have_text("Answer complete")
+
     def test_large_paste_is_a_document_card_and_saved_message_keeps_card(self):
         self.page.evaluate("""() => {
             const transfer = new DataTransfer();
