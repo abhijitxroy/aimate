@@ -6,6 +6,7 @@ import re
 import socket
 import subprocess
 import sys
+import tempfile
 import time
 import unittest
 from pathlib import Path
@@ -23,15 +24,19 @@ class BrowserRegressionTests(unittest.TestCase):
             port = sock.getsockname()[1]
         cls.url = f"http://127.0.0.1:{port}"
         root = Path(__file__).resolve().parents[1]
+        # A PIPE that is only read after exit can fill and block the fixture's
+        # event loop while logging a cancelled request. Keep diagnostics on disk.
+        cls.server_output=tempfile.TemporaryFile()
         cls.server = subprocess.Popen([sys.executable, str(root / "tools/browser_test_server.py"),
                                        "--port", str(port)], cwd=root,
-                                      stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+                                      stdout=subprocess.DEVNULL, stderr=cls.server_output)
         try:
             with httpx.Client(trust_env=False, timeout=1) as client:
                 deadline = time.monotonic() + 20
                 while time.monotonic() < deadline:
                     if cls.server.poll() is not None:
-                        raise RuntimeError(cls.server.stderr.read().decode())
+                        cls.server_output.seek(0)
+                        raise RuntimeError(cls.server_output.read(10000).decode(errors="replace"))
                     try:
                         if client.get(cls.url).status_code == 200:
                             break
@@ -58,6 +63,7 @@ class BrowserRegressionTests(unittest.TestCase):
         except Exception:
             cls.server.terminate()
             cls.server.wait(timeout=10)
+            cls.server_output.close()
             raise
 
     @classmethod
@@ -66,7 +72,10 @@ class BrowserRegressionTests(unittest.TestCase):
         cls.playwright.stop()
         cls.server.terminate()
         cls.server.wait(timeout=10)
-        cls.server.stderr.close()
+        cls.server_output.seek(0)
+        diagnostics=cls.server_output.read().decode(errors="replace")
+        cls.server_output.close()
+        if diagnostics:sys.stderr.write("\nIsolated fixture diagnostics:\n"+diagnostics[-8000:]+"\n")
 
     def setUp(self):
         from playwright.sync_api import expect
@@ -100,7 +109,7 @@ class BrowserRegressionTests(unittest.TestCase):
         self.page.locator("#newChat").click()
         self.page.locator("#question").fill("Local consent check")
         self.page.locator("#send").click()
-        button=self.page.get_by_role("button",name="Continue with local AI",exact=True)
+        button=self.page.locator("#continueOfflineAI")
         self.expect(button).to_be_visible()
         self.assertEqual(len(requests),1)
         self.assertFalse(requests[0]["local_ai"])
@@ -117,6 +126,115 @@ class BrowserRegressionTests(unittest.TestCase):
         self.expect(self.page.locator("#localAIToggle")).to_be_hidden()
         self.page.locator("#question").fill("Cloud draft still available")
         self.expect(self.page.locator("#question")).to_have_js_property("value","Cloud draft still available")
+
+    def test_local_connection_picker_keeps_cloud_settings_and_hides_cloud_fields(self):
+        self.page.route("**/api/local-ai/status",lambda route:route.fulfill(status=200,content_type="application/json",
+            body=json.dumps({"available":True,"models":["qwen3:4b"],"message":"Ollama reachable."})))
+        writes=[]
+        self.page.route("**/api/settings/ai",lambda route:(writes.append(route.request.post_data),
+            route.fulfill(status=400,content_type="application/json",body='{"detail":"Must not save local as cloud."}')))
+        before=self.page.evaluate("()=>JSON.stringify(config.ai)")
+        self.page.locator("#headerSettings").click()
+        picker=self.page.locator('[name="ai.provider"]')
+        picker.select_option("local")
+        self.expect(self.page.locator("#localAISettings")).to_be_visible()
+        self.expect(self.page.locator("#localAIMessage")).to_contain_text("Ollama reachable")
+        for selector in ["#apiCredentials","#apiModelLabel","#chatgptConnection","#testAIButton","#settings-ai .model-selection"]:
+            self.expect(self.page.locator(selector)).to_be_hidden()
+        self.page.locator("#saveConnection").click()
+        self.expect(self.page.locator("#settingsStatus")).to_contain_text("Cloud settings kept")
+        self.assertEqual(writes,[])
+        self.assertEqual(self.page.evaluate("()=>JSON.stringify(config.ai)"),before)
+        self.page.locator("#useCloudAI").click()
+        self.expect(picker).not_to_have_value("local")
+        self.expect(self.page.locator("#localAIToggle")).to_have_attribute("aria-pressed","false")
+        self.expect(self.page.locator("#testAIButton")).to_be_visible()
+        self.page.evaluate("()=>{window.AiMateFeatures={...window.AiMateFeatures,localAI:false};document.dispatchEvent(new Event('aimate:state'));}")
+        self.assertTrue(picker.locator('[value="local"]').is_disabled())
+        self.expect(self.page.locator("#localAISettings")).to_be_hidden()
+
+    def test_offline_popup_without_cloud_or_model_preserves_draft_and_never_submits(self):
+        self.page.route("**/api/local-ai/status",lambda route:route.fulfill(status=200,content_type="application/json",
+            body=json.dumps({"available":True,"models":[],"message":"Ollama reachable."})))
+        requests=[]
+        self.page.route("**/api/chat",lambda route:(requests.append(route.request.post_data),route.abort()))
+        self.page.evaluate("()=>{config.ai={};}")
+        self.page.locator("#question").fill("Keep this offline draft")
+        self.page.locator("#send").click()
+        self.expect(self.page.locator("#offlineAIDialog")).to_be_visible()
+        self.expect(self.page.locator("#offlineAIReason")).to_contain_text("No cloud AI connection")
+        self.expect(self.page.locator("#offlineAIStatus")).to_contain_text("No models installed")
+        self.expect(self.page.locator("#continueOfflineAI")).to_be_disabled()
+        self.page.locator("#cancelOfflineAI").click()
+        self.expect(self.page.locator("#offlineAIDialog")).to_be_hidden()
+        self.expect(self.page.locator("#question")).to_have_js_property("value","Keep this offline draft")
+        self.assertEqual(requests,[])
+        self.page.unroute("**/api/local-ai/status")
+        self.page.route("**/api/local-ai/status",lambda route:route.fulfill(status=200,content_type="application/json",
+            body=json.dumps({"available":False,"models":[],"message":"Start Ollama on this laptop."})))
+        self.page.locator("#send").click()
+        self.expect(self.page.locator("#offlineAIStatus")).to_contain_text("Start Ollama")
+        self.expect(self.page.locator("#continueOfflineAI")).to_be_disabled()
+        self.page.keyboard.press("Escape")
+        self.expect(self.page.locator("#offlineAIDialog")).to_be_hidden()
+        self.assertEqual(requests,[])
+
+    def test_missing_cloud_popup_uses_local_only_after_consent(self):
+        self.page.route("**/api/local-ai/status",lambda route:route.fulfill(status=200,content_type="application/json",
+            body=json.dumps({"available":True,"models":["qwen3:4b"],"message":"Ollama reachable."})))
+        requests=[]
+        def answer(route):
+            requests.append(route.request.post_data_json)
+            route.fulfill(status=200,content_type="text/event-stream",body='data: {"event":"text","delta":"Offline consent answered."}\n\ndata: {"event":"done"}\n\n')
+        self.page.route("**/api/chat",answer)
+        self.page.evaluate("()=>{config.ai={};}")
+        self.page.locator("#question").fill("Use offline only when I agree")
+        self.page.locator("#send").click()
+        self.expect(self.page.locator("#continueOfflineAI")).to_be_enabled()
+        self.assertEqual(requests,[])
+        self.page.locator("#continueOfflineAI").click()
+        self.expect(self.page.locator("#messages")).to_contain_text("Offline consent answered.")
+        self.assertEqual(len(requests),1)
+        self.assertTrue(requests[0]["local_ai"])
+        self.assertEqual(requests[0]["display_question"],"Use offline only when I agree")
+
+    def test_browser_offline_notice_does_not_switch_or_download_on_cancel(self):
+        calls=[]
+        self.page.route("**/api/local-ai/status",lambda route:route.fulfill(status=200,content_type="application/json",
+            body=json.dumps({"available":True,"models":["qwen3:4b"],"message":"Ollama reachable."})))
+        self.page.route("**/api/chat",lambda route:(calls.append(route.request.post_data),route.abort()))
+        self.page.evaluate("()=>Object.defineProperty(navigator,'onLine',{configurable:true,value:false})")
+        self.page.locator("#question").fill("Keep cloud until I choose")
+        self.page.locator("#send").click()
+        self.expect(self.page.locator("#offlineAIReason")).to_have_text("You appear to be offline.")
+        self.expect(self.page.locator("#continueOfflineAI")).to_be_enabled()
+        self.page.locator("#cancelOfflineAI").click()
+        self.expect(self.page.locator("#localAIToggle")).to_have_attribute("aria-pressed","false")
+        self.expect(self.page.locator("#question")).to_have_js_property("value","Keep cloud until I choose")
+        self.assertEqual(calls,[])
+
+    def test_cancelling_offline_popup_during_recheck_never_activates_local(self):
+        checks=[];calls=[]
+        body=json.dumps({"available":True,"models":["qwen3:4b"],"message":"Ollama reachable."})
+        def status(route):
+            checks.append(route)
+            if len(checks)==1:route.fulfill(status=200,content_type="application/json",body=body)
+        self.page.route("**/api/local-ai/status",status)
+        self.page.route("**/api/chat",lambda route:(calls.append(route.request.post_data),route.abort()))
+        self.page.evaluate("()=>{config.ai={};}")
+        self.page.locator("#question").fill("Cancel the pending local switch")
+        self.page.locator("#send").click()
+        self.expect(self.page.locator("#continueOfflineAI")).to_be_enabled()
+        self.page.locator("#continueOfflineAI").click()
+        self.expect(self.page.locator("#checkLocalAI")).to_be_disabled()
+        self.page.locator("#cancelOfflineAI").click()
+        self.assertEqual(len(checks),2)
+        checks[-1].fulfill(status=200,content_type="application/json",body=body)
+        self.expect(self.page.locator("#checkLocalAI")).to_be_enabled()
+        self.expect(self.page.locator("#offlineAIDialog")).to_be_hidden()
+        self.expect(self.page.locator("#localAIToggle")).to_have_attribute("aria-pressed","false")
+        self.expect(self.page.locator("#question")).to_have_js_property("value","Cancel the pending local switch")
+        self.assertEqual(calls,[])
 
     def test_verified_new_repo_read_offers_one_review_option_without_failure_banner(self):
         guidance={"repo":"team/new","read_verified":True,"action":"validate_repository",
@@ -1154,7 +1272,8 @@ class BrowserRegressionTests(unittest.TestCase):
     def test_ai_connection_layout_separates_personal_intel_and_keeps_controls_visible(self):
         self.page.locator("#headerSettings").click()
         provider=self.page.locator('[name="ai.provider"]')
-        self.expect(provider.locator("optgroup")).to_have_count(3)
+        self.expect(provider.locator('optgroup:not([label="This laptop"])')).to_have_count(3)
+        self.expect(provider.locator('optgroup[label="This laptop"] option')).to_have_text("Local LLM · offline")
         self.expect(provider.locator('option[value="chatgpt"]')).to_have_text("Personal ChatGPT")
         provider.select_option("chatgpt")
         self.expect(self.page.locator(".ai-connection-context")).to_have_text("Personal · your ChatGPT account and plan.")
@@ -1178,7 +1297,7 @@ class BrowserRegressionTests(unittest.TestCase):
         self.expect(self.page.locator("#workspace")).to_be_visible()
         self.page.locator("#headerSettings").click()
         provider=self.page.locator('[name="ai.provider"]')
-        self.expect(provider.locator("optgroup")).to_have_count(0)
+        self.expect(provider.locator('optgroup:not([label="This laptop"])')).to_have_count(0)
         self.expect(self.page.locator(".ai-connection-context")).to_have_count(0)
         provider.select_option("chatgpt")
         self.expect(self.page.locator("#connectChatGPT")).to_be_visible()

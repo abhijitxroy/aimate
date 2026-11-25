@@ -311,7 +311,7 @@
           <label id="chatgptAnalysisLabel" hidden>Analysis model · optional<select id="chatgptAnalysisModel"><option value="">Use Standard only</option></select></label>
           <p class="hint">Your connected model is Standard. Auto uses AI to select Analysis for debugging or deeper reasoning. Both use the same provider, account and region. Auto adds a small classification request; Analysis may cost more. Manual choice skips classification.</p>
         </details>
-        <details id="localAISettings" hidden><summary>Local fallback</summary><p class="hint">Cloud AI can be off; GitHub, Jira and Jenkins still need network/VPN. Saved context may be stale.</p><label>Installed model<select id="localAIModel"><option value="qwen3:4b">Qwen3 4B</option></select></label><div class="local-ai-actions"><button id="checkLocalAI" type="button">Check local access</button><button id="useLocalAI" type="button" disabled>Use local AI</button><button id="useCloudAI" type="button">Use cloud AI</button></div><p id="localAIMessage" class="hint">Install Ollama, then download qwen3:4b. No cloud keys are used for local inference.</p></details><div class="test-row"><details id="removeAIKey"><summary>Manage saved AI key</summary><label class="check"><input name="ai.clear_token" type="checkbox">Remove saved AI key</label></details><button id="testAIButton" type="button" data-test="ai">Save & check AI</button></div>
+        <details id="localAISettings" hidden><summary>Local LLM · offline</summary><p class="hint">Runs on this laptop. No cloud key needed. GitHub, Jira and Jenkins still need network/VPN.</p><label>Installed model<select id="localAIModel"><option value="qwen3:4b">Qwen3 4B</option></select></label><div class="local-ai-actions"><button id="checkLocalAI" type="button">Check local access</button><button id="useLocalAI" type="button" disabled>Use local AI</button><button id="useCloudAI" type="button">Use cloud AI</button></div><p id="localAIMessage" class="hint" role="status">Install Ollama, then download qwen3:4b. Saved context may be stale.</p></details><div class="test-row"><details id="removeAIKey"><summary>Manage saved AI key</summary><label class="check"><input name="ai.clear_token" type="checkbox">Remove saved AI key</label></details><button id="testAIButton" type="button" data-test="ai">Save & check AI</button></div>
         <div id="test-ai" class="connection-result" aria-live="polite"></div>
       </fieldset>
       <fieldset id="settings-github" data-settings-panel="github" role="tabpanel" aria-labelledby="tab-github" hidden><legend>GitHub connection</legend>
@@ -408,6 +408,13 @@
     <div class="dialog-head"><h2>Workspace</h2><button class="close" data-close="menuDialog" aria-label="Close menu">×</button></div>
     <div class="menu-actions"><button data-menu-action="newChat">New conversation</button><button data-menu-action="searchHistory">Search chats</button><button data-menu-action="newGroup">New project</button><button data-menu-action="openKnowledge">My Diary</button><button data-menu-action="openTodos">To-do</button><button data-menu-action="openUsage">Usage &amp; billing</button><button data-menu-action="openSettings">Connections & settings</button><button data-menu-action="archiveView">Archived chats</button><button data-menu-action="openHelp">Help</button><button data-menu-action="logout">Sign out</button></div>
     <nav id="mobileConversations" aria-label="Saved conversations"></nav>
+  </dialog>
+  <dialog id="offlineAIDialog" class="compact-dialog">
+    <div class="dialog-head"><h2>Use offline AI?</h2><button id="closeOfflineAI" type="button" class="close" aria-label="Close offline AI">×</button></div>
+    <p id="offlineAIReason"></p>
+    <p id="offlineAIStatus" class="hint" role="status"></p>
+    <p class="hint">Local LLM runs on this laptop. Saved context may be stale; project services still need network/VPN.</p>
+    <div class="local-ai-actions"><button id="continueOfflineAI" type="button" class="primary" disabled>Continue with local AI</button><button id="offlineAIConnections" type="button">Connections</button><button id="cancelOfflineAI" type="button">Cancel</button></div>
   </dialog>
   <dialog id="performanceDialog" class="performance-dialog">
     <div class="dialog-head"><h2>Performance</h2><button class="close" data-close="performanceDialog" aria-label="Close performance">×</button></div>

@@ -7,11 +7,19 @@ sent. This adapter currently supports downloaded local GGUF models.
 
 1. Install Ollama from its official package.
 2. Download the small text/tool model: `ollama pull qwen3:4b`.
-3. In AiMate, open **Connections & settings → AI model → Local fallback**.
+3. In AiMate, open **Connections & settings → AI model → Provider → Local LLM · offline**.
 4. **Check local access**, select an installed model, then **Use local AI**.
 5. The askbar's **Local / Cloud** control switches new requests. Cloud settings
    stay saved. A failed cloud request can also offer **Continue with local AI**;
    nothing switches until you click it.
+
+When you ask without a configured cloud connection, appear offline, or receive
+a supported cloud authentication/network error, AiMate offers an offline popup.
+It checks the local catalog, not paid inference. Continue is disabled if Ollama
+is unavailable or no model is installed; the popup explains what to install/start.
+Cancel keeps your draft. There is no automatic provider switch or model download.
+Choosing Local in settings uses this session's local model; it never replaces
+saved cloud credentials. Reload starts with your saved cloud provider.
 
 The model works without internet after download. GitHub, Jira and Jenkins still
 need their normal network/VPN and permissions. Their API calls are made by

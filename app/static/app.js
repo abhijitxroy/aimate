@@ -992,8 +992,12 @@ async function ask(question) {
     $("#activity").textContent = "Backend not connected. Open your local AiMate workspace for live AI and project access.";
     return;
   }
-  if (!demo && !window.AiMateLocalAI?.active() && !aiReady()) {
-    openSettings(); $("#settingsStatus").textContent = "Add your AI credentials and model ID to start."; return;
+  if (!demo && !window.AiMateLocalAI?.active() && (!aiReady() || !navigator.onLine)) {
+    const reason=aiReady() ? "You appear to be offline." : "No cloud AI connection is configured.";
+    if(!await window.AiMateLocalAI?.request(reason)) {
+      if(!window.AiMateLocalAI?.supported()) {openSettings();$("#settingsStatus").textContent="Add your AI credentials and model ID to start.";}
+      return;
+    }
   }
   const attachments = [...pendingAttachments];
   const submittedQuestion = question.trim() || "Read the attached files.";
@@ -1101,6 +1105,9 @@ async function ask(question) {
   } catch (error) {
     activity(error.name === "AbortError" ? "Stopped. An incomplete answer is not saved." : bot ? "Request failed. See the details above." : error.message);
     if (bot && error.name !== "AbortError") bot.root.append(element("p", "error", error.message));
+    if(bot && error instanceof TypeError && !window.AiMateLocalAI?.active()) window.AiMateLocalAI?.offer(bot,async()=>{
+      await openConversation(run.cid);pendingAttachments=attachments;renderPendingAttachments();await ask(question);
+    });
   } finally {
     if (bot?.renderFrame) cancelAnimationFrame(bot.renderFrame);
     if (bot) renderAnswer(bot.body, bot.text);
@@ -1147,6 +1154,7 @@ function openSettings() {
   if (!form.elements["ai.region"].value) form.elements["ai.region"].value = "us-east-2";
   updateJenkinsSetup();
   updateJiraSetup();
+  window.AiMateLocalAI?.restorePicker();
   updateProvider();
   selectSettingsTab(activeSettings);
   for (const service of ["ai", "github", "jira", "jenkins"]) renderConnection(service);
@@ -1157,6 +1165,7 @@ function openSettings() {
 async function updateProvider() {
   window.AiMateConnectionLayout?.refresh();
   const form = $("#settingsForm"), selected = form.elements["ai.provider"].value === "chatgpt";
+  if(window.AiMateLocalAI?.connectionSelected()) {window.AiMateLocalAI.refreshConnection();return;}
   bedrockPresetEndpoint = "";
   $("#analysisModelLabel").hidden = selected;
   $("#chatgptAnalysisLabel").hidden = !selected;
@@ -1178,6 +1187,7 @@ async function updateProvider() {
   updateBedrock();
   window.AiMateGeminiUI?.refresh();
   $("#testAIButton").textContent = selected ? "Save & check model access" : "Save & test AI · billable";
+  window.AiMateLocalAI?.refreshConnection();
   if (!selected) return;
   const accounts = $("#chatgptAccount");
   accounts.replaceChildren(element("option", "", "Add a ChatGPT account"));
@@ -2419,6 +2429,10 @@ function settingsData() {
 }
 
 async function saveConnection(service) {
+  if(service==="ai" && window.AiMateLocalAI?.connectionSelected()) {
+    if(!await window.AiMateLocalAI.activate()) throw new Error($("#localAIMessage").textContent);
+    dirtyConnections.delete(service);return;
+  }
   const data = settingsData();
   const body = service === "changes" ? {allow_writes: data.allow_writes} : data[service];
   await api(`/api/settings/${service}`, {method: "PUT", body: JSON.stringify(body)});
@@ -2445,7 +2459,9 @@ $("#settingsForm").onsubmit = async event => {
   $("#saveConnection").disabled = true;
   try {
     await saveConnection(service);
-    $("#settingsStatus").textContent = service === "changes" ? "Change settings saved." : "Saved. Check access to verify the connection.";
+    $("#settingsStatus").textContent = service==="ai" && window.AiMateLocalAI?.connectionSelected()
+      ? "Local AI selected for this session. Cloud settings kept."
+      : service === "changes" ? "Change settings saved." : "Saved. Check access to verify the connection.";
   } catch (error) {
     $("#settingsStatus").textContent = error.message;
     if (service !== "changes") renderConnection(service, {status: "failed", message: error.message});
@@ -2455,6 +2471,9 @@ document.querySelectorAll("[data-test]").forEach(button => {
   button.onclick = async () => {
     if (checkingConnection) return;
     const service = button.dataset.test;
+    if(service==="ai" && window.AiMateLocalAI?.connectionSelected()) {
+      await window.AiMateLocalAI.check();return;
+    }
     checkingConnection = true;
     document.querySelectorAll("[data-test]").forEach(b => { b.disabled = true; });
     $("#saveConnection").disabled = true;

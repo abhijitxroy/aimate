@@ -30,7 +30,8 @@
   const identity=document.createElement("p");identity.className="ai-connection-context hint";
   provider.closest(".fields").after(identity);
   const explain=()=>{
-    identity.textContent=provider.value==="chatgpt" ? "Personal · your ChatGPT account and plan." :
+    identity.textContent=provider.value==="local" ? "This laptop · offline inference. No cloud key." :
+      provider.value==="chatgpt" ? "Personal · your ChatGPT account and plan." :
       provider.value==="anthropic" ? "Personal · your Anthropic API key." :
       provider.value==="gemini" ? "Intel / Google Cloud · separate Vertex AI credentials." :
       "Intel / Bedrock · your organization’s key and model access.";

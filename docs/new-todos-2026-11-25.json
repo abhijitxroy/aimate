@@ -197,8 +197,8 @@
   },
   {
     "id": "backlog-local-ai-fallback",
-    "title": "P1 · WIP — Local offline AI fallback and cached context\n\nOllama and verified Qwen3 4B weights installed. Real streamed local answer passed. Explicit Local/Cloud choice, opt-in failed-cloud retry, readable saved context, scoped connector tools, cloud-model rejection and zero-API-cost usage ledger implemented; final automated and live-app verification pending.",
-    "completed": false,
+    "title": "P1 · Done — Local offline AI fallback and cached context\n\nInstalled Ollama and digest-verified Qwen3 4B. A real local streamed reply and a private live-AiMate reply passed. Explicit Local/Cloud choice, opt-in fallback, scoped tools, stale-context labels, local-only/CSRF guards, cloud-model rejection and preserved usage on rejected replies passed all seven GitHub workflows. Local inference has no cloud API charge; service reads still need their network.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45645378304",
+    "completed": true,
     "type": "feature",
     "priority": "P1"
   },
