@@ -2016,6 +2016,7 @@ let todoTasks = [], todoFilter = "open", todoEditId = null;
 function resetTodoEditor() {
   todoEditId = null; $("#todoTitle").value = ""; $("#saveTodo").textContent = "Add task"; $("#cancelTodoEdit").hidden = true;
   $("#todoType").value="task";
+  window.AiMateTodoPriorities?.reset();
   $("#todoTitle").readOnly = false; $("#todoType").disabled = false; $("#saveTodo").disabled = false;
 }
 function renderTodos() {
@@ -2023,7 +2024,8 @@ function renderTodos() {
   const open = todoTasks.filter(task => !task.completed).length;
   $("#todoCount").textContent = `${open} open · ${todoTasks.length - open} completed`;
   for (const button of $("#todoFilters").querySelectorAll("button")) button.setAttribute("aria-pressed", String(button.dataset.filter === todoFilter));
-  for (const task of todoTasks.filter(t => (todoFilter === "all" || Boolean(t.completed) === (todoFilter === "completed")) &&
+  const tasks=window.AiMateTodoPriorities?.rows(todoTasks) || todoTasks;
+  for (const task of tasks.filter(t => (todoFilter === "all" || Boolean(t.completed) === (todoFilter === "completed")) &&
     (!$("#todoTypeFilter").value || (t.type || "task")===$("#todoTypeFilter").value))) {
     const row = element("div", "todo-row" + (task.completed ? " completed" : ""));
     const label = element("label", "todo-label"), checkbox = element("input");
@@ -2039,7 +2041,10 @@ function renderTodos() {
     text.id = `todo-text-${task.id}`;
     const kind=element("span","todo-kind",(task.type || "task").replace(/^./,c=>c.toUpperCase()));
     kind.title="Task type";
-    label.append(checkbox,kind, text);
+    label.append(checkbox);
+    const priority=window.AiMateTodoPriorities?.badge(task);
+    if(priority) label.append(priority);
+    label.append(kind,text);
     const expand = element("button", "todo-expand", "Show more");
     expand.type = "button";
     expand.setAttribute("aria-expanded", "false");
@@ -2057,7 +2062,7 @@ function renderTodos() {
       try { await navigator.clipboard.writeText(task.title); copy.textContent = "Copied"; }
       catch { $("#todoError").textContent = "Clipboard unavailable. Select the task text to copy."; }
     };
-    edit.onclick = () => { if (recordLocks.isLocked("todos")) return; todoEditId = task.id; $("#todoTitle").value = task.title; $("#todoType").value=task.type || "task"; $("#saveTodo").textContent = "Save"; $("#cancelTodoEdit").hidden = false; $("#todoTitle").focus(); };
+    edit.onclick = () => { if (recordLocks.isLocked("todos")) return; todoEditId = task.id; $("#todoTitle").value = task.title; $("#todoType").value=task.type || "task"; window.AiMateTodoPriorities?.edit(task); $("#saveTodo").textContent = "Save"; $("#cancelTodoEdit").hidden = false; $("#todoTitle").focus(); };
     remove.onclick = async () => {
       if (recordLocks.isLocked("todos")) return;
       try { await api(`/api/todos/${task.id}`, {method:"DELETE"}); if (todoEditId === task.id) resetTodoEditor(); await loadTodos(); }
@@ -2068,7 +2073,10 @@ function renderTodos() {
   }
   if (!list.children.length) list.append(element("p", "hint", todoFilter === "completed" ? "No completed tasks yet." : "Nothing here yet. Add a task above."));
 }
-async function loadTodos() { todoTasks = (await api("/api/todos")).tasks; renderTodos(); }
+async function loadTodos() {
+  const response=await api("/api/todos");todoTasks=response.tasks;
+  window.AiMateTodoPriorities?.configure(response,renderTodos);renderTodos();
+}
 $("#openTodos").onclick = async () => {
   recordLocks.lock("todos");
   $("#todoForm").hidden = !access.manage_records;
@@ -2083,7 +2091,7 @@ $("#todoForm").onsubmit = async event => {
   if (todoEditId && recordLocks.isLocked("todos")) { $("#todoError").textContent = "Unlock To-do to update a saved task."; return; }
   $("#saveTodo").disabled = true; $("#todoError").textContent = "";
   try {
-    await api(todoEditId ? `/api/todos/${todoEditId}` : "/api/todos", {method:todoEditId ? "PATCH" : "POST", body:JSON.stringify({title:$("#todoTitle").value,type:$("#todoType").value})});
+    await api(todoEditId ? `/api/todos/${todoEditId}` : "/api/todos", {method:todoEditId ? "PATCH" : "POST", body:JSON.stringify({title:$("#todoTitle").value,type:$("#todoType").value,...window.AiMateTodoPriorities?.payload()})});
     resetTodoEditor(); await loadTodos();
   } catch (error) { $("#todoError").textContent = error.message; }
   finally { $("#saveTodo").disabled = Boolean(todoEditId) && recordLocks.isLocked("todos"); }
@@ -2093,6 +2101,7 @@ document.addEventListener("aimate:record-lock", event => {
   else {
     const editingLocked = Boolean(todoEditId) && recordLocks.isLocked("todos");
     $("#todoTitle").readOnly = editingLocked; $("#todoType").disabled = editingLocked;
+    window.AiMateTodoPriorities?.lock(editingLocked);
     $("#saveTodo").disabled = editingLocked; renderTodos();
   }
 });

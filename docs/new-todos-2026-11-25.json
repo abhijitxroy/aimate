@@ -1,7 +1,7 @@
 [
   {
     "id": "backlog-3092a5f0dba05ff3cadc3c2c",
-    "title": "P1 · Planned — To-do priority column\n\nAdd priority selection, a compact column, filtering/sorting, legacy defaults and persistence tests.",
+    "title": "P1 · WIP — To-do priority column\n\nP0–P3 metadata, compact column, priority filter/sorting, legacy defaults, safety locks and encrypted backup support implemented. Final browser/backup checks and all seven workflows must pass before completion.",
     "completed": false,
     "type": "feature",
     "priority": "P1"
@@ -78,8 +78,8 @@
   },
   {
     "id": "backlog-d9019ff220a47ff8fc99a817",
-    "title": "P2 · Planned — Simplify workspace/project/group terminology\n\nCheck actual scope and security differences before consolidating labels; preserve hierarchy, identifiers and existing data.",
-    "completed": false,
+    "title": "P2 · Done — Simplify workspace/project/group terminology\n\nWorkspace and Folder are now the only user-facing organizing concepts. Existing nested data preserved; browser checks and all seven workflows passed.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45553917264",
+    "completed": true,
     "type": "enhancement",
     "priority": "P2"
   },
@@ -179,6 +179,13 @@
     "title": "P1 · WIP — GPT via Bedrock live access\n\nOptional Responses adapter, shared Bedrock key, GPT-6.2 Sol default, manual GPT-6.1 Sol fallback, metering and reviewed tools implemented. Mocked backend/browser checks pass. Actual account/model access still requires Settings → AI → GPT via Bedrock → Save & test; do not mark complete before that check.",
     "completed": false,
     "type": "feature",
+    "priority": "P1"
+  },
+  {
+    "id": "backlog-active-todo-workflow-skill",
+    "title": "P1 · Done — Active To-do development skill\n\nRepo skill saved in skills/aimate-backlog/SKILL.md and linked from AGENTS.md. It checks live/source To-dos, continues actionable priorities, asks only for genuine gaps and records evidence before completion. Skill validation and all seven workflows passed.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45553917292",
+    "completed": true,
+    "type": "enhancement",
     "priority": "P1"
   }
 ]

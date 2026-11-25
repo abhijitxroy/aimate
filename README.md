@@ -427,7 +427,7 @@ cross-chat recall. Recalled facts may be stale, so current status needs a fresh
 service read. Knowledge records are user-managed reference data, not a password vault.
 Knowledge opens in a searchable card view with copy and edit controls; use
 Add / edit to manage records. To-do is a separate local task list with editing,
-completion, deletion and Open / Completed / All views. Tasks persist across
+completion, deletion and Open / Completed / All views. [Priorities](docs/todo-priorities.md) add P0–P3 selection, sorting and filtering. Tasks persist across
 restarts and are independent of chat history.
 
 **Private** in the composer starts a session-only chat: no transcript, search index

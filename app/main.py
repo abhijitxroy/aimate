@@ -547,7 +547,9 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
     @app.get("/api/todos")
     def todos(session=Depends(auth)):
         from app.todo_types import KINDS
-        return {"tasks": store.rows("SELECT t.*,COALESCE(k.kind,'task') AS type FROM todos t LEFT JOIN todo_types k ON k.id=t.id ORDER BY completed,created DESC,t.id"),"types":list(KINDS)}
+        from app.todo_priorities import PRIORITIES,enabled
+        return {"tasks": store.rows("SELECT t.*,COALESCE(k.kind,'task') AS type,COALESCE(p.priority,'P2') AS priority FROM todos t LEFT JOIN todo_types k ON k.id=t.id LEFT JOIN todo_priorities p ON p.id=t.id ORDER BY completed,priority,created DESC,t.id"),
+                "types":list(KINDS),"priorities":list(PRIORITIES) if enabled() else []}
 
     def todo_title(body):
         title = body.get("title") if isinstance(body, dict) else None
@@ -561,23 +563,28 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
         title = todo_title(body)
         from app.todo_types import validate as validate_type,save as save_type
         kind=validate_type(body.get("type","task"))
+        from app.todo_priorities import validate as validate_priority,save as save_priority
+        priority=validate_priority(body["priority"]) if "priority" in body else None
         async with config_lock:
             if store.rows("SELECT count(*) AS total FROM todos")[0]["total"] >= 2000:
                 raise ValueError("Task limit reached. Remove old tasks first.")
             task_id, now = secrets.token_hex(12), time.time()
             store.execute("INSERT INTO todos VALUES (?,?,0,?,?)", (task_id, title, now, now))
             save_type(store,task_id,kind)
+            if priority is not None: save_priority(store,task_id,priority)
         return {"id": task_id}
 
     @app.patch("/api/todos/{task_id}")
     async def update_todo(task_id: str, request: Request, session=Depends(auth)):
         body = await request.json()
-        if not isinstance(body, dict) or not body or set(body) - {"title", "completed","type"}:
+        if not isinstance(body, dict) or not body or set(body) - {"title", "completed","type","priority"}:
             raise ValueError("Provide a task title or completed status.")
         if "completed" in body and not isinstance(body["completed"], bool):
             raise ValueError("Completed must be true or false.")
         from app.todo_types import validate as validate_type,save as save_type
         if "type" in body: validate_type(body["type"])
+        from app.todo_priorities import validate as validate_priority,save as save_priority
+        if "priority" in body: validate_priority(body["priority"])
         async with config_lock:
             rows = store.rows("SELECT * FROM todos WHERE id=?", (task_id,))
             if not rows:
@@ -587,6 +594,7 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
             store.execute("UPDATE todos SET title=?,completed=?,updated=? WHERE id=?",
                           (title, int(body.get("completed", current["completed"])), time.time(), task_id))
             if "type" in body:save_type(store,task_id,body["type"])
+            if "priority" in body:save_priority(store,task_id,body["priority"])
         return {"id": task_id}
 
     @app.delete("/api/todos/{task_id}")
@@ -596,6 +604,8 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
                 raise ValueError("Task not found.")
             store.execute("DELETE FROM todos WHERE id=?", (task_id,))
             store.execute("DELETE FROM todo_types WHERE id=?", (task_id,))
+            from app.todo_priorities import remove as remove_priority
+            remove_priority(store,task_id)
         return {"deleted": task_id}
 
     from app.usage_routes import register as register_usage

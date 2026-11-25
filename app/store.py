@@ -97,6 +97,8 @@ class Store:
             CREATE INDEX IF NOT EXISTS usage_by_date ON usage_events(created);
             CREATE INDEX IF NOT EXISTS feedback_by_date ON feedback(created DESC);
         """)
+        from app.todo_priorities import install as install_todo_priorities
+        install_todo_priorities(self)
         from app.memory import readable_text
         from app.context_brief import backfill
         backfill(self)

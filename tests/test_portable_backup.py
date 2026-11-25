@@ -80,6 +80,7 @@ class PortableBackupTests(unittest.TestCase):
         db.executescript("""
             CREATE TABLE conversations(id TEXT, title TEXT);
             CREATE TABLE turns(id INTEGER, messages TEXT);
+            CREATE TABLE todo_priorities(id TEXT PRIMARY KEY, priority TEXT);
             CREATE TABLE knowledge(id TEXT, value TEXT);
             CREATE TABLE settings(id INTEGER PRIMARY KEY, encrypted TEXT);
             CREATE TABLE login_otp(id INTEGER PRIMARY KEY, encrypted TEXT);
@@ -90,6 +91,7 @@ class PortableBackupTests(unittest.TestCase):
         """)
         db.execute("INSERT INTO conversations VALUES ('chat-1','Preserve me')")
         db.execute("INSERT INTO turns VALUES (1,'saved chat with formatting\\nsecond line')")
+        db.execute("INSERT INTO todo_priorities VALUES ('saved-task','P1')")
         db.execute("INSERT INTO knowledge VALUES ('note','diary text')")
         for table, value in (("settings", {"token": "synthetic-github-secret"}),
                              ("login_otp", {"secret": "synthetic-totp-secret"})):
@@ -126,6 +128,7 @@ class PortableBackupTests(unittest.TestCase):
         self.assertEqual(len(exported["stores"]), 2)
         self.assertEqual(exported["stores"][0]["counts"]["review_sessions"], 1)
         self.assertEqual(exported["stores"][0]["counts"]["conversation_briefs"], 1)
+        self.assertEqual(exported["stores"][0]["counts"]["todo_priorities"], 1)
         raw = self.backup.read_bytes()
         for secret in (b"synthetic-github-secret", b"saved chat", self.keys[""], b"synthetic-oauth-secret"):
             self.assertNotIn(secret, raw)
@@ -145,6 +148,7 @@ class PortableBackupTests(unittest.TestCase):
             self.assertFalse(plaintext(folder / "app.sqlite3"))
             self.assertFalse((folder / "access-password.txt").exists())
             with closing(connect(folder / "app.sqlite3", key)) as db:
+                self.assertEqual(db.execute("SELECT priority FROM todo_priorities WHERE id='saved-task'").fetchone()[0],"P1")
                 with patch.object(migration, "dpapi", self.device(self.new_device)):
                     migration.verify_db(db, key)
                 self.assertEqual(json.loads(Fernet(key).decrypt(db.execute("SELECT encrypted FROM settings").fetchone()[0].encode())),

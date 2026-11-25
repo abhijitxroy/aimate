@@ -80,6 +80,39 @@ class BrowserRegressionTests(unittest.TestCase):
     def tearDown(self):
         self.context.close()
 
+    def test_task_priorities_persist_filter_and_respect_edit_lock(self):
+        if not self.page.locator("#openTodos").is_visible():
+            self.page.locator("#sidebarTools summary").click()
+        self.page.locator("#openTodos").click()
+        self.expect(self.page.locator("#todoPriority")).to_be_visible()
+        self.page.locator("#todoTitle").fill("Priority fixture\nKeep multiline notes")
+        self.page.locator("#todoPriority").select_option("P1")
+        self.page.locator("#saveTodo").click()
+        row=self.page.locator(".todo-row").filter(has_text="Priority fixture")
+        self.expect(row.locator(".todo-priority")).to_have_text("P1")
+        self.expect(row.get_by_role("button",name="Edit",exact=True)).to_be_disabled()
+        self.page.locator("#todosEditLock").click()
+        row.get_by_role("button",name="Edit",exact=True).click()
+        self.expect(self.page.locator("#todoPriority")).to_have_value("P1")
+        self.page.locator("#todoPriority").select_option("P0")
+        self.page.locator("#saveTodo").click()
+        self.page.locator("#todoPriorityFilter").select_option("P0")
+        self.expect(row.locator(".todo-priority")).to_have_text("P0")
+        row.get_by_role("button",name="Edit",exact=True).click()
+        self.page.locator("#todosEditLock").click()
+        self.expect(self.page.locator("#todoPriority")).to_be_disabled()
+        self.page.locator("#cancelTodoEdit").click()
+        self.page.reload()
+        if not self.page.locator("#openTodos").is_visible():
+            self.page.locator("#sidebarTools summary").click()
+        self.page.locator("#openTodos").click()
+        self.page.locator("#todoPriorityFilter").select_option("P0")
+        self.expect(row.locator(".todo-priority")).to_have_text("P0")
+        self.page.evaluate("window.AiMateFeatures={todoPriorities:false};loadTodos()")
+        self.expect(self.page.locator("#todoPriority")).to_be_hidden()
+        self.expect(row.locator(".todo-priority")).to_have_count(0)
+        self.expect(row.get_by_role("button",name="Copy",exact=True)).to_be_visible()
+
     def test_recents_section_pages_three_then_five_and_does_not_duplicate_chats(self):
         self.page.evaluate("""async () => {
             for(let i=0;i<13;i++) {

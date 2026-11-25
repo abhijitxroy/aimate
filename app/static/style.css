@@ -530,3 +530,8 @@ fieldset > label { margin-bottom: 12px; }
 #analysisStyle { max-width: 135px; font-size: 11px; padding: 6px 8px; min-height: 30px; border-radius: 14px; }
 .todo-label .todo-kind { width: 80px; flex-shrink: 0; font-size: 11px; color: var(--muted); white-space: normal; overflow: visible; }
 #todoType, #todoTypeFilter { max-width: 145px; font-size: 12px; }
+#todoPriority, #todoPriorityFilter { max-width: 140px; font-size: 12px; }
+.todo-label .todo-priority { width: 25px; flex-shrink: 0; font-size: 10px; color: var(--accent); }
+.todo-priority[data-priority=P0] { color: var(--danger); }
+.todo-priority[data-priority=P1] { color: var(--warning,#ffbd66); }
+.todo-priority[data-priority=P3] { color: var(--muted); }
