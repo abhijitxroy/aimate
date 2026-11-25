@@ -460,9 +460,21 @@ async function refreshState() {
   $("#chatLocation").hidden = !activeGroup;
   $("#chatLocation").textContent = activeGroup ? groupPath(activeGroup) : "";
   renderConversationTree(nav, activeGroup);
+  renderMobileConversations();
+  if (cid && !privateChat && $("#messages").querySelector("[data-action]")) await refreshActionCards();
+  document.dispatchEvent(new Event("aimate:state"));
+  return state;
+}
+
+function recentChatView(threads,key) {
+  return window.AiMateRecentChats?.view(threads,key,cid) || {items:threads,more:false};
+}
+function renderMobileConversations() {
   const mobileNav = $("#mobileConversations");
   mobileNav.replaceChildren();
-  for (const thread of state.conversations.filter(t => Boolean(t.archived) === archiveView)) {
+  const key=`mobile:${archiveView}`, selection=recentChatView(
+    conversationList.filter(t => Boolean(t.archived) === archiveView),key);
+  for (const thread of selection.items) {
     const mobileButton = conversationButton(thread);
     mobileButton.title = (thread.group_id ? groupPath(thread.group_id) : "Standalone chat")+"\n"+mobileButton.title;
     mobileButton.onclick = () => {
@@ -472,9 +484,7 @@ async function refreshState() {
     };
     mobileNav.append(mobileButton);
   }
-  if (cid && !privateChat && $("#messages").querySelector("[data-action]")) await refreshActionCards();
-  document.dispatchEvent(new Event("aimate:state"));
-  return state;
+  window.AiMateRecentChats?.control(mobileNav,key,selection,renderMobileConversations,"this workspace");
 }
 
 function groupPath(id) {
@@ -533,7 +543,9 @@ function renderConversationTree(nav, activeGroup) {
       };
       node.append(folder);
     }
-    for (const thread of conversationList.filter(t => (t.group_id || null) === parent && Boolean(t.archived) === archiveView)) {
+    const key=`${archiveView}:${parent || "root"}`, selection=recentChatView(
+      conversationList.filter(t => (t.group_id || null) === parent && Boolean(t.archived) === archiveView),key);
+    for (const thread of selection.items) {
       const row = element("div", "conversation-row" + (thread.id === cid ? " active" : ""));
       const button = conversationButton(thread, thread.id === cid ? "active" : "");
       button.onclick = () => openConversation(thread.id, thread.title);
@@ -543,6 +555,9 @@ function renderConversationTree(nav, activeGroup) {
       row.oncontextmenu = event => { event.preventDefault(); showConversationContext(thread, event.clientX, event.clientY); };
       row.append(button, menu); node.append(row);
     }
+    window.AiMateRecentChats?.control(node,key,selection,()=>{
+      nav.replaceChildren();renderConversationTree(nav,activeGroup);
+    },parent ? groupPath(parent) : "this workspace");
   }
   fill(null, nav);
   if (!conversationList.some(t => Boolean(t.archived) === archiveView)) nav.append(element("p", "group-empty", archiveView ? "No archived chats" : "No conversations yet"));

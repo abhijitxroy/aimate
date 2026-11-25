@@ -85,6 +85,7 @@ if __name__ == "__main__":
     store.execute("INSERT INTO todos VALUES (?,?,0,?,?)",
                   ("long-task", "Long task\n" + "\n".join(f"Step {i}: preserve multiline details." for i in range(20)), 1, 1))
     legacy = store.new_conversation("Old continuity reference")
+    store.execute("INSERT INTO conversation_flags VALUES (?,1)", (legacy,))
     store.save_turn(legacy, [{"role": "user", "content": "Investigate DEMO-8437 and PR #1257."}])
     for index in range(18):
         store.save_turn(legacy, [{"role": "user", "content": f"Follow-up detail {index}"}])

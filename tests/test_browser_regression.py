@@ -80,6 +80,30 @@ class BrowserRegressionTests(unittest.TestCase):
     def tearDown(self):
         self.context.close()
 
+    def test_recent_chats_show_more_less_keeps_open_chat_and_saved_history(self):
+        gid=self.page.evaluate("""async () => {
+            const folder=await api('/api/groups',{method:'POST',body:JSON.stringify({name:'Recent chats fixture'})});
+            for(let i=0;i<8;i++) {
+                const chat=await api('/api/conversations',{method:'POST',body:JSON.stringify({group_id:folder.id})});
+                await api('/api/conversations/'+chat.id,{method:'PATCH',body:JSON.stringify({title:'Recent fixture '+i})});
+            }
+            expandedGroups.add(folder.id);await refreshState();return folder.id;
+        }""")
+        folder=self.page.locator(f'[data-group="{gid}"]')
+        self.expect(folder.locator(".conversation-link")).to_have_count(5)
+        folder.get_by_role("button",name="Show more chats in Recent chats fixture",exact=True).click()
+        self.expect(folder.locator(".conversation-link")).to_have_count(8)
+        folder.get_by_role("button",name="Recent fixture 0",exact=True).click()
+        self.expect(self.page.locator("#chatTitle")).to_have_text("Recent fixture 0")
+        folder.get_by_role("button",name="Show less chats in Recent chats fixture",exact=True).click()
+        self.expect(folder.locator(".conversation-link")).to_have_count(6)
+        self.expect(folder.get_by_role("button",name="Recent fixture 0",exact=True)).to_be_visible()
+        state=self.context.request.get(self.url+"/api/state").json()
+        self.assertEqual(len([c for c in state["conversations"] if c.get("group_id")==gid]),8)
+        self.page.evaluate("window.AiMateFeatures={recentChats:false};refreshState()")
+        self.expect(folder.locator(".conversation-link")).to_have_count(8)
+        self.expect(folder.locator(".recent-chats-toggle")).to_have_count(0)
+
     def test_chat_timestamp_and_type_help_do_not_change_group_creation(self):
         chat = self.page.locator("#conversations").get_by_role(
             "button", name="Old continuity reference", exact=True)

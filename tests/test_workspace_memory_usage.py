@@ -36,6 +36,19 @@ class WorkspaceTests(unittest.TestCase):
     def post(self, path, body=None):
         return self.client.post(path, headers=self.headers, json=body)
 
+    def test_recent_chat_time_uses_latest_message_and_preserves_creation_and_pins(self):
+        newer=self.store.new_conversation("Newer chat")
+        self.store.execute("UPDATE conversations SET created=10 WHERE id=?", (self.cid,))
+        self.store.execute("UPDATE conversations SET created=20 WHERE id=?", (newer,))
+        self.store.execute("UPDATE turns SET created=11 WHERE conversation=?", (self.cid,))
+        self.store.save_turn(self.cid,[{"role":"user","content":"Return to this old conversation"}])
+        state=self.client.get("/api/state").json()["conversations"]
+        self.assertEqual(state[0]["id"],self.cid)
+        self.assertEqual(state[0]["created"],10)
+        self.assertGreater(state[0]["last_activity"],20)
+        self.store.execute("INSERT INTO conversation_flags VALUES (?,1)", (newer,))
+        self.assertEqual(self.client.get("/api/state").json()["conversations"][0]["id"],newer)
+
     def test_nested_groups_move_preserves_messages_pin_and_restart(self):
         project = self.post("/api/groups", {"name": "Demo", "kind": "project"}).json()["id"]
         module = self.post("/api/groups", {"name": "CI", "kind": "module", "parent": project}).json()["id"]

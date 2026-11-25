@@ -370,7 +370,7 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
                 "chatgpt": {**chatgpt.status(), "available": not demo and not public_url},
                 "groups": store.rows("SELECT * FROM conversation_groups ORDER BY created"),
                 "conversations": [{"id":ident,"title":"Private chat","private":True,"created":time.time(),"pinned":0,"archived":0} for ident in session["private_chats"]] +
-                    store.rows("SELECT c.*,l.group_id,i.icon,s.color AS icon_color,COALESCE(f.pinned,0) AS pinned,COALESCE(a.archived,0) AS archived FROM conversations c LEFT JOIN conversation_locations l ON l.conversation=c.id LEFT JOIN conversation_icons i ON i.conversation=c.id LEFT JOIN conversation_icon_styles s ON s.conversation=c.id LEFT JOIN conversation_flags f ON f.conversation=c.id LEFT JOIN conversation_archives a ON a.conversation=c.id ORDER BY pinned DESC,c.created DESC")}
+                    store.rows("SELECT c.*,COALESCE((SELECT t.created FROM turns t WHERE t.conversation=c.id ORDER BY t.id DESC LIMIT 1),c.created) AS last_activity,l.group_id,i.icon,s.color AS icon_color,COALESCE(f.pinned,0) AS pinned,COALESCE(a.archived,0) AS archived FROM conversations c LEFT JOIN conversation_locations l ON l.conversation=c.id LEFT JOIN conversation_icons i ON i.conversation=c.id LEFT JOIN conversation_icon_styles s ON s.conversation=c.id LEFT JOIN conversation_flags f ON f.conversation=c.id LEFT JOIN conversation_archives a ON a.conversation=c.id ORDER BY pinned DESC,last_activity DESC")}
 
     def require_local_chatgpt():
         if demo or public_url:
