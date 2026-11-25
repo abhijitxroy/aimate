@@ -1065,6 +1065,7 @@ async function ask(question) {
         if (event.event === "tool_done" && !event.ok) {
           addToolFailure(bot,event.message,event.guidance);
         }
+        if (event.event === "repository_access") renderGitHubGuidance(bot,event.guidance);
         if (event.event === "action") drawAction(event.action, bot.root);
         if (event.event === "error") throw new Error(event.message);
         if (event.event === "done") {

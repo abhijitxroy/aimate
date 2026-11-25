@@ -1,6 +1,6 @@
 function renderGitHubGuidance(message, guidance) {
   if (!guidance) return;
-  const panel=evidencePanel(message);
+  const panel=guidance.read_verified ? message.root : evidencePanel(message);
   if ([...panel.querySelectorAll(".source-recovery")].some(row=>
     row.dataset.repository===guidance.repo.toLowerCase() && row.dataset.recovery===guidance.action)) return;
   const row=element("div","source-recovery");

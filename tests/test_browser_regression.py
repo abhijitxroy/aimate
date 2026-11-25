@@ -84,6 +84,23 @@ class BrowserRegressionTests(unittest.TestCase):
     def tearDown(self):
         self.context.close()
 
+    def test_verified_new_repo_read_offers_one_review_option_without_failure_banner(self):
+        guidance={"repo":"team/new","read_verified":True,"action":"validate_repository",
+            "message":"Read access verified for this question. Add this source only for later chats."}
+        events=[{"event":"repository_access","guidance":guidance},
+                {"event":"repository_access","guidance":guidance},
+                {"event":"text","delta":"Requested PR read; saved scope is unchanged."},
+                {"event":"done","usage":{"input_tokens":2,"output_tokens":3},"model":"standard-fixture","mode":"standard"}]
+        self.page.route("**/api/chat",lambda route:route.fulfill(status=200,content_type="text/event-stream",
+            body="".join("data: "+json.dumps(event)+"\n\n" for event in events)))
+        self.page.locator("#newChat").click()
+        self.page.locator("#question").fill("Read team/new PR 7")
+        self.page.locator("#send").click()
+        self.expect(self.page.locator("#messages .source-recovery")).to_have_count(1)
+        self.expect(self.page.locator("#messages")).to_contain_text("Requested PR read")
+        self.expect(self.page.get_by_role("button",name="Validate & review repository",exact=True)).to_be_visible()
+        self.expect(self.page.locator("#messages .tool-failure")).to_have_count(0)
+
     def test_performance_baselines_measure_requests_and_optional_ui_leaves_chat_usable(self):
         self.page.evaluate("async()=>{for(let i=0;i<6;i++)await api('/api/todos');}")
         self.page.locator("#headerSettings").click()

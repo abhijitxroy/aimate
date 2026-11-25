@@ -57,7 +57,7 @@
   },
   {
     "id": "backlog-291b901efdd0fc05fec8526c",
-    "title": "P1 · Planned — Smart missing-repository discovery\n\nValidate read access for an explicitly requested unconfigured repository, report the result and offer a reviewed add-repository proposal.",
+    "title": "P1 · WIP — Smart missing-repository discovery\n\nCurrent-question repository reads validate identity using the saved host/token without changing saved scope. Reviewed additions stay pending until confirmed. Anthropic and Responses gateway coverage and browser validation pending.",
     "completed": false,
     "type": "enhancement",
     "priority": "P1"
@@ -99,8 +99,8 @@
   },
   {
     "id": "backlog-2c2bdd529bfd33a0162ec6fb",
-    "title": "P1 · WIP — Per-section performance and improvement dashboard\n\nMeasured section timings, observed traffic, errors, resource usage, workspace tokens and protected before/after baselines implemented. Automated, backup and browser validation pending.",
-    "completed": false,
+    "title": "P1 · Done — Per-section performance and improvement dashboard\n\nAdmin/Developer Performance view reports section p50/p95, observed traffic, errors/interruption, workspace tokens and process resources. Protected baselines survive restart and encrypted restore; optional feature and role/CSRF guards tested. 50 unit, 273 integration and 64 browser checks and all seven GitHub workflows passed.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45634673559",
+    "completed": true,
     "type": "enhancement",
     "priority": "P1"
   },
@@ -204,7 +204,7 @@
   },
   {
     "id": "backlog-daily-jira-email",
-    "title": "P2 · Planned — Daily Jira-creation email digest\n\nPrepare a reviewed daily summary of created Jira issues for a selected distribution list. Recipient, Jira scope, send time and approved mail service are required before scheduling or sending. No silent issue creation or email sends.",
+    "title": "P2 · Planned — Daily Jira-creation email digest\n\nDeferred by the user on 25 November 2026. No email sends or schedule. Recipient, Jira scope, send time and approved service remain unspecified.",
     "completed": false,
     "type": "feature",
     "priority": "P2"
@@ -274,8 +274,8 @@
   },
   {
     "id": "backlog-gemini-antigravity",
-    "title": "P1 · WIP — Gemini / Antigravity Google Cloud connection\n\nVertex AI adapter and masked service-account JSON import installed. Standard/Analysis presets, images, scoped tools, provider-signature continuity, cache/think-token metering and safe errors verified by 50 unit, 262 integration and 61 browser tests; all seven workflows passed. Live Google access awaits a replacement credential entered securely in AiMate. The exposed key was not saved or used.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45606808228",
-    "completed": false,
+    "title": "P1 · Done — Gemini / Antigravity Google Cloud connection\n\nGemini Vertex AI adapter, secure JSON import and scoped tool behavior passed all seven workflows. Saved Gemini 4 Hydrogen connection has a matching passed check, and the user confirms live Gemini replies work. No new paid inference was initiated for this recheck.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45634673559",
+    "completed": true,
     "type": "feature",
     "priority": "P1"
   },
