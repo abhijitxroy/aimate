@@ -162,8 +162,8 @@
   },
   {
     "id": "backlog-1ba2892586ef6bd41082a2aa",
-    "title": "P1 · Planned — Separate Security checks workflow\n\nAdd dependency vulnerability and committed-secret checks with deliberate handling of synthetic fixtures; no weakening of app CSP or roles.",
-    "completed": false,
+    "title": "P1 · Done — Separate Security checks workflow\n\nSeparate security.yml passed: runtime/test dependency audit reports no known findings and checksum-verified Gitleaks scans all committed history. Cryptography 50.0.2 passed isolated encryption/backup and all six workflows; no blanket exemptions.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45539358519",
+    "completed": true,
     "type": "task",
     "priority": "P1"
   },

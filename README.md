@@ -9,6 +9,7 @@
 [![Flaky checks](https://github.com/abhijitxroy/aimate/actions/workflows/flaky.yml/badge.svg)](https://github.com/abhijitxroy/aimate/actions/workflows/flaky.yml)
 [![Quality](https://github.com/abhijitxroy/aimate/actions/workflows/quality.yml/badge.svg)](https://github.com/abhijitxroy/aimate/actions/workflows/quality.yml)
 [![Security](https://github.com/abhijitxroy/aimate/actions/workflows/security.yml/badge.svg)](https://github.com/abhijitxroy/aimate/actions/workflows/security.yml)
+[![Build](https://github.com/abhijitxroy/aimate/actions/workflows/build.yml/badge.svg)](https://github.com/abhijitxroy/aimate/actions/workflows/build.yml)
 
 A standalone, local workspace for asking questions across your GitHub
 repositories, Jira projects and Jenkins jobs. Built from scratch with FastAPI,

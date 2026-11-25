@@ -1,0 +1,42 @@
+name: Build smoke
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  pages-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate public package and asset references
+        run: python tools/build_smoke.py
+  container-startup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build existing non-root container
+        run: docker build --tag aimate:ci .
+      - name: Start isolated fictional-data app
+        shell: bash
+        run: |
+          set -euo pipefail
+          password="$(python -c 'import secrets; print(secrets.token_urlsafe(32))')"
+          docker run --detach --name aimate-smoke \
+            --publish 127.0.0.1:18765:8765 \
+            --env AIMATE_DEMO=1 --env APP_PASSWORD="$password" aimate:ci
+          test "$(docker inspect --format '{{.Config.User}}' aimate-smoke)" = "aimate"
+      - name: Verify container health and served interface assets
+        run: python tools/build_smoke.py --url http://127.0.0.1:18765
+      - name: Show isolated container diagnostics on failure
+        if: failure()
+        run: docker logs aimate-smoke
+      - name: Stop smoke container
+        if: always()
+        run: docker rm --force aimate-smoke || true
