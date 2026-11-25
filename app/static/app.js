@@ -415,6 +415,8 @@ async function refreshState() {
   const state = await api("/api/state");
   if(state.message_favorites===false) {window.AiMateFeatures={...window.AiMateFeatures,messageFavorites:false};}
   $("#openFavorites").hidden=window.AiMateFeatures?.messageFavorites===false;
+  if(state.feedback_review===false) {window.AiMateFeatures={...window.AiMateFeatures,feedbackReview:false};}
+  $("#openMyFeedback").hidden=window.AiMateFeatures?.feedbackReview===false;
   $("#attachText").dataset.documentBytes = state.attachment_limits?.document_bytes || 4*1024*1024;
   $("#attachText").title = `Attach a file · documents up to ${Number($("#attachText").dataset.documentBytes)/(1024*1024)} MB`;
   csrf = state.csrf;

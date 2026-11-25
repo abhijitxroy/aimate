@@ -215,5 +215,19 @@
     "completed": true,
     "type": "feature",
     "priority": "P2"
+  },
+  {
+    "id": "backlog-inline-prompt-formatting",
+    "title": "P1 · WIP — Inline formatting inside the askbar\n\nUser now requests bold formatting immediately in the editable askbar without Preview. Preserve source/selection, keyboard shortcuts, pasted text, copy, attachments and plain-editor fallback; implement and validate before completing.",
+    "completed": false,
+    "type": "feature",
+    "priority": "P1"
+  },
+  {
+    "id": "backlog-opencode-bedrock",
+    "title": "P1 · WIP — OpenCode Bedrock connection\n\nUse the supplied non-secret opencode.json: GPT, Claude, Kimi and GLM model catalog, fixed us-east-2 gateway routes and the shared Bedrock key. Integrate optional settings/adapter, validate supported protocols and tools, preserve saved credentials, and leave actual account/model access open until verified.",
+    "completed": false,
+    "type": "feature",
+    "priority": "P1"
   }
 ]

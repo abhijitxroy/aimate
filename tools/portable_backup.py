@@ -38,7 +38,7 @@ EXCLUDED = {".git", ".venv", ".data", ".demo-data", ".public-data", "_site",
 TABLES = ("conversations", "turns", "knowledge", "todos", "vault_entries", "review_sessions", "conversation_briefs",
           "access_grants", "usage_events", "feedback", "actions", "documents", "usage_calls",
           "usage_preferences", "usage_invoices", "library_items","todo_types", "conversation_icon_styles",
-          "investigation_records","todo_priorities")
+          "investigation_records","todo_priorities","feedback_reviews")
 LIMIT = 512 * 1024 * 1024
 
 

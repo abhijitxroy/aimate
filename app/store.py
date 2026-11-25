@@ -99,6 +99,8 @@ class Store:
         """)
         from app.todo_priorities import install as install_todo_priorities
         install_todo_priorities(self)
+        from app.feedback_review import install as install_feedback_review
+        install_feedback_review(self)
         from app.memory import readable_text
         from app.context_brief import backfill
         backfill(self)

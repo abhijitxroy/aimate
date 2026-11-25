@@ -21,6 +21,7 @@
   <script src="/static/recent_chats.js" defer></script>
   <script src="/static/import_progress.js" defer></script>
   <script src="/static/message_favorites.js" defer></script>
+  <script src="/static/feedback_review_ui.js" defer></script>
   <script src="/static/message_time.js" defer></script>
   <script src="/static/todo_priority_ui.js" defer></script>
   <script src="/static/app.js" defer></script>
@@ -110,6 +111,7 @@
     </main>
   </div>
 
+  <dialog id="feedbackReviewsDialog" aria-labelledby="feedbackReviewsTitle"><div class="dialog-head"><h2 id="feedbackReviewsTitle">Feedback</h2><button class="close" data-close="feedbackReviewsDialog" aria-label="Close feedback reviews">×</button></div><p class="hint">Reviewer assessments, not automatic verification. Replies and tasks belong to this workspace.</p><label>View<select id="feedbackReviewFilter"><option value="all">All feedback</option><option value="new">New</option><option value="investigating">Investigating</option><option value="planned">Planned</option><option value="resolved">Resolved</option><option value="closed">Closed</option></select></label><div id="feedbackReviews"></div><button id="feedbackReviewMore" type="button" hidden>Show more</button><p id="feedbackReviewsError" class="error" role="alert"></p></dialog>
   <dialog id="favoritesDialog"><div class="dialog-head"><h2>Favorite messages</h2><button class="close" data-close="favoritesDialog" aria-label="Close favorites">×</button></div><div id="favoriteMessages"></div><p id="favoritesError" class="error" role="alert"></p></dialog>
   <dialog id="appearanceDialog" class="compact-dialog" aria-labelledby="appearanceTitle">
     <div class="dialog-head"><h2 id="appearanceTitle">Appearance</h2><button class="close" data-close="appearanceDialog" aria-label="Close appearance">×</button></div>
@@ -337,7 +339,7 @@
   </dialog>
   <dialog id="feedbackDialog" class="compact-dialog">
     <div class="dialog-head"><h2>How was this answer?</h2><button class="close" data-close="feedbackDialog" aria-label="Close feedback">×</button></div>
-    <form id="feedbackForm"><div class="record-tabs"><button id="feedbackPositive" type="button" aria-pressed="true">👍 Helpful</button><button id="feedbackNegative" type="button" aria-pressed="false">👎 Needs work</button></div><label>What stood out?<select id="feedbackCategory"><option value="helpful">Helpful answer</option><option value="accuracy">Accuracy</option><option value="clarity">Clarity</option><option value="missing_context">Missing context</option><option value="performance">Speed</option><option value="other">Other</option></select></label><label>Anything to add?<textarea id="feedbackComment" rows="3" maxlength="2000" placeholder="What worked, or what should improve?"></textarea></label><p class="hint">Saved locally for your workspace administrator. Avoid private information.</p><button class="primary" type="submit">Save feedback</button><p id="feedbackError" class="error" role="alert"></p></form>
+    <form id="feedbackForm"><div class="record-tabs"><button id="feedbackPositive" type="button" aria-pressed="true">👍 Helpful</button><button id="feedbackNegative" type="button" aria-pressed="false">👎 Needs work</button></div><label>What stood out?<select id="feedbackCategory"><option value="helpful">Helpful answer</option><option value="accuracy">Accuracy</option><option value="clarity">Clarity</option><option value="missing_context">Missing context</option><option value="performance">Speed</option><option value="other">Other</option></select></label><label>Anything to add?<textarea id="feedbackComment" rows="3" maxlength="2000" placeholder="What worked, or what should improve?"></textarea></label><p class="hint">Saved locally for your workspace administrator. Avoid private information.</p><button class="primary" type="submit">Save feedback</button><button id="openMyFeedback" type="button">View feedback &amp; replies</button><p id="feedbackError" class="error" role="alert"></p></form>
   </dialog>
   <dialog id="vaultDialog">
     <div class="dialog-head"><h2>Private vault</h2><button class="close" data-close="vaultDialog" aria-label="Close vault">×</button></div>

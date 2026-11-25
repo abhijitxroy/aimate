@@ -81,6 +81,7 @@ class PortableBackupTests(unittest.TestCase):
             CREATE TABLE conversations(id TEXT, title TEXT);
             CREATE TABLE turns(id INTEGER, messages TEXT);
             CREATE TABLE turn_usage(turn INTEGER PRIMARY KEY, metadata TEXT NOT NULL);
+            CREATE TABLE feedback_reviews(id TEXT PRIMARY KEY, state TEXT, assessment TEXT, reply TEXT, evidence TEXT, task TEXT, updated REAL, reviewer TEXT);
             CREATE TABLE todo_priorities(id TEXT PRIMARY KEY, priority TEXT);
             CREATE TABLE knowledge(id TEXT, value TEXT);
             CREATE TABLE settings(id INTEGER PRIMARY KEY, encrypted TEXT);
@@ -93,6 +94,7 @@ class PortableBackupTests(unittest.TestCase):
         db.execute("INSERT INTO conversations VALUES ('chat-1','Preserve me')")
         db.execute("INSERT INTO turns VALUES (1,'saved chat with formatting\\nsecond line')")
         db.execute("INSERT INTO turn_usage VALUES (1,?)",(json.dumps({"favorite_roles":["assistant"],"usage":{"input_tokens":17}}),))
+        db.execute("INSERT INTO feedback_reviews VALUES ('feedback','planned','confirmed_issue','Review reply','Fixture evidence','saved-task',1,'admin')")
         db.execute("INSERT INTO todo_priorities VALUES ('saved-task','P1')")
         db.execute("INSERT INTO knowledge VALUES ('note','diary text')")
         for table, value in (("settings", {"token": "synthetic-github-secret"}),
@@ -150,6 +152,7 @@ class PortableBackupTests(unittest.TestCase):
             self.assertFalse(plaintext(folder / "app.sqlite3"))
             self.assertFalse((folder / "access-password.txt").exists())
             with closing(connect(folder / "app.sqlite3", key)) as db:
+                self.assertEqual(db.execute("SELECT reply FROM feedback_reviews WHERE id='feedback'").fetchone()[0],"Review reply")
                 self.assertEqual(json.loads(db.execute("SELECT metadata FROM turn_usage WHERE turn=1").fetchone()[0])["favorite_roles"],["assistant"])
                 self.assertEqual(db.execute("SELECT priority FROM todo_priorities WHERE id='saved-task'").fetchone()[0],"P1")
                 with patch.object(migration, "dpapi", self.device(self.new_device)):

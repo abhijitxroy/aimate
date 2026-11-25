@@ -36,6 +36,12 @@ label { display: flex; flex-direction: column; gap: 8px; font-size: 12px; }
 .message-favorite { display: inline-flex; align-items: center; padding: 0 3px; }
 .message-favorite[aria-pressed="true"] { color: var(--accent); }
 .message-favorite[aria-pressed="true"] svg { fill: currentColor; }
+.feedback-review-card { border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-top: 10px; background: var(--panel); }
+.feedback-review-card > summary { cursor: pointer; display: flex; align-items: center; gap: 10px; font-size: 12px; }
+.feedback-review-card > summary small { margin-left: auto; }
+.feedback-review-card > .message-body { margin-top: 12px; font-size: 13px; overflow-wrap: anywhere; }
+.feedback-review-reply { border-left: 2px solid var(--accent); padding-left: 10px; }
+.feedback-review-form { display: grid; gap: 10px; margin-top: 14px; }
 .import-progress-track { height: 2px; overflow: hidden; background: var(--line); border-radius: 2px; }
 .import-progress-track span { display: block; height: 100%; background: var(--accent); }
 .import-progress.indeterminate .import-progress-track span { animation: import-travel 1.2s ease-in-out infinite alternate; }

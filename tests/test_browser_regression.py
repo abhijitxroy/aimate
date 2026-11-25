@@ -845,6 +845,38 @@ class BrowserRegressionTests(unittest.TestCase):
         self.expect(self.page.locator("[data-message-favorite]")).to_have_count(0)
         self.expect(self.page.locator("#openFavorites")).to_be_hidden()
 
+    def test_feedback_review_reply_confirmed_task_and_disabled_ui(self):
+        self.page.locator("#conversations").get_by_role("button",name="Old continuity reference",exact=True).click()
+        self.page.locator("#messages").get_by_role("button",name="Feedback",exact=True).click()
+        self.page.locator("#feedbackNegative").click()
+        self.page.locator("#feedbackComment").fill("Feedback review browser fixture")
+        self.page.locator("#feedbackForm").get_by_role("button",name="Save feedback",exact=True).click()
+        self.expect(self.page.locator("#activity")).to_have_text("Feedback saved. Thank you.")
+        self.page.locator("#headerSettings").click()
+        self.page.locator("#tab-changes").click()
+        self.page.locator("#openFeedbackLog").click()
+        self.expect(self.page.locator("#feedbackReviewsDialog")).to_be_visible()
+        entries=self.context.request.get(self.url+"/api/feedback/reviews").json()["entries"]
+        ident=next(row["id"] for row in entries if row["comment"]=="Feedback review browser fixture")
+        card=self.page.locator(f'[data-feedback-id="{ident}"]')
+        card.locator("summary").click()
+        card.get_by_label("Feedback state",exact=True).select_option("investigating")
+        card.get_by_label("Reviewer assessment",exact=True).select_option("confirmed_issue")
+        card.get_by_label("Reviewer reply",exact=True).fill("Reproduced. A fix is planned.")
+        card.get_by_role("button",name="Save review",exact=True).click()
+        self.expect(card.locator('[role="alert"]')).to_contain_text("Add evidence")
+        card.get_by_label("Review evidence",exact=True).fill("Browser regression fixture")
+        card.get_by_role("button",name="Save review",exact=True).click()
+        self.expect(card.get_by_role("button",name="Add to To-do",exact=True)).to_be_enabled()
+        card.get_by_role("button",name="Add to To-do",exact=True).click()
+        self.expect(card.get_by_role("button",name="Open To-do",exact=True)).to_be_visible()
+        task=self.context.request.get(self.url+"/api/todos").json()["tasks"]
+        self.assertTrue(any("Feedback review browser fixture" in row["title"] for row in task))
+        self.page.add_init_script("window.AiMateFeatures={feedbackReview:false}")
+        self.page.reload()
+        self.expect(self.page.locator("#openMyFeedback")).to_be_hidden()
+        self.expect(self.page.locator("#question")).to_be_visible()
+
     def test_extra_themes_import_validation_persistence_and_disabled_feature(self):
         self.page.locator("#openAppearance").click()
         self.page.locator('[data-theme-choice="life"]').click()
