@@ -1,5 +1,6 @@
 """Check distributable assets and optional loopback startup; never deploy."""
 import argparse
+from http.client import RemoteDisconnected
 from html.parser import HTMLParser
 import json
 from pathlib import Path
@@ -63,7 +64,7 @@ def check_server(url):
                 if json.load(response) != {"status": "ok"}:
                     raise ValueError("Unexpected health response.")
             break
-        except URLError:
+        except (URLError, ConnectionError, TimeoutError, RemoteDisconnected):
             if time.monotonic() >= deadline:
                 raise ValueError("The app did not become healthy within 30 seconds.") from None
             time.sleep(.25)

@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 UNIT_CLASSES = {
     "test_validation.ValidationTests", "test_app.QueryTests",
     "test_github_guidance.GuidanceTests", "test_ci_suites.SuiteTests",
+    "test_build_smoke.SmokeTests",
 }
 UNIT_METHODS = {
     "test_model_routing.RoutingTests." + name for name in (
