@@ -595,6 +595,8 @@ class BrowserRegressionTests(unittest.TestCase):
 
     def test_composer_format_preview_send_and_history_reload(self):
         self.page.get_by_role("button",name="Preview formatted message",exact=True).click()
+        self.page.evaluate("async () => {await refreshState();document.dispatchEvent(new Event('aimate:state'));}")
+        self.expect(self.page.get_by_role("button",name="Preview formatted message",exact=True)).to_have_attribute("aria-pressed","true")
         self.page.locator("#newChat").click()
         self.expect(self.page.get_by_role("button",name="Bold",exact=True)).to_be_visible()
         field = self.page.locator("#question")

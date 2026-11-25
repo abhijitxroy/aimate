@@ -544,6 +544,7 @@ fieldset > label { margin-bottom: 12px; }
 .composer-format-tools input[type=color] { width: 28px; height: 27px; padding: 2px; }
 .composer-preview { max-height: min(180px, 25dvh); overflow: auto; white-space: pre-wrap; padding: 10px; border: 1px solid var(--line); border-radius: 10px; margin: 4px 0; }
 .composer-preview[hidden] { display: none; }
+.composer-preview[data-empty="true"] { display: none; }
 .investigation-dialog { width: min(820px, calc(100vw - 32px)); }
 .investigation-steps { display: grid; gap: 7px; margin: 14px 0; }
 .investigation-steps label { display: flex; align-items: center; gap: 8px; font-size: 12px; }

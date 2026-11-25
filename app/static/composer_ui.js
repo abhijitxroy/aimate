@@ -66,10 +66,14 @@
     if (bottom > field.scrollTop + field.clientHeight) field.scrollTop = bottom - field.clientHeight;
     else if (top < field.scrollTop) field.scrollTop = Math.max(0, top);
   }
+  function updatePreview() {
+    preview.dataset.empty=String(!field.value);
+    if (!preview.hidden) renderPrompt(preview, field.value);
+  }
   for (const event of ["select", "keyup", "click", "input"]) field.addEventListener(event, () => {
     selection = [field.selectionStart, field.selectionEnd];
     if (event === "input") fitEditor();
-    if (!preview.hidden) renderPrompt(preview, field.value);
+    updatePreview();
     updateFormats();
   });
   function replace(value, start, end, selectedStart = start, selectedEnd = start + value.length) {
@@ -146,7 +150,7 @@
   previewToggle = button("Preview", () => {
     preview.hidden = !preview.hidden;
     previewToggle.setAttribute("aria-pressed", String(!preview.hidden));
-    if (!preview.hidden) renderPrompt(preview, field.value);
+    updatePreview();
   }, "Preview formatted message");
   previewToggle.setAttribute("aria-pressed","false");
   const more = button("More", () => {
@@ -161,11 +165,12 @@
     event.preventDefault(); selection=[field.selectionStart,field.selectionEnd]; action.click();
   });
   document.addEventListener("aimate:state", () => {
-    if (!field.value) { preview.hidden=true;previewToggle.setAttribute("aria-pressed","false"); }
+    updatePreview();
     fitEditor();
     updateFormats();
   });
   window.addEventListener("resize", fitEditor);
   fitEditor();
+  updatePreview();
   updateFormats();
 })();

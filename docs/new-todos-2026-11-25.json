@@ -278,5 +278,12 @@
     "completed": false,
     "type": "feature",
     "priority": "P1"
+  },
+  {
+    "id": "backlog-preview-state-refresh",
+    "title": "P1 · WIP — Preserve Preview preference across UI refreshes\n\nLinux browser CI exposed an empty-draft background-refresh reset. Explicit Preview preference now survives refreshes; empty preview panels stay hidden until text is present. Regression added; CI validation pending.",
+    "completed": false,
+    "type": "bug",
+    "priority": "P1"
   }
 ]
