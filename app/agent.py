@@ -160,6 +160,9 @@ def action_capabilities(config):
 
 
 def ai_client(config):
+    if config.get("ai", {}).get("provider") == "bedrock-openai":
+        from app.bedrock_gpt import Connection
+        return Connection(config)
     import anthropic
     ai = config.get("ai", {})
     if not ai.get("model"):
@@ -269,6 +272,14 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
     config["_vault_secrets"] = vault_redactions(store)
     config["_vault_ai_access"] = bool(vault_access and vault_access() and store.rows("SELECT id FROM vault_entries WHERE ai_access=1 LIMIT 1"))
     config["allow_writes"] = bool(config.get("allow_writes")) and role in {"admin", "developer"}
+    if config.get("ai", {}).get("provider") == "bedrock-openai":
+        from app.bedrock_gpt import Connection
+        connection = Connection(config, store)
+        async for event in run_chatgpt_turn(store, cid, question, connection, services_factory,
+                model_mode=model_mode, images=images, role=role, vault_access=vault_access,
+                access_check=access_check, template_mode=template_mode):
+            yield event
+        return
     if config.get("ai", {}).get("provider") == "chatgpt":
         if not chatgpt:
             raise ValueError("ChatGPT sign-in is available in local live mode")
@@ -424,15 +435,20 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
                 await services.aclose()
 
 
-def responses_history(messages):
+def responses_history(messages, provider=None):
     items = []
     for message in messages:
         content = message["content"]
         if isinstance(content, str):
             items.append({"role": message["role"], "content": content})
             continue
-        raw = next((b["items"] for b in content if b.get("type") == "responses"), None)
-        if raw is not None:
+        packed = next((b for b in content if b.get("type") == "responses"), None)
+        if packed is not None:
+            raw = packed["items"]
+            if provider and packed.get("provider", "chatgpt") != provider:
+                # Reasoning blobs and server item IDs belong to their original provider.
+                raw = [{key: value for key, value in item.items() if key != "id"}
+                       for item in raw if item.get("type") != "reasoning"]
             items.extend(raw)
             continue
         for block in content:
@@ -477,9 +493,9 @@ async def _run_chatgpt_turn(store, cid, question, connection, services_factory, 
     model = config.get("ai", {}).get("model")
     available = {m["slug"] for m in await connection.models()}
     if not model or model not in available:
-        raise ValueError("Select an available ChatGPT model in Settings and save")
+        raise ValueError("Select a valid " + getattr(connection, "label", "ChatGPT") + " model in Settings and save")
     history = store.history(cid)
-    input_items = responses_history(history)
+    input_items = responses_history(history, config.get("ai", {}).get("provider"))
     image_inputs = [{"type": "input_image", "image_url": "data:" + block["source"]["media_type"] + ";base64," + block["source"]["data"]} for block in images or []]
     input_items.append({"role": "user", "content": [{"type": "input_text", "text": question}, *image_inputs] if images else question})
     saved = [{"role": "user", "content": question}]
@@ -548,7 +564,7 @@ async def _run_chatgpt_turn(store, cid, question, connection, services_factory, 
                 output = result["output"]
                 add_usage(usage, by_model, result.get("model") or model, result.get("usage", {}))
         if output is None:
-            raise ValueError("ChatGPT returned no completed response")
+            raise ValueError(getattr(connection, "label", "ChatGPT") + " returned no completed response")
         if text and config["_vault_ai_access"]:
             yield {"event": "text", "delta": scrub(text, config)}
         text = scrub(text, config)
@@ -556,7 +572,7 @@ async def _run_chatgpt_turn(store, cid, question, connection, services_factory, 
         input_items.extend(output)
         calls = [item for item in output if item["type"] == "function_call"]
         # Keep opaque reasoning and exact calls for continuation, plus readable UI blocks.
-        blocks = [{"type": "responses", "items": output}]
+        blocks = [{"type": "responses", "items": output, "provider": config.get("ai", {}).get("provider")}]
         if text:
             blocks.append({"type": "text", "text": text.strip()})
         saved.append({"role": "assistant", "content": blocks})

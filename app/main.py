@@ -406,6 +406,9 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
         require_local_chatgpt()
         return {"models": await chatgpt.models()}
 
+    from app.bedrock_gpt import register as register_bedrock_gpt
+    register_bedrock_gpt(app, auth)
+
     @app.get("/api/bedrock/models")
     async def bedrock_models(discover: bool = False, session=Depends(auth)):
         from app.bedrock_models import presets, discover_models

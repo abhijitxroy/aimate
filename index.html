@@ -17,6 +17,8 @@
   <script src="./app/static/markdown.js" defer></script>
   <script src="./app/static/chat_runs.js" defer></script>
   <script src="./app/static/record_locks.js" defer></script>
+  <script src="./app/static/bedrock_gpt_ui.js" defer></script>
+  <script src="./app/static/field_help.js" defer></script>
   <script src="./app/static/app.js" defer></script>
   <script src="./app/static/usage_ui.js" defer></script>
   <script src="./app/static/diagnostics_ui.js" defer></script>
@@ -188,7 +190,7 @@
     <div class="dialog-head"><h2 id="groupDialogTitle">New group</h2><button class="close" data-close="groupDialog" aria-label="Close group settings">×</button></div>
     <form id="groupForm">
       <label>Name<input id="groupName" maxlength="80" autocomplete="off" required></label>
-      <div id="groupPlacement"><label>Type<select id="groupKind"><option value="project">Project</option><option value="module">Module</option><option value="group">Group</option></select></label><label>Inside<select id="groupParent"></select></label></div>
+      <div id="groupPlacement"><div class="type-field"><div class="field-label"><label for="groupKind">Type</label><button type="button" class="field-info" data-field-help="groupTypeHelp" aria-label="What these types mean" aria-controls="groupTypeHelp" aria-expanded="false" title="Workspace: separate chats and settings.&#10;Project: chats for one piece of work.&#10;Module: chats for one part of a project.&#10;Group: a folder for related chats."><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7v.1"/></svg></button></div><span id="groupTypeHelp" class="field-help" hidden><b>Workspace:</b> separate chats and settings.<br><b>Project:</b> chats for one piece of work.<br><b>Module:</b> chats for one part of a project.<br><b>Group:</b> a folder for related chats.</span><select id="groupKind"><option value="project">Project</option><option value="module">Module</option><option value="group">Group</option></select></div><label>Inside<select id="groupParent"></select></label></div>
       <p id="groupError" class="error" role="alert"></p>
       <div class="conversation-action-buttons"><button id="removeGroup" type="button" class="error" hidden>Delete empty group</button><button type="button" data-close="groupDialog">Cancel</button><button id="saveGroup" class="primary" type="submit">Create</button></div>
     </form>
@@ -240,7 +242,8 @@
             <label>Setup<select name="ai.bedrock_mode"><option value="simple">Simple · token access</option><option value="advanced">Advanced · model &amp; AWS settings</option></select></label>
             <p id="bedrockSimpleHint" class="hint">Claude Haiku 5.5 · us-east-2 · Bedrock API key. Just add your token.</p>
           </div>
-        <div class="fields two"><label>Provider<select name="ai.provider"><option value="chatgpt">ChatGPT account</option><option value="anthropic">Anthropic API</option><option value="bedrock">AWS Bedrock Runtime</option></select></label><label id="apiModelLabel">Exact model / inference profile ID<input name="ai.model" placeholder="Model ID available to your account"></label><label id="chatgptModelLabel" hidden>Available model<select id="chatgptModel"><option value="">Connect your account first</option></select></label></div>
+        <div class="fields two"><label>Provider<select name="ai.provider"><option value="chatgpt">ChatGPT account</option><option value="anthropic">Anthropic API</option><option value="bedrock">AWS Bedrock Runtime · Claude</option><option value="bedrock-openai">GPT via Bedrock</option></select></label><label id="apiModelLabel">Exact model / inference profile ID<input name="ai.model" placeholder="Model ID available to your account"></label><label id="chatgptModelLabel" hidden>Available model<select id="chatgptModel"><option value="">Connect your account first</option></select></label></div>
+        <div id="bedrockGPTModels" hidden><label>Standard model<select id="bedrockGPTModel"><option value="custom">Custom profile ID</option></select></label><p class="hint">GPT-6.2 Sol is the default. Choose GPT-6.1 Sol if its access check fails. Profile access varies by account; inference uses AWS billing.</p><p id="bedrockGPTHint" class="hint" role="status"></p></div>
         <div id="bedrockModelChoices" hidden>
           <label>Standard model<select id="bedrockModel"><option value="custom">Custom model / profile ID</option></select></label>
           <button id="refreshBedrockModels" type="button">Refresh available models</button>
@@ -253,15 +256,15 @@
         </div>
         <div id="apiCredentials"><label id="aiKeyLabel">API key / Bedrock bearer key<input name="ai.api_key" type="password" autocomplete="off" placeholder="Leave blank to keep saved key"></label>
           <div id="bedrockSettings" hidden>
-            <div class="fields two"><label>AWS region<input name="ai.region" placeholder="us-east-2"></label><label>Authentication<select name="ai.bedrock_auth"><option value="bearer">Bedrock API key</option><option value="iam">AWS credentials / server role</option></select></label></div>
-            <label>Claude endpoint<select name="ai.bedrock_endpoint"><option value="runtime">Bedrock Runtime · model / inference profile</option><option value="mantle">Bedrock Mantle · native Claude model ID</option></select></label>
+            <div class="fields two"><label>AWS region<input name="ai.region" placeholder="us-east-2"></label><label id="bedrockAuthLabel">Authentication<select name="ai.bedrock_auth"><option value="bearer">Bedrock API key</option><option value="iam">AWS credentials / server role</option></select></label></div>
+            <label id="bedrockEndpointLabel">Claude endpoint<select name="ai.bedrock_endpoint"><option value="runtime">Bedrock Runtime · model / inference profile</option><option value="mantle">Bedrock Mantle · native Claude model ID</option></select></label>
             <div id="awsCredentials" hidden>
               <div class="fields two"><label>AWS access key ID<input name="ai.aws_access_key" type="password" autocomplete="off"></label><label>AWS secret access key<input name="ai.aws_secret_key" type="password" autocomplete="off"></label></div>
               <label>AWS session token · temporary credentials<input name="ai.aws_session_token" type="password" autocomplete="off"></label>
               <label class="check"><input name="ai.clear_aws" type="checkbox">Remove saved AWS credentials</label>
               <p class="hint">Leave all AWS fields blank to use the server's AWS credential chain when none are saved. Temporary credentials need their session token.</p>
             </div>
-            <p class="hint">Use your AWS account's exact Claude model ID and region. Inference and access tests use AWS billing.</p>
+            <p class="hint">Use your AWS account's exact model ID and region. Inference and access tests use AWS billing.</p>
           </div>
         </div>
         <details class="model-selection"><summary>Model selection</summary>

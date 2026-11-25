@@ -199,6 +199,8 @@ function shortModelName(model) {
   if (!model) return "Not configured";
   const claude = model.match(/claude-(haiku|sonnet|opus|fable)-(\d+)(?:[-.](\d{1,2})(?!\d))?/i);
   if (claude) return `${claude[1][0].toUpperCase() + claude[1].slice(1)} ${claude[2]}${claude[3] ? "." + claude[3] : ""}`;
+  const gpt=model.match(/gpt-(\d+)(?:[.-](\d+))?-(sol|terra|luna|astra)/i);
+  if (gpt) return `GPT-${gpt[1]}${gpt[2] ? "."+gpt[2] : ""} ${gpt[3][0].toUpperCase()+gpt[3].slice(1)}`;
   const accountModel = chatgpt.models?.find?.(item => item.slug === model);
   return accountModel?.display_name || model.replace(/^(?:us\.|eu\.|global\.)/, "").replace(/^anthropic\./, "").replace(/-\d{8}.*$/, "").replace(/:.*$/, "");
 }
@@ -318,9 +320,12 @@ function conversationEmoji(title) {
   return topics.find(([pattern]) => pattern.test(title))?.[1] || "💬";
 }
 
+const chatTimestampFormat=new Intl.DateTimeFormat(undefined,{dateStyle:"medium",timeStyle:"long"});
 function conversationButton(thread, className = "") {
   const button = element("button", "conversation-link " + className);
   button.type = "button";
+  const created=new Date(Number(thread.created)*1000);
+  button.title=thread.title+(Number.isFinite(created.getTime()) ? "\nCreated: "+chatTimestampFormat.format(created) : "");
   button.setAttribute("aria-label", thread.title);
   const emoji = thread.icon || conversationEmoji(thread.title);
   const icon = element("span", "conversation-emoji" + (/^[A-Za-z0-9]{1,3}$/.test(emoji) ? " conversation-monogram" : ""), emoji);
@@ -378,7 +383,7 @@ function renderSourceBar() {
     if (["jira", "jenkins"].includes(key) && !config[key]?.token_configured) continue;
     bar.append(sourceBadge(label, key));
   }
-  bar.append(sourceBadge(pagesPreview ? "ChatGPT" : demo ? "Scripted demo" : config.ai?.provider === "chatgpt" ? "ChatGPT" : config.ai?.provider === "bedrock" ? "Claude · Bedrock" : "Claude", "ai"));
+  bar.append(sourceBadge(pagesPreview ? "ChatGPT" : demo ? "Scripted demo" : config.ai?.provider === "chatgpt" ? "ChatGPT" : config.ai?.provider === "bedrock-openai" ? "GPT · Bedrock" : config.ai?.provider === "bedrock" ? "Claude · Bedrock" : "Claude", "ai"));
 }
 
 async function syncConnections() {
@@ -459,7 +464,7 @@ async function refreshState() {
   mobileNav.replaceChildren();
   for (const thread of state.conversations.filter(t => Boolean(t.archived) === archiveView)) {
     const mobileButton = conversationButton(thread);
-    mobileButton.title = thread.group_id ? groupPath(thread.group_id) : "Standalone chat";
+    mobileButton.title = (thread.group_id ? groupPath(thread.group_id) : "Standalone chat")+"\n"+mobileButton.title;
     mobileButton.onclick = () => {
       if (navigationBlocked()) return;
       $("#menuDialog").close();
@@ -531,7 +536,6 @@ function renderConversationTree(nav, activeGroup) {
     for (const thread of conversationList.filter(t => (t.group_id || null) === parent && Boolean(t.archived) === archiveView)) {
       const row = element("div", "conversation-row" + (thread.id === cid ? " active" : ""));
       const button = conversationButton(thread, thread.id === cid ? "active" : "");
-      button.title = thread.title;
       button.onclick = () => openConversation(thread.id, thread.title);
       const menu = element("button", "conversation-more", "⋯");
       menu.type = "button"; menu.setAttribute("aria-label", "Actions for " + thread.title);
@@ -558,7 +562,7 @@ function openGroupDialog(id = null) {
   }
   $("#groupParent").value = group?.parent || "";
   $("#groupKind").value = group?.kind || "project";
-  $("#groupKind").closest("label").hidden = Boolean(group);
+  $("#groupKind").closest(".type-field").hidden = Boolean(group);
   $("#removeGroup").hidden = !group;
   $("#saveGroup").textContent = group ? "Save changes" : "Create";
   $("#groupError").textContent = "";
@@ -1145,9 +1149,11 @@ function updateBedrock() {
   form.elements["ai.bedrock_endpoint"].querySelector('[value="mantle"]').disabled = iam;
   if (iam) form.elements["ai.bedrock_endpoint"].value = "runtime";
   if (bedrock) void populateBedrockModels();
+  void window.AiMateBedrockGPT?.update(form,config);
 }
 function renderBedrockModels() {
   const form = $("#settingsForm");
+  if (form.elements["ai.provider"].value !== "bedrock") return;
   for (const [pickerId, field, optional] of [["bedrockModel", "ai.model", false], ["bedrockAnalysisModel", "ai.analysis_model", true]]) {
     const picker = $("#" + pickerId), current = form.elements[field].value;
     picker.replaceChildren();
@@ -1205,7 +1211,7 @@ $("#settingsForm").elements["ai.region"].onchange = () => {
 $("#settingsForm").elements["ai.bedrock_auth"].onchange = updateBedrock;
 $("#settingsForm").elements["ai.bedrock_mode"].onchange = () => {
   const form = $("#settingsForm");
-  if (form.elements["ai.bedrock_mode"].value === "advanced" && !form.elements["ai.model"].value) {
+  if (form.elements["ai.provider"].value === "bedrock" && form.elements["ai.bedrock_mode"].value === "advanced" && !form.elements["ai.model"].value) {
     form.elements["ai.model"].value = "us.anthropic.claude-haiku-5-5";
   }
   updateBedrock();

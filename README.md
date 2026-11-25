@@ -181,6 +181,10 @@ Open **Connections & settings** and add:
 | Jenkins | HTTPS controller URL, username + API token, exact job names. Nested folders use `folder/job`. |
 
 Save, then test each connection. ChatGPT's access check reads the model catalog;
+[GPT via Bedrock](docs/bedrock-gpt.md) is also available with the same Bedrock
+bearer key, default region `us-east-2` and GPT-6.2 Sol. Its preset dropdown
+includes GPT-6.1 Sol as a manual alternative; account access requires Save & test.
+
 Anthropic/Bedrock testing makes a small **billable** model request. Service checks
 only read metadata. Blank token fields preserve saved
 tokens. Use the removal checkbox to clear one. Adding scopes does not grant

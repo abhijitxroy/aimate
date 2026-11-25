@@ -80,6 +80,7 @@
       models: [], daily: [], rates: [], coverage: "Preview only. No model calls or charges.",
     });
     if (path === "/api/bedrock/models") return json({presets: [], models: [], message: unavailable});
+    if (path === "/api/bedrock/gpt/models") return json({enabled:false, models:[], message:unavailable});
     if (path === "/api/chatgpt/models") return json({models: [], message: unavailable});
     if (method === "GET" && (path === "/api/audit" || path === "/api/feedback")) return json({entries: []});
     return json({detail: unavailable}, 503);

@@ -201,7 +201,7 @@
   },
   {
     "id": "audit-e3cb16cd4ed8e5d7808fcf7d",
-    "title": "P3 · Composer · Done — B/U/I, colour, indentation, tables, panels, etc.\n\nVisible formatting and growing multiline editor verified; combined bold, italic, underline and colour render correctly in live preview and saved chat. Nested-format security, restart persistence and disabled-module behavior tested; four test workflows plus Quality passed.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45538900981",
+    "title": "P3 · Composer · Done — B/U/I, colour, indentation, tables, panels, etc.\n\nVisible formatting, combined inline styles, automatic live preview and expanding multiline editor verified. Selection-aware blue active indicators, B/I/U toggling that preserves other formats, block indicators and disabled-module behavior passed browser/JavaScript checks and all seven workflows.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45543161783",
     "completed": true
   },
   {

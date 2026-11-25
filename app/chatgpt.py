@@ -242,6 +242,10 @@ class ChatGPT:
 
 async def response_events(connection, payload, expected_account=None):
     """Never retry inference automatically; partial output is not a completed answer."""
+    if callable(getattr(connection, "response_events", None)):
+        async for event in connection.response_events(payload, expected_account):
+            yield event
+        return
     token = await connection.access_token(expected_account)
     async with connection.client() as client:
         async with client.stream("POST", RESOURCE + "/responses", json=payload,

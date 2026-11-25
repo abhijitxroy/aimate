@@ -173,5 +173,12 @@
     "completed": true,
     "type": "task",
     "priority": "P1"
+  },
+  {
+    "id": "backlog-bedrock-gpt-live-validation",
+    "title": "P1 · WIP — GPT via Bedrock live access\n\nOptional Responses adapter, shared Bedrock key, GPT-6.2 Sol default, manual GPT-6.1 Sol fallback, metering and reviewed tools implemented. Mocked backend/browser checks pass. Actual account/model access still requires Settings → AI → GPT via Bedrock → Save & test; do not mark complete before that check.",
+    "completed": false,
+    "type": "feature",
+    "priority": "P1"
   }
 ]

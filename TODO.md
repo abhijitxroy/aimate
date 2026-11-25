@@ -143,6 +143,12 @@ Estimate each profile after the shared contract and parity baseline are defined.
 restored data and app. Keep the existing UI, preserve all data, choose sensible
 defaults, test each phase and give short progress updates.”
 
+## In progress — GPT via Bedrock
+
+- [ ] GPT via Bedrock: adapter and mocked checks implemented; verify actual
+  GPT-6.2 Sol / GPT-6.1 Sol access using Settings → AI → Save & test before
+  marking live validation complete. See [setup](docs/bedrock-gpt.md).
+
 ## Completed — formatting and organization
 
 - [x] Theme-aware syntax colors for code, JSON and YAML; exact-text copying.

@@ -103,6 +103,8 @@ def validate_config(raw, old):
         secret = "api_key" if name == "ai" else "token"
         if not out[name].get(secret):
             changed_provider = name == "ai" and section.get("provider") != old.get(name, {}).get("provider")
+            if name == "ai" and {section.get("provider"), old.get(name, {}).get("provider")} <= {"bedrock", "bedrock-openai"}:
+                changed_provider = False
             out[name][secret] = "" if section.get("clear_token") or changed_provider else old.get(name, {}).get(secret, "")
         if name == "ai":
             for key in ("aws_access_key", "aws_secret_key", "aws_session_token"):
@@ -115,14 +117,17 @@ def validate_config(raw, old):
             out[name]["url"] = valid_base(out[name]["url"])
         if name != "ai" and out[name].get("token") and not out[name].get("url"):
             raise ValueError(f"Add the {name} URL")
-    if out["ai"].get("provider", "anthropic") not in {"anthropic", "bedrock", "chatgpt"}:
-        raise ValueError("Choose ChatGPT, Anthropic or Bedrock")
+    if out["ai"].get("provider", "anthropic") not in {"anthropic", "bedrock", "chatgpt", "bedrock-openai"}:
+        raise ValueError("Choose ChatGPT, Anthropic, Claude via Bedrock or GPT via Bedrock")
     ai = out["ai"]
     if ai.get("bedrock_mode", "advanced") not in {"simple", "advanced"}:
         raise ValueError("Choose Simple or Advanced Bedrock setup")
     if ai.get("provider") == "bedrock" and ai.get("bedrock_mode") == "simple":
         ai.update(region="us-east-2", bedrock_auth="bearer", bedrock_endpoint="runtime",
                   model="us.anthropic.claude-haiku-5-5")
+    if ai.get("provider") == "bedrock-openai":
+        from app.bedrock_gpt import validate
+        validate(ai)
     if ai.get("bedrock_auth", "bearer") not in {"bearer", "iam"}:
         raise ValueError("Choose a Bedrock API key or AWS credentials")
     if ai.get("bedrock_endpoint", "runtime") not in {"runtime", "mantle"}:
