@@ -11,6 +11,18 @@
   const preview = document.querySelector("#composerPreview");
   let previewToggle;
   let selection = [0, 0];
+  const formats=window.AiMateComposerFormats;
+  const formatKeys={"Bold":"bold","Italic":"italic","Underline":"underline",
+    "Apply text colour":"colour","Heading":"heading","Bullet list":"bullet",
+    "Numbered list":"numbered","Indent":"indent","Code block":"code",
+    "Horizontal rule":"rule","Insert table":"table","Quote":"quote",
+    "Information panel":"note","Warning panel":"warning"};
+  function updateFormats() {
+    const current=formats?.inspect(field.value,field.selectionStart,field.selectionEnd);
+    for (const node of document.querySelectorAll("#composerFormatting [data-format]")) {
+      node.setAttribute("aria-pressed",String(Boolean(current?.states[node.dataset.format])));
+    }
+  }
   function fitEditor() {
     const scroll = field.scrollTop;
     field.style.height = "0px";
@@ -41,6 +53,7 @@
     selection = [field.selectionStart, field.selectionEnd];
     if (event === "input") fitEditor();
     if (!preview.hidden) renderPrompt(preview, field.value);
+    updateFormats();
   });
   function replace(value, start, end, selectedStart = start, selectedEnd = start + value.length) {
     if (field.value.length - (end - start) + value.length > field.maxLength) {
@@ -60,6 +73,14 @@
     const chosen = field.value.slice(start, end) || fallback;
     replace(before + chosen + after, start, end, start + before.length, start + before.length + chosen.length);
   }
+  function toggleInline(kind, marker) {
+    const [start,end]=selection;
+    const range=formats?.inspect(field.value,start,end).ranges[kind];
+    if (!range) { wrap(marker);return; }
+    const content=field.value.slice(range.from+range.prefix,range.to-range.suffix);
+    replace(content,range.from,range.to,
+      Math.max(range.from,start-range.prefix),Math.min(range.from+content.length,end-range.prefix));
+  }
   function lines(prefix, fallback = "text") {
     const [selectedStart, selectedEnd] = selection;
     const start = selectedStart === 0 ? 0 : field.value.lastIndexOf("\n", selectedStart - 1) + 1;
@@ -72,12 +93,13 @@
   function button(label, action, title = label, extra = false) {
     const node = document.createElement("button");
     node.type = "button"; node.textContent = label; node.title = title; node.setAttribute("aria-label",title);
+    if (formatKeys[title]) { node.dataset.format=formatKeys[title];node.setAttribute("aria-pressed","false"); }
     node.onmousedown = event => event.preventDefault();
     node.onclick = action; (extra ? advanced : toolbar).append(node); return node;
   }
-  const bold=button("B", () => wrap("**"), "Bold"); bold.className="format-bold";
-  const italic=button("I", () => wrap("*"), "Italic"); italic.className="format-italic";
-  const underline=button("U", () => wrap("++"), "Underline"); underline.className="format-underline";
+  const bold=button("B", () => toggleInline("bold","**"), "Bold"); bold.className="format-bold";
+  const italic=button("I", () => toggleInline("italic","*"), "Italic"); italic.className="format-italic";
+  const underline=button("U", () => toggleInline("underline","++"), "Underline"); underline.className="format-underline";
   const colour = document.createElement("input");
   colour.type = "color"; colour.value = "#79baff"; colour.setAttribute("aria-label","Text colour");
   toolbar.append(colour);
@@ -122,7 +144,9 @@
   document.addEventListener("aimate:state", () => {
     if (!field.value) { preview.hidden=true;previewToggle.setAttribute("aria-pressed","false"); }
     fitEditor();
+    updateFormats();
   });
   window.addEventListener("resize", fitEditor);
   fitEditor();
+  updateFormats();
 })();

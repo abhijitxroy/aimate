@@ -169,8 +169,8 @@
   },
   {
     "id": "backlog-73545d0f3eaddba60cdcbcff",
-    "title": "P1 · Planned — Separate Build smoke workflow\n\nValidate the existing package/container starts and Pages assets build safely; no automatic deployment or registry publication.",
-    "completed": false,
+    "title": "P1 · Done — Separate Build smoke workflow\n\nSeparate build.yml passed: Pages packaging and asset references, non-root Docker image build/startup, bounded health readiness and served UI assets. Persistent startup failures still fail; all seven workflows passed. No deployment or image publication.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45540336274",
+    "completed": true,
     "type": "task",
     "priority": "P1"
   }

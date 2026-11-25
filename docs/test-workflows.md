@@ -23,4 +23,4 @@ Security runs `pip-audit` against runtime and test requirements, fails on known 
 
 Build smoke packages into a temporary directory, checks asset references and rejects files outside the public asset folders. It starts the existing Docker image with a new, fictional demo store and verifies health, UI assets and the non-root user. It does not deploy, publish a registry image, use operator credentials or prove live-service access. `python tools/build_smoke.py` runs the packaging check locally; add `--url http://127.0.0.1:PORT` for an already-running loopback instance.
 
-Existing historical failed runs remain as GitHub history. The older `Tests` workflow is still listed while `main` retains the older YAML; the feature branch has separate files. Repository-required checks were not changed.
+Existing historical failed runs remain as GitHub history. The older combined workflow on `main` is named `Legacy test suite`; the feature branch has separate files. Only the legacy workflow's label changed on main. Repository-required checks were not changed.

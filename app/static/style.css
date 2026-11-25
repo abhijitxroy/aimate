@@ -490,6 +490,8 @@ fieldset > label { margin-bottom: 12px; }
 .composer-format-tools .format-bold { font-weight: 700; }
 .composer-format-tools .format-italic { font-style: italic; }
 .composer-format-tools .format-underline { text-decoration: underline; }
+.composer-format-tools button[aria-pressed="true"],
+.composer-format-tools button[aria-expanded="true"] { color: var(--accent); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, transparent); }
 #composerAdvanced { border-top: 1px solid var(--line); }
 .composer-format-tools input[type=color] { width: 28px; height: 27px; padding: 2px; }
 .composer-preview { max-height: min(180px, 25dvh); overflow: auto; white-space: pre-wrap; padding: 10px; border: 1px solid var(--line); border-radius: 10px; margin: 4px 0; }
