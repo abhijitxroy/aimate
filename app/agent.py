@@ -291,6 +291,9 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
         return
     question = scrub(question, config)
     messages = store.history(cid)
+    if config.get("ai", {}).get("provider")=="opencode":
+        from app.opencode_bedrock import portable_history
+        messages=portable_history(messages)
     for message in messages:
         if isinstance(message["content"], list):
             message["content"] = [b for b in message["content"] if b.get("type") != "responses"]

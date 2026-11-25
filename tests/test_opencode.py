@@ -9,7 +9,7 @@ from unittest.mock import patch
 import httpx
 import httpx2
 from fastapi.testclient import TestClient
-from app.opencode_bedrock import Client, DEFAULT, models, setup, message
+from app.opencode_bedrock import Client, DEFAULT, models, setup, message, portable_history
 from app.agent import ai_error, run_turn
 from app.store import Store
 from app.validation import validate_config
@@ -38,6 +38,21 @@ class OpenCodeTests(unittest.TestCase):
         self.assertNotIn("synthetic-shared-key",json.dumps(body))
         if self.mode=="denied":
             return httpx.Response(403,json={"error":"synthetic-shared-key"})
+        if request.url.path=="/openai/v1/responses":
+            self.assertFalse(body["store"])
+            self.assertNotIn("reasoning",json.dumps(body["input"]))
+            output=[{"type":"message","content":[{"type":"output_text","text":"Gateway replied."}]}]
+            if self.mode=="read" and len(self.requests)==1:
+                self.assertTrue(all(tool["type"]=="function" for tool in body["tools"]))
+                output=[{"type":"function_call","call_id":"read1","name":"api_read",
+                         "arguments":'{"service":"github","path":"/repos/team/repo/pulls/1"}'}]
+            data={"status":"completed","model":body["model"],"output":output,
+                  "usage":{"input_tokens":12,"output_tokens":3,"input_tokens_details":{"cached_tokens":4}}}
+            if not body["stream"]:return httpx.Response(200,json=data)
+            packets=[{"type":"response.output_text.delta","delta":"Gateway replied."}] if output[0]["type"]=="message" else []
+            if self.mode!="truncated":packets.append({"type":"response.completed","response":data})
+            return httpx.Response(200,headers={"content-type":"text/event-stream"},
+                text="".join("data: "+json.dumps(p)+"\n\n" for p in packets))
         if request.url.path=="/anthropic/v1/messages":
             if body.get("stream"):
                 packets=[
@@ -55,6 +70,8 @@ class OpenCodeTests(unittest.TestCase):
                 "model":body["model"],"content":[{"type":"text","text":"Claude replied."}],
                 "stop_reason":"end_turn","stop_sequence":None,"usage":{"input_tokens":4,"output_tokens":2}})
         self.assertEqual(request.url.path,"/openai/v1/chat/completions")
+        if ".openai." in body["model"] and body.get("tools"):
+            return httpx.Response(400,json={"error":{"message":"Function tools require /v1/responses."}})
         usage={"prompt_tokens":12,"completion_tokens":3,"prompt_tokens_details":{"cached_tokens":4}}
         if not body["stream"]:
             return httpx.Response(200,json={"choices":[{"message":{"content":"Gateway replied."}}],
@@ -147,7 +164,8 @@ class OpenCodeTests(unittest.TestCase):
                     text="".join("data: "+json.dumps(p)+"\n\n" for p in packets)+"data: [DONE]\n\n")
             client=Client(self.config,httpx.MockTransport(handle))
             try:
-                async with client.stream(model=DEFAULT,max_tokens=16,messages=[{"role":"user","content":"Read"}]) as stream:
+                model="bedrock-runtime-kimi/us.moonshotai.kimi-k3.1"
+                async with client.stream(model=model,max_tokens=16,messages=[{"role":"user","content":"Read"}]) as stream:
                     result=await stream.get_final_message()
                 self.assertEqual(result.content[0].input["service"],"github")
                 self.assertEqual(result.usage.input_tokens,6)
@@ -171,10 +189,34 @@ class OpenCodeTests(unittest.TestCase):
         self.assertTrue(self.store.history(cid))
         self.assertEqual(len(self.requests),2)
         second=json.loads(self.requests[1].content)
-        self.assertTrue(any(row["role"]=="tool" and "Synthetic PR" in row["content"] for row in second["messages"]))
+        self.assertTrue(any(row.get("type")=="function_call_output" and "Synthetic PR" in row["output"] for row in second["input"]))
         self.assertFalse(self.store.rows("SELECT * FROM actions"))
         self.assertNotIn("synthetic-shared-key",json.dumps(events))
         self.assertEqual(self.store.rows("SELECT provider FROM usage_events")[0]["provider"],"opencode")
+
+    def test_gpt_responses_preserve_portable_calls_images_and_ignore_old_reasoning(self):
+        old=[{"role":"assistant","content":[{"type":"thinking","thinking":"old signed reasoning","signature":"old-signature"},
+             {"type":"responses","items":[{"type":"reasoning","encrypted_content":"opaque"},
+              {"type":"function_call","call_id":"old1","name":"api_read","arguments":'{"service":"github","path":"/repos/team/repo"}'}]}]},
+             {"role":"user","content":[{"type":"tool_result","tool_use_id":"old1","content":"Historical evidence"}]},
+             {"role":"user","content":[{"type":"text","text":"Read this"},
+              {"type":"image","source":{"media_type":"image/png","data":"synthetic"}}]}]
+        client=Client(self.config,self.transport)
+        async def run():
+            try:
+                body=client.payload({"model":DEFAULT,"max_tokens":4096,"messages":portable_history(old),
+                    "tools":[{"name":"api_read","input_schema":{"type":"object"}}]},True)
+                self.assertEqual(body["max_output_tokens"],4096)
+                self.assertFalse(body["store"])
+                call=next(row for row in body["input"] if row.get("type")=="function_call")
+                output=next(row for row in body["input"] if row.get("type")=="function_call_output")
+                self.assertEqual(call["call_id"],output["call_id"])
+                self.assertNotIn("old-signature",json.dumps(body))
+                self.assertNotIn("opaque",json.dumps(body))
+                self.assertTrue(any(isinstance(row.get("content"),list) and
+                    any(part.get("type")=="input_image" for part in row["content"]) for row in body["input"]))
+            finally:await client.close()
+        asyncio.run(run())
 
     def test_errors_truncation_and_text_only_images_do_not_leak(self):
         async def run():

@@ -392,6 +392,19 @@ class BrowserRegressionTests(unittest.TestCase):
             self.page.locator("#sidebarTools summary").click()
             self.assertEqual(self.page.evaluate(measure)["composer"],before["composer"])
 
+    def test_scrollbars_are_thin_transparent_and_scrolling_still_works(self):
+        self.page.locator("#conversations").get_by_role("button",name="Old continuity reference",exact=True).click()
+        self.expect(self.page.locator("#chatTitle")).to_have_text("Old continuity reference")
+        for theme in ("navy","beige","black-blue"):
+            self.page.evaluate("theme=>document.documentElement.dataset.theme=theme",theme)
+            self.expect(self.page.locator("#messages")).to_have_css("scrollbar-width","thin")
+            self.assertNotEqual(self.page.locator("#messages").evaluate(
+                "(el)=>getComputedStyle(el).scrollbarColor"),"auto")
+            self.assertEqual(self.page.locator("#messages").evaluate(
+                "(el)=>getComputedStyle(el,'::-webkit-scrollbar-track').backgroundColor"),"rgba(0, 0, 0, 0)")
+        self.page.locator("#messages").evaluate("(el)=>el.scrollTop=el.scrollHeight")
+        self.assertGreater(self.page.locator("#messages").evaluate("(el)=>el.scrollTop"),0)
+
     def test_sidebar_has_no_horizontal_scroll_and_nested_controls_remain_inside(self):
         self.page.evaluate("""() => {
             let parent=document.querySelector("#conversations");

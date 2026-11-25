@@ -100,6 +100,28 @@ def chat_messages(messages,system=""):
     return result
 
 
+def portable_history(messages):
+    """Keep readable context/tool pairs; don't replay opaque provider reasoning."""
+    result=[]
+    for row in messages:
+        content=row["content"]
+        if isinstance(content,list):
+            blocks=[block for block in content if block.get("type") in {"text","image","tool_use","tool_result"}]
+            known={block["id"] for block in blocks if block.get("type")=="tool_use"}
+            for packed in content:
+                if packed.get("type")!="responses":continue
+                for item in packed.get("items",[]):
+                    if item.get("type")!="function_call" or item.get("call_id") in known:continue
+                    try:args=json.loads(item["arguments"])
+                    except (KeyError,ValueError):continue
+                    if isinstance(args,dict):
+                        blocks.append({"type":"tool_use","id":item["call_id"],"name":item["name"],"input":args})
+            if not blocks:continue
+            content=blocks
+        result.append({**row,"content":content})
+    return result
+
+
 def message(model,text,calls,usage):
     blocks=[{"type":"text","text":text}] if text else []
     for call in calls:
@@ -142,6 +164,9 @@ class Client:
         model=next(row for row in models() if row["id"]==args["model"])
         if not model["vision"] and any(isinstance(m.get("content"),list) and any(b.get("type")=="image_url" for b in m["content"]) for m in converted):
             raise ValueError("This GLM model is text-only. Choose a vision-capable OpenCode model for screenshots.")
+        if family=="bedrock-runtime-openai":
+            from app.opencode_responses import payload
+            return payload(args,ident,converted,stream)
         body={"model":ident,"messages":converted,"stream":stream}
         body["max_completion_tokens" if family=="bedrock-runtime-openai" else "max_tokens"]=args["max_tokens"]
         if args.get("tools"):
@@ -155,11 +180,16 @@ class Client:
         if family=="bedrock-runtime-anthropic":
             result=await self.anthropic.messages.create(**{**args,"model":ident})
             return result.model_copy(update={"model":args["model"]})
-        response=await self.http.post(OPENAI_URL+"/chat/completions",json=self.payload(args));check_response(response)
+        endpoint="/responses" if family=="bedrock-runtime-openai" else "/chat/completions"
+        response=await self.http.post(OPENAI_URL+endpoint,json=self.payload(args));check_response(response)
         if len(response.content)>2_000_000:
             raise ValueError("The OpenCode gateway reply exceeds the supported size.")
         try:
-            data=response.json();choice=data["choices"][0]["message"]
+            data=response.json()
+            if family=="bedrock-runtime-openai":
+                from app.opencode_responses import result
+                return result(data,args["model"],message)
+            choice=data["choices"][0]["message"]
             return message(args["model"],choice.get("content") or "",choice.get("tool_calls") or [],data.get("usage"))
         except (ValueError,KeyError,IndexError,TypeError,AttributeError):
             raise ValueError("The OpenCode gateway returned an invalid reply.") from None
@@ -171,8 +201,13 @@ class Client:
             async with self.anthropic.messages.stream(**{**args,"model":ident}) as stream:
                 yield AnthropicStream(stream,args["model"])
         else:
-            async with self.http.stream("POST",OPENAI_URL+"/chat/completions",json=self.payload(args,True)) as response:
-                check_response(response);yield ChatStream(response,args["model"])
+            endpoint="/responses" if family=="bedrock-runtime-openai" else "/chat/completions"
+            async with self.http.stream("POST",OPENAI_URL+endpoint,json=self.payload(args,True)) as response:
+                check_response(response)
+                if family=="bedrock-runtime-openai":
+                    from app.opencode_responses import Stream
+                    yield Stream(response,args["model"],message)
+                else:yield ChatStream(response,args["model"])
 
     async def close(self):
         await self.http.aclose();await self.anthropic.close()

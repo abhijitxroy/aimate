@@ -225,23 +225,37 @@
   },
   {
     "id": "backlog-opencode-bedrock",
-    "title": "P1 · WIP — OpenCode Bedrock connection\n\nUse the supplied non-secret opencode.json: GPT, Claude, Kimi and GLM model catalog, fixed us-east-2 gateway routes and the shared Bedrock key. Integrate optional settings/adapter, validate supported protocols and tools, preserve saved credentials, and leave actual account/model access open until verified.",
+    "title": "P1 · WIP — OpenCode Bedrock connection\n\nOptional catalog/settings and four-family adapters implemented. Current GPT-6.2 Sol live Responses stream emitted a synthetic function call successfully; usage recorded. GPT must use Responses for tools, not Chat Completions. Claude/Kimi/GLM account access remains unverified; validate selected profiles through Save & test.",
     "completed": false,
     "type": "feature",
     "priority": "P1"
   },
   {
     "id": "backlog-repository-confirmation-ui",
-    "title": "P1 · WIP — Dismiss confirmed repository prompts and preserve message order\n\nHide every completed repo-setting panel and recovery prompt, collapse repeated diagnostics under Activity, restore saved proposals with their original question/reply, and remove sidebar horizontal overflow while keeping nested controls accessible. Local browser checks passed; await final CI before completion.",
-    "completed": false,
+    "title": "P1 · Done — Dismiss confirmed repository prompts and preserve message order\n\nConfirmed repository panels and stale recovery prompts disappear; saved reply/proposal order and sidebar overflow are fixed. Optional message rail supports safe previews, jump, Favorites, keyboard and outside-click dismissal. All 51 browser checks and all seven CI workflows passed.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45592801999",
+    "completed": true,
     "type": "bug",
     "priority": "P1"
   },
   {
     "id": "backlog-message-navigation-rail",
-    "title": "P2 · WIP — Message navigation rail\n\nSlim topic-message markers, hover preview, click to jump and bookmark to existing Favorites, matching the supplied reference. Keep it optional, keyboard accessible, and isolated to the current conversation.",
-    "completed": false,
+    "title": "P2 · Done — Message navigation rail\n\nConfirmed repository panels and stale recovery prompts disappear; saved reply/proposal order and sidebar overflow are fixed. Optional message rail supports safe previews, jump, Favorites, keyboard and outside-click dismissal. All 51 browser checks and all seven CI workflows passed.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45592801999",
+    "completed": true,
     "type": "feature",
     "priority": "P2"
+  },
+  {
+    "id": "backlog-opencode-gpt-tools-400",
+    "title": "P1 · WIP — Fix OpenCode GPT function-tool HTTP 400\n\nConfirmed gateway diagnosis: GPT-6.2 function tools require Responses. Route GPT via Responses, preserve portable history/tool pairs and usage, strip old opaque reasoning; validate regression and live synthetic tool stream without executing any external tool.",
+    "type": "bug",
+    "priority": "P1",
+    "completed": false
+  },
+  {
+    "id": "backlog-slim-themed-scrollbars",
+    "title": "P2 · WIP — Slim theme-matched scrollbars\n\nTransparent track, small muted thumb, no arrow buttons. Verify dark/light themes and usable scrolling without changing sidebar or chat layout.",
+    "type": "enhancement",
+    "priority": "P2",
+    "completed": false
   }
 ]

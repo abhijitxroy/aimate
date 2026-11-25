@@ -24,8 +24,8 @@ The terminal application reads your separately configured
 `AWS_BEARER_TOKEN_BEDROCK`. AiMate reads only the key saved in its encrypted
 settings; it neither installs nor runs the OpenCode CLI.
 
-Implementation: `app/opencode_bedrock.py` adapts Chat Completions for GPT/Kimi/GLM
-and Anthropic Messages for Claude. The existing tool loop retains repository
+Implementation: `app/opencode_bedrock.py` uses Responses for GPT, Chat Completions
+for Kimi/GLM and Anthropic Messages for Claude. The existing tool loop retains repository
 scope, role checks, evidence handling and confirmation before changes.
 Usage is recorded against the requested profile; missing provider usage remains
 unreported rather than an invented zero bill. Existing account access and prices
