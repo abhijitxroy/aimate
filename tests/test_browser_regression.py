@@ -143,6 +143,21 @@ class BrowserRegressionTests(unittest.TestCase):
         self.expect(self.page.locator("#question")).to_have_value(text)
         self.expect(self.page.locator("#libraryDialog")).not_to_be_visible()
 
+    def test_custom_analysis_template_can_be_selected_as_request_style(self):
+        self.page.locator("#sidebarTools").evaluate("(el) => { el.open = true; }")
+        self.page.locator("#openKnowledge").click();self.page.locator("#openLibrary").click()
+        self.page.locator("#libraryKind").select_option("template")
+        self.page.locator("#libraryTitle").fill("Concise review")
+        self.page.locator("#libraryBody").fill("Return findings and coverage in a short table.")
+        self.page.locator("#saveLibrary").click()
+        card=self.page.locator("#libraryItems .knowledge-card").filter(has_text="Concise review")
+        self.expect(card.get_by_role("button",name="Use style",exact=True)).to_be_visible()
+        card.get_by_role("button",name="Use style",exact=True).click()
+        self.expect(self.page.locator("#analysisStyle option:checked")).to_have_text("Concise review")
+        self.page.locator("#question").fill("Review this change")
+        self.page.locator("#send").click()
+        self.expect(self.page.locator("#send")).to_be_enabled(timeout=15000)
+
     def test_screenshot_message_and_card_survive_reload_with_real_image_provider_blocks(self):
         from PIL import Image
         raw=io.BytesIO();Image.new("RGB",(40,30),"navy").save(raw,"PNG")

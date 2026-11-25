@@ -9,6 +9,7 @@ function syncChatControls() {
   $("#newChat").title=chatRuns.size() ? `${chatRuns.size()} chats answering · start another` : "New conversation";
   busy = Boolean(run); controller = run?.controller || null;
   $("#send").disabled = busy; $("#modelMode").disabled = busy; $("#stop").hidden = !busy;
+  $("#analysisStyle").disabled=busy;
   document.querySelectorAll("[data-edit-message]").forEach(button => { button.disabled = busy; });
 }
 function navigationBlocked() { return busy && !chatRuns.get(cid); }
@@ -463,6 +464,7 @@ async function refreshState() {
     mobileNav.append(mobileButton);
   }
   if (cid && !privateChat && $("#messages").querySelector("[data-action]")) await refreshActionCards();
+  document.dispatchEvent(new Event("aimate:state"));
   return state;
 }
 
@@ -941,7 +943,7 @@ async function ask(question) {
     pendingAttachments = []; renderPendingAttachments();
     activity("Reading your question…");
     const response = await api("/api/chat", {
-      method: "POST", body: JSON.stringify({conversation: run.cid, question: submittedQuestion, model_mode: $("#modelMode").value,
+      method: "POST", body: JSON.stringify({conversation: run.cid, question: submittedQuestion, model_mode: $("#modelMode").value,template_mode:$("#analysisStyle").value,
         attachments:attachments.filter(file=>file.kind !== "image").map(({name,size})=>({name,size})),
         documents:attachments.filter(file=>file.kind !== "image").map(file=>({name:file.name,size:file.size,text:file.text,kind:file.kind || "text",notice:file.notice || ""})),
         images:attachments.filter(file=>file.kind === "image").map(({name,data})=>({name,data})),
@@ -2011,6 +2013,7 @@ $("#logout").onclick = async () => {
   chatRuns.abortAll();
   await api("/api/logout", {method: "POST"});
   cid = null; csrf = ""; config = {};
+  document.dispatchEvent(new Event("aimate:state"));
   syncChatControls();
   archiveView = false; pendingAttachments = []; renderPendingAttachments();
   $("#messages").replaceChildren(); $("#welcome").hidden = false;

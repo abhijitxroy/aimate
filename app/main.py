@@ -915,6 +915,9 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
         model_mode = body.get("model_mode", "auto")
         if not isinstance(model_mode, str) or model_mode not in MODES:
             raise ValueError("Choose Auto, Standard or Analysis")
+        template_mode=body.get("template_mode","auto")
+        from app.analysis_styles import select as select_style
+        select_style(chat_store,question,template_mode)
         recent = [t for t in chat_limits.get(session["token"], []) if now - t < 60]
         if len(recent) >= 10:
             raise HTTPException(429, "At most 10 questions per minute")
@@ -944,7 +947,7 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
                         require_local_chatgpt()
                     turn = run_turn(chat_store, cid, question, client_factory=client_factory,
                                     services_factory=services_factory, chatgpt=chatgpt, model_mode=model_mode,
-                                    images=image_blocks, role=session.get("role", "admin"),
+                                    images=image_blocks, role=session.get("role", "admin"),template_mode=template_mode,
                                     vault_access=lambda: chat_store is store and valid_session(session["token"]) and vault_unlocked(session),
                                     access_check=access_check)
                 async for event in turn:

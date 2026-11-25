@@ -5,9 +5,12 @@ from fastapi import Depends, Request
 
 
 def save(store,body,ident=None):
-    if not isinstance(body,dict) or set(body)!={"title","body"}:
+    if not isinstance(body,dict) or not {"title","body"}.issubset(body) or set(body)-{"title","body","kind"}:
         raise ValueError("Provide a prompt name and text.")
     title,text=body["title"],body["body"]
+    kind=body.get("kind","prompt")
+    if not isinstance(kind,str) or kind not in {"prompt","template","skill"}:
+        raise ValueError("Choose prompt, template or skill.")
     if not isinstance(title,str) or not 1<=len(title.strip())<=80 or not isinstance(text,str) or not text.strip() or len(text)>6000:
         raise ValueError("Use a name under 80 characters and prompt text under 6,000 characters.")
     if ident and not store.rows("SELECT id FROM library_items WHERE id=?",(ident,)):
@@ -15,11 +18,17 @@ def save(store,body,ident=None):
     if not ident and store.rows("SELECT count(*) AS n FROM library_items")[0]["n"]>=200:
         raise ValueError("Prompt limit reached. Remove an unused prompt first.")
     ident=ident or secrets.token_hex(12)
-    store.execute("INSERT OR REPLACE INTO library_items VALUES (?,?,?,?,?)",(ident,title.strip(),text,"prompt",time.time()))
+    policy=getattr(store,"public_policy",None)
+    if policy:policy.text(body)
+    store.execute("INSERT OR REPLACE INTO library_items VALUES (?,?,?,?,?)",(ident,title.strip(),text,kind,time.time()))
     return {"id":ident}
 
 
 def register(app,store,auth,config_lock):
+    @app.get("/api/library/styles")
+    def styles(session=Depends(auth)):
+        from app.analysis_styles import catalog
+        return {"styles":catalog(store)}
     @app.get("/api/library")
     def entries(session=Depends(auth)):
         return {"items":store.rows("SELECT * FROM library_items ORDER BY updated DESC")}

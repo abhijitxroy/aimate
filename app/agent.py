@@ -261,7 +261,7 @@ async def propose(store, config, services, cid, args, access_check=None):
     return public_action(store.action(aid))
 
 
-async def run_turn(store, cid, question, *, client_factory=ai_client, services_factory=Services, chatgpt=None, model_mode="auto", images=None, role="admin", vault_access=None, access_check=None):
+async def run_turn(store, cid, question, *, client_factory=ai_client, services_factory=Services, chatgpt=None, model_mode="auto", images=None, role="admin", vault_access=None, access_check=None, template_mode="auto"):
     if access_check:
         access_check()
     config = store.config()
@@ -272,7 +272,7 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
     if config.get("ai", {}).get("provider") == "chatgpt":
         if not chatgpt:
             raise ValueError("ChatGPT sign-in is available in local live mode")
-        async for event in run_chatgpt_turn(store, cid, question, chatgpt, services_factory, model_mode=model_mode, images=images, role=role, vault_access=vault_access, access_check=access_check):
+        async for event in run_chatgpt_turn(store, cid, question, chatgpt, services_factory, model_mode=model_mode, images=images, role=role, vault_access=vault_access, access_check=access_check,template_mode=template_mode):
             yield event
         return
     question = scrub(question, config)
@@ -288,6 +288,8 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
              for name in ("github", "jira", "jenkins")}
     context_reference = "" if config.get("_private") else scrub(memory_context(store, cid, question), config)
     system = SYSTEM + action_capabilities(config) + context_reference + "\nConfigured sources:\n" + json.dumps(scope) + "\nRecent proposal outcomes:\n" + json.dumps(outcomes)
+    from app.analysis_styles import instruction
+    system += instruction(store,question,template_mode,config)
     services = services_factory(config)
     if services is not None:
         services.evidence_cache = EvidenceCache(store, config, question)
@@ -442,7 +444,7 @@ def responses_history(messages):
     return items
 
 
-async def run_chatgpt_turn(store, cid, question, connection, services_factory, *, model_mode="auto", images=None, role="admin", vault_access=None, access_check=None):
+async def run_chatgpt_turn(store, cid, question, connection, services_factory, *, model_mode="auto", images=None, role="admin", vault_access=None, access_check=None,template_mode="auto"):
     services = services_factory(store.config())
     if hasattr(services, "access_check"):
         services.access_check = access_check
@@ -450,14 +452,14 @@ async def run_chatgpt_turn(store, cid, question, connection, services_factory, *
         services.enable_reuse()
     try:
         async for event in _run_chatgpt_turn(store,cid,question,connection,lambda config:services,
-                                           model_mode=model_mode,images=images,role=role,vault_access=vault_access,access_check=access_check):
+                                           model_mode=model_mode,images=images,role=role,vault_access=vault_access,access_check=access_check,template_mode=template_mode):
             yield event
     finally:
         if hasattr(services,"aclose"):
             await services.aclose()
 
 
-async def _run_chatgpt_turn(store, cid, question, connection, services_factory, *, model_mode="auto", images=None, role="admin", vault_access=None, access_check=None):
+async def _run_chatgpt_turn(store, cid, question, connection, services_factory, *, model_mode="auto", images=None, role="admin", vault_access=None, access_check=None,template_mode="auto"):
     from app.chatgpt import response_events as provider_events
     from app.usage_meter import responses
     def response_events(connection, payload, **kwargs):
@@ -483,6 +485,8 @@ async def _run_chatgpt_turn(store, cid, question, connection, services_factory, 
     outcomes = store.rows("SELECT id,operation,status,result FROM actions WHERE conversation=? ORDER BY created DESC LIMIT 12", (cid,))
     context_reference = "" if config.get("_private") else scrub(memory_context(store, cid, question), config)
     instructions = SYSTEM + action_capabilities(config) + context_reference + "\nConfigured sources:\n" + json.dumps(scope) + "\nRecent proposal outcomes:\n" + json.dumps(outcomes)
+    from app.analysis_styles import instruction
+    instructions += instruction(store,question,template_mode,config)
     tools = tools_for(config)
     namespace = {"type": "namespace", "name": "project", "description": "Scoped engineering project tools",
                  "tools": [{"type": "function", "name": t["name"], "description": t["description"],

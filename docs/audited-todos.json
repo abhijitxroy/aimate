@@ -181,8 +181,8 @@
   },
   {
     "id": "audit-ddca440dc8f3fdaf8958e8b9",
-    "title": "P3 · Prompting · Planned — Reusable favourite words/prompts\n\nMy Diary can store text manually; no dedicated prompt-snippet library/insertion UI.",
-    "completed": false
+    "title": "P3 · Prompting · Done — Reusable favourite words/prompts\n\nMy Diary now includes an encrypted, account-isolated saved-prompt library with format-preserving CRUD/search/copy and cursor-position insertion without automatic AI submission. Backup inventory, screenshot-message reload and history-compaction regressions passed CI.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45517704193",
+    "completed": true
   },
   {
     "id": "audit-b0f4e50a4f5a4b5d8e355c8f",
