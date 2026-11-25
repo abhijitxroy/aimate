@@ -1131,6 +1131,7 @@ function openSettings() {
 }
 
 async function updateProvider() {
+  window.AiMateConnectionLayout?.refresh();
   const form = $("#settingsForm"), selected = form.elements["ai.provider"].value === "chatgpt";
   bedrockPresetEndpoint = "";
   $("#analysisModelLabel").hidden = selected;

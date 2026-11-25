@@ -1,0 +1,13 @@
+.ai-connection-layout .ai-connection-context { margin: 7px 0 16px; }
+.ai-connection-layout .ai-account-row { display: grid; grid-template-columns: minmax(0,1fr) auto auto; gap: 8px; align-items: end; margin: 0; }
+.ai-connection-layout .ai-account-row label { min-width: 0; }
+.ai-connection-layout .ai-account-row button { min-height: 40px; white-space: nowrap; }
+.ai-connection-layout #chatgptStatus { margin: 9px 0; }
+.ai-connection-layout .ai-plan-details { margin: 0 0 14px; }
+.ai-connection-layout .ai-plan-details > summary { font-size: 11px; color: var(--muted); cursor: pointer; }
+.ai-connection-layout .ai-plan-details p { margin: 8px 0 0; }
+@media (max-width: 600px) {
+  .ai-connection-layout .ai-account-row { grid-template-columns: minmax(0,1fr) minmax(0,1fr); }
+  .ai-connection-layout .ai-account-row label { grid-column: 1 / -1; }
+  .ai-connection-layout .ai-account-row button { min-width: 0; padding: 9px 6px; font-size: 11px; }
+}

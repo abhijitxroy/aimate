@@ -218,8 +218,8 @@
   },
   {
     "id": "backlog-inline-prompt-formatting",
-    "title": "P1 · WIP — Inline formatting inside the askbar\n\nUser now requests bold formatting immediately in the editable askbar without Preview. Preserve source/selection, keyboard shortcuts, pasted text, copy, attachments and plain-editor fallback; implement and validate before completing.",
-    "completed": false,
+    "title": "P1 · Done — Inline formatting inside the askbar\n\nInline bold/italic/underline/colour work without Preview; portable Markdown, attachment handling and strict CSP retained. Pinned stars, rail markers and bookmarks show the theme accent. All 57 local browser tests and seven exact-commit workflows passed; editor dependencies audited and bundle reproducibility verified.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45602608954",
+    "completed": true,
     "type": "feature",
     "priority": "P1"
   },
@@ -260,8 +260,8 @@
   },
   {
     "id": "backlog-pin-active-colour",
-    "title": "P2 · WIP — Visible active colour for pinned messages\n\nPinned stars, rail markers and preview bookmarks use the theme accent; unpin restores the inactive appearance. Browser regression and seven required workflows pending.",
-    "completed": false,
+    "title": "P2 · Done — Visible active colour for pinned messages\n\nInline bold/italic/underline/colour work without Preview; portable Markdown, attachment handling and strict CSP retained. Pinned stars, rail markers and bookmarks show the theme accent. All 57 local browser tests and seven exact-commit workflows passed; editor dependencies audited and bundle reproducibility verified.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45602608954",
+    "completed": true,
     "type": "enhancement",
     "priority": "P2"
   },

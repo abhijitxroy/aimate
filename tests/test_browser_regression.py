@@ -1069,6 +1069,40 @@ class BrowserRegressionTests(unittest.TestCase):
         self.expect(self.page.locator("[data-message-favorite]")).to_have_count(0)
         self.expect(self.page.locator("#openFavorites")).to_be_hidden()
 
+    def test_ai_connection_layout_separates_personal_intel_and_keeps_controls_visible(self):
+        self.page.locator("#headerSettings").click()
+        provider=self.page.locator('[name="ai.provider"]')
+        self.expect(provider.locator("optgroup")).to_have_count(2)
+        self.expect(provider.locator('option[value="chatgpt"]')).to_have_text("Personal ChatGPT")
+        provider.select_option("chatgpt")
+        self.expect(self.page.locator(".ai-connection-context")).to_have_text("Personal · your ChatGPT account and plan.")
+        self.expect(self.page.locator("#connectChatGPT")).to_be_visible()
+        self.expect(self.page.locator("#chatgptAccount")).to_be_visible()
+        self.expect(self.page.locator(".ai-plan-details")).not_to_have_attribute("open","")
+        self.page.set_viewport_size({"width":390,"height":844})
+        self.expect(self.page.locator("#connectChatGPT")).to_be_visible()
+        for selector in ("#chatgptAccount","#connectChatGPT"):
+            bounds=self.page.locator(selector).bounding_box()
+            self.assertGreaterEqual(bounds["x"],0)
+            self.assertLessEqual(bounds["x"]+bounds["width"],390)
+        provider.select_option("bedrock-openai")
+        self.expect(self.page.locator(".ai-connection-context")).to_contain_text("Intel / Bedrock")
+        self.expect(self.page.locator("#chatgptConnection")).to_be_hidden()
+        self.expect(self.page.locator('#apiCredentials input[name="ai.api_key"]')).to_be_visible()
+
+    def test_ai_connection_layout_can_be_disabled_without_removing_provider_controls(self):
+        self.page.add_init_script("window.AiMateFeatures={aiConnectionLayout:false}")
+        self.page.reload()
+        self.expect(self.page.locator("#workspace")).to_be_visible()
+        self.page.locator("#headerSettings").click()
+        provider=self.page.locator('[name="ai.provider"]')
+        self.expect(provider.locator("optgroup")).to_have_count(0)
+        self.expect(self.page.locator(".ai-connection-context")).to_have_count(0)
+        provider.select_option("chatgpt")
+        self.expect(self.page.locator("#connectChatGPT")).to_be_visible()
+        provider.select_option("bedrock-openai")
+        self.expect(self.page.locator('#apiCredentials input[name="ai.api_key"]')).to_be_visible()
+
     def test_feedback_review_reply_confirmed_task_and_disabled_ui(self):
         self.page.locator("#conversations").get_by_role("button",name="Old continuity reference",exact=True).click()
         self.page.locator("#messages").get_by_role("button",name="Feedback",exact=True).click()
