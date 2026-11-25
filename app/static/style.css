@@ -45,8 +45,8 @@ textarea { resize: vertical; }
 .login-help summary { cursor: pointer; }
 .login-help p { margin: 12px 0 0; overflow-wrap: anywhere; }
 #loginError:empty { display: none; }
-.workspace { display: grid; grid-template-columns: var(--sidebar-width, 224px) minmax(0, 1fr); height: 100dvh; }
-.sidebar { position: relative; min-width: 0; padding: 25px 14px 16px; border-right: 1px solid var(--line); background: #10263c80; display: flex; flex-direction: column; }
+.workspace { display: grid; grid-template-columns: var(--sidebar-width, 224px) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); height: 100dvh; overflow: hidden; }
+.sidebar { position: relative; min-width: 0; min-height: 0; padding: 25px 14px 16px; border-right: 1px solid var(--line); background: #10263c80; display: flex; flex-direction: column; overflow-y: auto; }
 .sidebar-resize { position: absolute; right: -4px; top: 0; bottom: 0; width: 8px; cursor: col-resize; touch-action: none; z-index: 5; }
 .sidebar-resize:hover, .sidebar-resize:focus-visible { background: #79baff25; outline: none; }
 body.resizing-sidebar { cursor: col-resize; user-select: none; }
@@ -115,15 +115,15 @@ body.resizing-sidebar { cursor: col-resize; user-select: none; }
 .sidebar-collapsed .sidebar-tools > button { justify-content: center; padding: 8px 0; min-height: 36px; }
 .sidebar-collapsed .access-mode { justify-content: center; margin: 10px 0 0; }
 .section-label { margin: 28px 10px 12px; }
-.sidebar nav { flex: 1; overflow: auto; }
+.sidebar nav { flex: 1; min-height: 0; overflow: auto; }
 .sidebar nav button { width: 100%; text-align: left; border: 0; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
 .sidebar nav button.active { color: var(--accent); background: #29548850; }
-.sidebar-bottom { border-top: 1px solid var(--line); padding-top: 12px; }
+.sidebar-bottom { flex-shrink: 0; border-top: 1px solid var(--line); padding-top: 12px; }
 .sidebar-bottom > summary { display: flex; align-items: center; justify-content: space-between; list-style: none; cursor: pointer; padding: 7px 10px; font-size: 11px; color: var(--muted); border-radius: 8px; }
 .sidebar-bottom > summary::-webkit-details-marker { display: none; }
 .sidebar-bottom > summary:hover { color: var(--text); background: #ffffff05; }
 .sidebar-bottom[open] > summary svg { transform: rotate(180deg); }
-.sidebar-tools { padding-top: 6px; }
+.sidebar-tools { padding-top: 6px; max-height: min(360px, 45dvh); overflow-y: auto; }
 .sidebar-tools > button { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; border: 0; font-size: 12px; min-height: 42px; }
 .sidebar-icon { display: block; width: 20px; height: 20px; flex: 0 0 20px; color: inherit; }
 .local-label { margin: 18px 12px 0; font-size: 10px; color: var(--muted); }

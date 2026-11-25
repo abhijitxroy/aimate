@@ -80,6 +80,38 @@ class BrowserRegressionTests(unittest.TestCase):
     def tearDown(self):
         self.context.close()
 
+    def test_tools_toggle_keeps_chat_and_composer_fixed_with_long_sidebar(self):
+        self.page.locator("#conversations").get_by_role("button",name="Old continuity reference",exact=True).click()
+        self.expect(self.page.locator("#chatTitle")).to_have_text("Old continuity reference")
+        self.page.evaluate("""() => {
+            const nav=document.querySelector('#conversations');
+            for(let i=0;i<35;i++) nav.append(nav.firstElementChild.cloneNode(true));
+            addMessage('assistant','Saved conversation line.\\n\\n'.repeat(120));
+        }""")
+        for width,height in [(1280,800),(1280,480),(2560,720),(700,500)]:
+            self.page.set_viewport_size({"width":width,"height":height})
+            self.page.locator("#sidebarTools").evaluate("(el) => { el.open = false; }")
+            self.page.locator("#messages").evaluate("(el) => { el.style.scrollBehavior='auto'; el.scrollTop = 125; }")
+            measure="""() => {
+                const rect = selector => {
+                    const r=document.querySelector(selector).getBoundingClientRect();
+                    return [r.x,r.y,r.width,r.height];
+                };
+                return {main:rect('main'),composer:rect('.composer-wrap'),
+                    scroll:document.querySelector('#messages').scrollTop,
+                    pageHeight:document.documentElement.scrollHeight,viewport:innerHeight};
+            }"""
+            before=self.page.evaluate(measure)
+            self.page.locator("#sidebarTools summary").click()
+            self.expect(self.page.locator("#openKnowledge")).to_be_visible()
+            after=self.page.evaluate(measure)
+            self.assertEqual(before["main"],after["main"],(width,height))
+            self.assertEqual(before["composer"],after["composer"],(width,height))
+            self.assertEqual(before["scroll"],after["scroll"],(width,height))
+            self.assertLessEqual(after["pageHeight"],height,(width,height,after))
+            self.page.locator("#sidebarTools summary").click()
+            self.assertEqual(self.page.evaluate(measure)["composer"],before["composer"])
+
     def test_monogram_colour_picker_persists_and_theme_reset(self):
         self.page.evaluate("openConversationIcon(conversationList.find(t => t.title === 'Old continuity reference'))")
         self.page.locator("#monogramIconMode").click()
