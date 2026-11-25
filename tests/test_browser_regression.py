@@ -96,6 +96,7 @@ class BrowserRegressionTests(unittest.TestCase):
         self.page.locator("#groupKind").select_option("module")
         self.page.locator("#saveGroup").click()
         self.expect(self.page.locator("#groupDialog")).to_be_hidden()
+        self.page.wait_for_function("conversationGroups.some(g => g.name === 'Timestamp help project')")
         self.page.evaluate("openGroupDialog(conversationGroups.find(g => g.name === 'Timestamp help project').id)")
         self.expect(self.page.locator("#groupKind")).to_be_hidden()
         self.page.locator("#groupName").fill("Timestamp help renamed")
