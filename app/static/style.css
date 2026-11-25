@@ -27,6 +27,14 @@ label { display: flex; flex-direction: column; gap: 8px; font-size: 12px; }
 .folder-field { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
 .recent-chats-toggle { display: block; width: 100%; margin: 3px 0; padding: 5px 8px; border: 0; background: transparent; color: var(--muted); font-size: 11px; text-align: left; }
 .recent-heading { margin: 12px 9px 7px; color: var(--muted); font-size: 11px; font-weight: 500; }
+.recent-page-controls { display: flex; align-items: center; gap: 5px; margin: 4px 0; }
+.recent-page-controls .recent-chats-toggle { display: inline-flex; align-items: center; gap: 4px; width: auto; margin: 0; padding: 4px 7px; border-radius: 6px; white-space: nowrap; }
+.recent-page-controls .recent-chats-toggle svg { flex-shrink: 0; }
+.recent-page-controls .recent-chats-toggle:disabled { opacity: .35; cursor: default; }
+.recents-section > summary { display: flex; align-items: center; gap: 5px; cursor: pointer; list-style: none; }
+.recents-section > summary::-webkit-details-marker { display: none; }
+.recents-chevron { flex-shrink: 0; transform: rotate(-90deg); }
+.recents-section[open] .recents-chevron { transform: none; }
 .field-info svg { display: block; }
 .field-info { padding: 0; border: 0; background: transparent; color: var(--muted); font-size: 15px; line-height: 1; }
 .field-help { padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--muted); font-size: 11px; line-height: 1.7; }

@@ -141,8 +141,8 @@
   },
   {
     "id": "audit-6b9c94c6bd0fc9f17b605d3f",
-    "title": "P2 · Usage UI · WIP — Burning-token emoji\n\nValidation status: IN PROGRESS\nThe compact flame badge is rendered, but Anthropic cache-read/cache-write tokens are currently omitted from the answer badge aggregate. Correct the count and verify it against metered usage.\nPrevious automated evidence (not full live validation):\nCompact Auto/token badge; expanded model/token details.",
-    "completed": false
+    "title": "P2 · Usage UI · Done — Burning-token emoji\n\nNew answer badges and persisted breakdowns include separately reported Anthropic cache-read/cache-write tokens and match metered usage in tests. Responses cached input is not counted twice. Old unrecorded cache usage is not invented. All seven workflows passed.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45556975850",
+    "completed": true
   },
   {
     "id": "audit-8ea5726c1289db2055644eee",

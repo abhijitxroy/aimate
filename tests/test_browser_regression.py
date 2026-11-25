@@ -80,6 +80,41 @@ class BrowserRegressionTests(unittest.TestCase):
     def tearDown(self):
         self.context.close()
 
+    def test_recents_controls_share_one_row_and_heading_collapses_without_moving_chat(self):
+        self.page.evaluate("""async () => {
+            for(let i=0;i<9;i++) {
+                const chat=await api('/api/conversations',{method:'POST',body:'{}'});
+                await api('/api/conversations/'+chat.id,{method:'PATCH',body:JSON.stringify({title:'Recents controls '+i})});
+            }
+            await refreshState();
+        }""")
+        section=self.page.locator("#recentSection")
+        heading=section.locator(":scope > summary")
+        more=section.get_by_role("button",name="Show five more recent chats",exact=True)
+        less=section.get_by_role("button",name="Show only three recent chats",exact=True)
+        self.expect(section.locator(".conversation-link")).to_have_count(3)
+        self.expect(more).to_be_enabled()
+        self.expect(less).to_be_disabled()
+        self.expect(section.locator(".recent-page-controls svg")).to_have_count(2)
+        more.click()
+        self.expect(section.locator(".conversation-link")).to_have_count(8)
+        self.expect(less).to_be_enabled()
+        a,b=more.bounding_box(),less.bounding_box()
+        self.assertEqual(a["y"],b["y"])
+        self.assertGreaterEqual(b["x"],a["x"]+a["width"])
+        main=self.page.locator("main").bounding_box()
+        heading.click()
+        self.expect(heading).to_have_attribute("aria-expanded","false")
+        self.expect(more).to_be_hidden()
+        self.expect(section.locator(".conversation-link").first).to_be_hidden()
+        self.assertEqual(self.page.locator("main").bounding_box(),main)
+        self.page.reload()
+        self.expect(heading).to_have_attribute("aria-expanded","false")
+        heading.focus()
+        heading.press("Enter")
+        self.expect(section.locator(".conversation-link").first).to_be_visible()
+        self.expect(section.locator(".conversation-link")).to_have_count(3)
+
     def test_format_show_hide_preserves_draft_and_remembers_visibility(self):
         field=self.page.locator("#question")
         field.fill("**Keep this draft**")

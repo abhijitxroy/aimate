@@ -408,6 +408,8 @@ Project chat lists start with five chats; **Show more / Show less**
 reveals or hides older chats. Pinned chats and the current chat stay visible in project lists.
 The separate **Recents** section sits below Projects and starts with three chats across projects. Each
 **Show more** click reveals five more; **Show less** returns to three.
+Both controls use small icons in one row. Click **Recents** to collapse or expand
+the whole section; this browser remembers that choice.
 Standalone chats appear there, rather than a second standalone list.
 Recency uses the latest saved message, falling back to creation time. This only
 changes the list view; search, history and saved data remain available.

@@ -38,7 +38,7 @@ P0 = correctness/security blockers; P1 = reliability and efficiency; P2 = existi
 | P2 · Diary | Separate visual key/value view | Full | My Diary cards/view and editor; persisted scoped records. |
 | P2 · Tasks | To-do section | Full | Add/edit/delete/complete/filter/copy; multiline text preserved. Expansion issue is separately Partial. |
 | P2 · Identity | At Your Service branding | Full | Login and sidebar branding use the requested text. |
-| P2 · Usage UI | Burning-token emoji | In progress | The compact flame badge is rendered, but Anthropic cache-read/cache-write tokens are currently omitted from the answer badge aggregate. Correct the count and verify it against metered usage. |
+| P2 · Usage UI | Burning-token emoji | Full | New answer badges and persisted breakdowns include separately reported Anthropic cache-read/cache-write tokens and match metered usage in tests. Responses cached input is not counted twice. Old unrecorded cache usage is not invented. All seven workflows passed. CI: https://github.com/abhijitxroy/aimate/actions/runs/45556975850 |
 | P2 · Feedback | Positive/negative, useful feedback form | Full | Rating, category, comment and restricted feedback log; saved-answer validation. |
 | P2 · Conversations | First-message title and rename | Full | Automatic first-message title; persistent rename; edits preserve chat identity/group. |
 | P2 · Icons | Topic emoji, default/custom emoji and monogram | Full | Topic defaults, searchable presets, pasted custom emoji and 1–3 character monogram. |

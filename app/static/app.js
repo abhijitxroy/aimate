@@ -580,12 +580,12 @@ function renderConversationTree(nav, activeGroup) {
       nav.append(element("p","recent-heading","Pinned"));
       for(const thread of pinned) nav.append(conversationRow(thread));
     }
-    nav.append(element("p","recent-heading","Recents"));
+    const section=recents.section();
     const list=element("div","recent-conversations");list.id="recentConversations";
     for(const thread of recentSelection.items) list.append(conversationRow(thread));
     recents.pageControl(list,"recents",recentSelection,refresh);
     if(!recentSelection.items.length) list.append(element("p","group-empty","No recent chats"));
-    nav.append(list);
+    section.append(list);nav.append(section);
   }
   if (!separateRecents && !conversationList.some(t => Boolean(t.archived) === archiveView)) nav.append(element("p", "group-empty", archiveView ? "No archived chats" : "No conversations yet"));
 }

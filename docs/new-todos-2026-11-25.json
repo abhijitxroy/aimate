@@ -78,7 +78,7 @@
   },
   {
     "id": "backlog-d9019ff220a47ff8fc99a817",
-    "title": "P2 · Done — Simplify workspace/project/group terminology\n\nWorkspace and Folder are now the only user-facing organizing concepts. Existing nested data preserved; browser checks and all seven workflows passed.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45553917264",
+    "title": "P2 · Done — Simplify workspace/project/group terminology\n\nWorkspace keeps separate data/settings; Project is the single chat-organizing label, with subprojects. Project pins stay ahead of subprojects; Recents sits below Projects. IDs, hierarchy and saved contents preserved; all seven workflows passed.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45556975855",
     "completed": true,
     "type": "enhancement",
     "priority": "P2"
