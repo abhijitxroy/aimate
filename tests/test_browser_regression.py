@@ -219,6 +219,31 @@ class BrowserRegressionTests(unittest.TestCase):
         self.assertLessEqual(self.page.evaluate("document.documentElement.scrollWidth"),390)
         self.assertEqual(submitted,[])
 
+    def test_combined_inline_formats_render_colour_and_persist_after_send(self):
+        field=self.page.locator("#question")
+        field.fill("Hello")
+        field.evaluate("(el) => {el.setSelectionRange(0,el.value.length);el.dispatchEvent(new Event('select'));}")
+        for name in ("Bold","Italic","Underline"):
+            self.page.get_by_role("button",name=name,exact=True).click()
+        self.page.locator('#composerToolbar input[type="color"]').evaluate(
+            "(el) => {el.value='#ff7aaf';el.dispatchEvent(new Event('input'));}")
+        self.page.get_by_role("button",name="Apply text colour",exact=True).click()
+        self.expect(field).to_have_value("***++[colour:#ff7aaf]Hello[/colour]++***")
+        preview=self.page.locator("#composerPreview")
+        self.expect(preview).to_have_text("Hello")
+        self.expect(preview.locator("strong")).to_have_text("Hello")
+        self.expect(preview.locator("em")).to_have_text("Hello")
+        formatted=preview.locator(".prompt-underline [data-prompt-colour]")
+        self.expect(formatted).to_have_css("color","rgb(255, 122, 175)")
+        self.page.locator("#send").click()
+        self.expect(self.page.locator("#activity")).to_have_text("Answer complete")
+        existing=self.page.evaluate("cid")
+        self.page.reload()
+        self.page.evaluate("id => openConversation(id)",existing)
+        saved=self.page.locator("#messages .message.user .prompt-underline [data-prompt-colour]")
+        self.expect(saved).to_have_text("Hello")
+        self.expect(saved).to_have_css("color","rgb(255, 122, 175)")
+
     def test_generated_panels_expand_editor_and_reveal_insertions(self):
         field=self.page.locator("#question")
         field.fill("")

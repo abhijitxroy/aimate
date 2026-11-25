@@ -48,6 +48,23 @@ test("refuses executable, encoded, local and relative links", () => {
   }
 });
 
+test("combines bold italic underline and colour without showing authoring tags", () => {
+  const html=render("***++[colour:#ff7aaf]Hello[/colour]++***");
+  for (const expected of ["<strong>","<em>",'class="prompt-underline"','data-prompt-colour="#ff7aaf"',"Hello"]) {
+    assert.ok(html.includes(expected),expected);
+  }
+  assert.doesNotMatch(html, /\[\/?colour[:\]]|\+\+|\*\*\*/);
+  const unsafe=render("++[colour:#ff7aaf]**<img src=x onerror=alert(1)>** [Open](javascript:alert%281%29)[/colour]++");
+  assert.doesNotMatch(unsafe, /<(img|script|a)\b/);
+  assert.ok(unsafe.includes("&lt;img"));
+  const nested=render("[colour:#ff7aaf]++[colour:#79baff]Hello[/colour]++[/colour]");
+  assert.ok(nested.includes('data-prompt-colour="#79baff"'));
+  assert.doesNotMatch(nested, /\[\/?colour[:\]]/);
+  const deep=render("[colour:#ff7aaf]".repeat(30)+"Text"+"[/colour]".repeat(30));
+  assert.ok(deep.includes("Text"));
+  assert.doesNotMatch(deep, /<(script|img)\b/);
+});
+
 test("handles incomplete streamed Markdown and keeps code literal", () => {
   assert.ok(render("## Working\n\n[Source](https://").includes("<h2>Working</h2>"));
   const html = render("```js\n[Not a link](javascript:alert(1))\n<script>\n");

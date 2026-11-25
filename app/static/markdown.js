@@ -5,21 +5,41 @@ answerMarkdown.validateLink = url => {
   try { return ["https:", "http:"].includes(new URL(url).protocol); }
   catch { return false; }
 };
-// Explicit, escaped inline syntax; raw HTML stays disabled.
+// Parse nested authoring formats through the same safe inline parser.
 answerMarkdown.inline.ruler.before("emphasis", "aimate_format", (state, silent) => {
-  const source = state.src.slice(state.pos);
-  const match = source.match(/^\+\+([^\n]+?)\+\+/) || source.match(/^\[colour:(#[0-9a-fA-F]{6})\]([^\n]+?)\[\/colour\]/);
-  if (!match || match[0].length > 4000) return false;
+  const depth = state.env.aimateFormatDepth || 0;
+  if (depth >= 8) return false;
+  const source = state.src.slice(state.pos, state.pos + 4000);
+  const underline = source.match(/^\+\+([^\n]+?)\+\+/);
+  const colour = !underline && source.match(/^\[colour:(#[0-9a-fA-F]{6})\]/);
+  let content, length, meta;
+  if (underline) {
+    content=underline[1];length=underline[0].length;meta={underline:true};
+  } else if (colour) {
+    const tags=/\[colour:#[0-9a-fA-F]{6}\]|\[\/colour\]/g;
+    tags.lastIndex=colour[0].length;
+    let nesting=1, tag;
+    while ((tag=tags.exec(source))) {
+      nesting+=tag[0] === "[/colour]" ? -1 : 1;
+      if (nesting === 0) {
+        content=source.slice(colour[0].length,tag.index);
+        length=tags.lastIndex;meta={colour:colour[1].toLowerCase()};break;
+      }
+    }
+  }
+  if (!content) return false;
   if (!silent) {
     const token = state.push("aimate_format", "span", 0);
-    token.content = match[2] || match[1];
-    token.meta = match[2] ? {colour: match[1].toLowerCase()} : {underline: true};
+    token.content = content;
+    token.meta = meta;
+    token.children = [];
+    state.md.inline.parse(token.content, state.md, {...state.env, aimateFormatDepth:depth + 1}, token.children);
   }
-  state.pos += match[0].length;
+  state.pos += length;
   return true;
 });
-answerMarkdown.renderer.rules.aimate_format = (tokens, index) => {
-  const token = tokens[index], text = answerMarkdown.utils.escapeHtml(token.content);
+answerMarkdown.renderer.rules.aimate_format = (tokens, index, options, env, renderer) => {
+  const token = tokens[index], text = renderer.renderInline(token.children, options, env);
   return token.meta.underline ? `<span class="prompt-underline">${text}</span>`
     : `<span data-prompt-colour="${token.meta.colour}">${text}</span>`;
 };
