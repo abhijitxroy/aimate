@@ -84,6 +84,40 @@ class BrowserRegressionTests(unittest.TestCase):
     def tearDown(self):
         self.context.close()
 
+    def test_local_ai_choice_and_cloud_failure_offer_are_explicit_and_optional(self):
+        self.page.route("**/api/local-ai/status",lambda route:route.fulfill(status=200,content_type="application/json",
+            body=json.dumps({"available":True,"models":["qwen3:4b"],"message":"Ollama reachable."})))
+        requests=[]
+        def chat(route):
+            body=route.request.post_data_json;requests.append(body)
+            events=([{"event":"model","mode":"auto","route":"standard","model":"qwen3:4b"},
+                     {"event":"text","delta":"Local fallback answered."},
+                     {"event":"done","model":"qwen3:4b","usage":{"input_tokens":10,"output_tokens":3}}]
+                if body.get("local_ai") else [{"event":"error","message":"Cloud unavailable.","local_fallback":True}])
+            route.fulfill(status=200,content_type="text/event-stream",
+                body="".join("data: "+json.dumps(event)+"\n\n" for event in events))
+        self.page.route("**/api/chat",chat)
+        self.page.locator("#newChat").click()
+        self.page.locator("#question").fill("Local consent check")
+        self.page.locator("#send").click()
+        button=self.page.get_by_role("button",name="Continue with local AI",exact=True)
+        self.expect(button).to_be_visible()
+        self.assertEqual(len(requests),1)
+        self.assertFalse(requests[0]["local_ai"])
+        button.click()
+        self.expect(self.page.locator("#messages")).to_contain_text("Local fallback answered.")
+        self.assertEqual(len(requests),2)
+        self.assertTrue(requests[1]["local_ai"])
+        self.assertEqual(requests[1]["local_model"],"qwen3:4b")
+        self.expect(self.page.locator("#localAIToggle")).to_have_attribute("aria-pressed","true")
+        self.expect(self.page.locator("#modelMode")).to_contain_text("Qwen3 4B")
+        self.page.locator("#localAIToggle").click()
+        self.expect(self.page.locator("#localAIToggle")).to_have_attribute("aria-pressed","false")
+        self.page.evaluate("()=>{window.AiMateFeatures={...window.AiMateFeatures,localAI:false};document.dispatchEvent(new Event('aimate:state'));}")
+        self.expect(self.page.locator("#localAIToggle")).to_be_hidden()
+        self.page.locator("#question").fill("Cloud draft still available")
+        self.expect(self.page.locator("#question")).to_have_js_property("value","Cloud draft still available")
+
     def test_verified_new_repo_read_offers_one_review_option_without_failure_banner(self):
         guidance={"repo":"team/new","read_verified":True,"action":"validate_repository",
             "message":"Read access verified for this question. Add this source only for later chats."}

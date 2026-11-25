@@ -167,6 +167,9 @@ def action_capabilities(config):
 
 
 def ai_client(config):
+    if config.get("ai", {}).get("provider") == "ollama":
+        from app.ollama_local import Client
+        return Client(config)
     if config.get("ai", {}).get("provider") == "gemini":
         from app.gemini_vertex import Client
         return Client(config)
@@ -321,6 +324,8 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
              for name in ("github", "jira", "jenkins")}
     context_reference = "" if config.get("_private") else scrub(memory_context(store, cid, question), config)
     system = SYSTEM + action_capabilities(config) + context_reference + "\nConfigured sources:\n" + json.dumps(scope) + "\nRecent proposal outcomes:\n" + json.dumps(outcomes)
+    if config.get("_local_ai"):
+        system += "\nLocal inference: saved context and cached snapshots may be stale. Use service tools for live facts only when their network is reachable; clearly report failed access. Do not claim offline access to current remote data."
     from app.analysis_styles import instruction
     system += instruction(store,question,template_mode,config)
     from app.investigation_workspace import context as investigation_context
@@ -352,6 +357,8 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
             return ("".join(b.text for b in response.content if getattr(b, "type", "") == "text"),
                     anthropic_usage(response.usage))
         selection = await select_model(config["ai"], model_mode, classify)
+        if config.get("_local_ai"):
+            selection["notice"]="Local AI · no cloud inference. Saved context may be stale; service reads still need network/VPN."
         add_usage(usage, by_model, config["ai"]["model"], selection["routing_usage"])
         yield selection
         for round_no in range(9):
@@ -419,7 +426,8 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
                             yield {"event": "source", "url": result["source"]}
                     elif call["name"] == "configure_repository":
                         from app.repository_settings import propose_repository
-                        card = await propose_repository(store, config, cid, args, services_factory, access_check=access_check)
+                        proposal_config = store.source_config() if hasattr(store,"source_config") else config
+                        card = await propose_repository(store, proposal_config, cid, args, services_factory, access_check=access_check)
                         result = {"proposal": card["id"], "status": "pending", "note": "Access validated. User must confirm the settings change."}
                         yield {"event": "action", "action": card}
                     elif call["name"] == "read_requested_repository":

@@ -11,7 +11,8 @@ class Call:
         self.reported = False
 
     def __enter__(self):
-        enforce_budget(self.store)
+        if self.config.get("ai",{}).get("provider")!="ollama":
+            enforce_budget(self.store)
         self.store.execute("INSERT INTO usage_calls VALUES (?,?,?,?,?)",
                            (self.ident, time.time(), self.model, self.origin, "incomplete"))
         return self

@@ -10,6 +10,7 @@ function syncChatControls() {
   busy = Boolean(run); controller = run?.controller || null;
   $("#send").disabled = busy || Boolean(window.AiMateImportProgress?.busy()); $("#modelMode").disabled = busy; $("#stop").hidden = !busy;
   $("#analysisStyle").disabled=busy;
+  $("#localAIToggle").disabled=busy;
   document.querySelectorAll("[data-edit-message]").forEach(button => { button.disabled = busy; });
 }
 function navigationBlocked() { return busy && !chatRuns.get(cid); }
@@ -199,6 +200,8 @@ function aiReady() {
 function shortModelName(model) {
   if (!model) return "Not configured";
   model=model.split("/").pop();
+  const local=model.match(/^qwen3:(\d+b)$/i);
+  if(local) return "Qwen3 "+local[1].toUpperCase();
   const claude = model.match(/claude-(haiku|sonnet|opus|fable)-(\d+)(?:[-.](\d{1,2})(?!\d))?/i);
   if (claude) return `${claude[1][0].toUpperCase() + claude[1].slice(1)} ${claude[2]}${claude[3] ? "." + claude[3] : ""}`;
   if(model.startsWith("gemini-")) return model.split("-").map(word=>word[0].toUpperCase()+word.slice(1)).join(" ");
@@ -268,16 +271,17 @@ document.addEventListener("keydown", event => {
 
 function renderModelSelection(event = null) {
   const mode = $("#modelMode").value;
-  const key = JSON.stringify([mode, config.ai?.provider, config.ai?.model, config.ai?.analysis_model, demo]);
+  const selectedAI=window.AiMateLocalAI?.active() ? {provider:"ollama",model:window.AiMateLocalAI.model(),analysis_model:""} : config.ai;
+  const key = JSON.stringify([mode, selectedAI?.provider, selectedAI?.model, selectedAI?.analysis_model, demo]);
   if (event) activeModelSelection = {key, route: event.route, model: event.model};
   if (activeModelSelection?.key !== key) activeModelSelection = null;
   const route = activeModelSelection?.route || (mode === "analysis" ? "analysis" : "standard");
-  const model = activeModelSelection?.model || (route === "analysis" ? config.ai?.analysis_model : config.ai?.model);
-  const unavailable = demo || !config.ai?.analysis_model;
+  const model = activeModelSelection?.model || (route === "analysis" ? selectedAI?.analysis_model : selectedAI?.model);
+  const unavailable = demo || !selectedAI?.analysis_model;
   const picker = $("#modelMode");
   for (const option of picker.options) {
     const label = option.value === "auto" ? "Auto" : option.value === "analysis" ? "Analysis" : "Standard";
-    const selectedModel = option.value === "auto" ? model : option.value === "analysis" ? config.ai?.analysis_model : config.ai?.model;
+    const selectedModel = option.value === "auto" ? model : option.value === "analysis" ? selectedAI?.analysis_model : selectedAI?.model;
     option.textContent = pagesPreview ? label : demo ? `${label} · Demo` : `${label} · ${shortModelName(selectedModel)}`;
     option.disabled = option.value === "analysis" && unavailable;
     option.title = option.value === "auto" ? "Auto: AiMate chooses Standard for lookups and Analysis for debugging or complex tasks." : selectedModel || "Set an Analysis model in Settings → AI model → Advanced.";
@@ -418,6 +422,7 @@ async function refreshState() {
   if(state.message_favorites===false) {window.AiMateFeatures={...window.AiMateFeatures,messageFavorites:false};}
   window.AiMateTemporaryChats?.setEnabled(state.temporary_chats!==false);
   window.AiMatePerformance?.setEnabled(state.performance!==false);
+  window.AiMateLocalAI?.setEnabled(state.local_ai===true);
   $("#openFavorites").hidden=window.AiMateFeatures?.messageFavorites===false;
   if(state.feedback_review===false) {window.AiMateFeatures={...window.AiMateFeatures,feedbackReview:false};}
   $("#openMyFeedback").hidden=window.AiMateFeatures?.feedbackReview===false;
@@ -987,7 +992,7 @@ async function ask(question) {
     $("#activity").textContent = "Backend not connected. Open your local AiMate workspace for live AI and project access.";
     return;
   }
-  if (!demo && !aiReady()) {
+  if (!demo && !window.AiMateLocalAI?.active() && !aiReady()) {
     openSettings(); $("#settingsStatus").textContent = "Add your AI credentials and model ID to start."; return;
   }
   const attachments = [...pendingAttachments];
@@ -1026,6 +1031,7 @@ async function ask(question) {
     activity("Reading your question…");
     const response = await api("/api/chat", {
       method: "POST", body: JSON.stringify({conversation: run.cid, question: submittedQuestion, model_mode: $("#modelMode").value,template_mode:$("#analysisStyle").value,
+        local_ai:window.AiMateLocalAI?.active() || false,local_model:window.AiMateLocalAI?.model(),
         attachments:attachments.filter(file=>file.kind !== "image").map(({name,size})=>({name,size})),
         documents:attachments.filter(file=>file.kind !== "image").map(file=>({name:file.name,size:file.size,text:file.text,kind:file.kind || "text",notice:file.notice || ""})),
         images:attachments.filter(file=>file.kind === "image").map(({name,data})=>({name,data})),
@@ -1067,7 +1073,14 @@ async function ask(question) {
         }
         if (event.event === "repository_access") renderGitHubGuidance(bot,event.guidance);
         if (event.event === "action") drawAction(event.action, bot.root);
-        if (event.event === "error") throw new Error(event.message);
+        if (event.event === "error") {
+          if(event.local_fallback) window.AiMateLocalAI?.offer(bot,async()=>{
+            await openConversation(run.cid);
+            pendingAttachments=attachments;renderPendingAttachments();
+            await ask(question);
+          });
+          throw new Error(event.message);
+        }
         if (event.event === "done") {
           renderAnswer(bot.body, bot.text);
           if (bot.modelDetails) updateModelInfo(bot, {...bot.modelDetails, usage:event.usage});

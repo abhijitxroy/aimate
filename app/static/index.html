@@ -9,6 +9,7 @@
   <link rel="icon" href="/static/favicon.svg?v=am2" type="image/svg+xml">
   <link rel="stylesheet" href="/static/style.css">
   <link rel="stylesheet" href="/static/performance.css">
+  <link rel="stylesheet" href="/static/local_ai.css">
   <link rel="stylesheet" href="/static/theme.css">
   <link rel="stylesheet" href="/static/syntax.css">
   <link rel="stylesheet" href="/static/message_navigation.css">
@@ -35,6 +36,7 @@
   <script src="/static/ai_connection_ui.js" defer></script>
   <script src="/static/gemini_ui.js" defer></script>
   <script src="/static/temporary_chats_ui.js" defer></script>
+  <script src="/static/local_ai_ui.js" defer></script>
   <script src="/static/usage_ui.js" defer></script>
   <script src="/static/diagnostics_ui.js" defer></script>
   <script src="/static/performance_ui.js" defer></script>
@@ -115,7 +117,7 @@
           <div id="attachmentCards" class="attachment-cards" hidden aria-label="Attached files"></div>
           <div id="composerFormatting"><div id="composerToolbar" class="composer-format-tools" role="toolbar" aria-label="Text formatting"></div><div id="composerAdvanced" class="composer-format-tools" role="toolbar" aria-label="Advanced formatting" hidden></div><div id="composerPreview" class="message-body composer-preview" hidden aria-label="Message preview"></div></div>
           <textarea id="question" rows="2" maxlength="30000" placeholder="Ask AiMate" aria-label="Your question" required></textarea>
-          <div class="composer-bottom"><div class="composer-tools"><select id="modelMode" aria-label="Model selection" title="Auto selects Standard or Analysis. Manual choice overrides Auto."><option value="auto">Auto</option><option value="standard">Standard</option><option value="analysis">Analysis</option></select><select id="analysisStyle" aria-label="Analysis style" title="Response format / skill · Auto chooses a format for reviews and debugging"><option value="auto">Style · Auto</option><option value="plain">Plain</option></select><button id="privateToggle" type="button" aria-pressed="false" title="Private chat: session-only history; prompts still go to your selected AI provider">Private</button><button id="formatToggle" type="button" aria-label="Show or hide formatting" aria-controls="composerFormatting" aria-pressed="true" aria-expanded="true" title="Hide formatting">Format</button><button id="attachText" type="button" title="Attach a file" aria-label="Attach a file"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.4 11.1-9.2 9.2a6 6 0 0 1-8.5-8.5l10-10a4 4 0 0 1 5.7 5.7l-10 10a2 2 0 0 1-2.8-2.8l9.2-9.2"/></svg></button><input id="textAttachment" type="file" hidden multiple></div><button id="send" class="primary" type="submit">Ask <span>↑</span></button><button id="stop" type="button" hidden>Stop</button></div>
+          <div class="composer-bottom"><div class="composer-tools"><select id="modelMode" aria-label="Model selection" title="Auto selects Standard or Analysis. Manual choice overrides Auto."><option value="auto">Auto</option><option value="standard">Standard</option><option value="analysis">Analysis</option></select><select id="analysisStyle" aria-label="Analysis style" title="Response format / skill · Auto chooses a format for reviews and debugging"><option value="auto">Style · Auto</option><option value="plain">Plain</option></select><button id="localAIToggle" type="button" aria-pressed="false" hidden>Cloud</button><button id="privateToggle" type="button" aria-pressed="false" title="Private chat: session-only history; prompts still go to your selected AI provider">Private</button><button id="formatToggle" type="button" aria-label="Show or hide formatting" aria-controls="composerFormatting" aria-pressed="true" aria-expanded="true" title="Hide formatting">Format</button><button id="attachText" type="button" title="Attach a file" aria-label="Attach a file"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.4 11.1-9.2 9.2a6 6 0 0 1-8.5-8.5l10-10a4 4 0 0 1 5.7 5.7l-10 10a2 2 0 0 1-2.8-2.8l9.2-9.2"/></svg></button><input id="textAttachment" type="file" hidden multiple></div><button id="send" class="primary" type="submit">Ask <span>↑</span></button><button id="stop" type="button" hidden>Stop</button></div>
         </form>
         <p class="footnote">The assistant uses your configured scope and token permissions. Review its evidence and proposed changes.</p>
       </footer>
@@ -307,7 +309,7 @@
           <label id="chatgptAnalysisLabel" hidden>Analysis model · optional<select id="chatgptAnalysisModel"><option value="">Use Standard only</option></select></label>
           <p class="hint">Your connected model is Standard. Auto uses AI to select Analysis for debugging or deeper reasoning. Both use the same provider, account and region. Auto adds a small classification request; Analysis may cost more. Manual choice skips classification.</p>
         </details>
-        <div class="test-row"><details id="removeAIKey"><summary>Manage saved AI key</summary><label class="check"><input name="ai.clear_token" type="checkbox">Remove saved AI key</label></details><button id="testAIButton" type="button" data-test="ai">Save & check AI</button></div>
+        <details id="localAISettings" hidden><summary>Local fallback</summary><p class="hint">Cloud AI can be off; GitHub, Jira and Jenkins still need network/VPN. Saved context may be stale.</p><label>Installed model<select id="localAIModel"><option value="qwen3:4b">Qwen3 4B</option></select></label><div class="local-ai-actions"><button id="checkLocalAI" type="button">Check local access</button><button id="useLocalAI" type="button" disabled>Use local AI</button><button id="useCloudAI" type="button">Use cloud AI</button></div><p id="localAIMessage" class="hint">Install Ollama, then download qwen3:4b. No cloud keys are used for local inference.</p></details><div class="test-row"><details id="removeAIKey"><summary>Manage saved AI key</summary><label class="check"><input name="ai.clear_token" type="checkbox">Remove saved AI key</label></details><button id="testAIButton" type="button" data-test="ai">Save & check AI</button></div>
         <div id="test-ai" class="connection-result" aria-live="polite"></div>
       </fieldset>
       <fieldset id="settings-github" data-settings-panel="github" role="tabpanel" aria-labelledby="tab-github" hidden><legend>GitHub connection</legend>

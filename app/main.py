@@ -224,6 +224,9 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
     register_temporary_chats(app,auth)
     from app.performance import register as register_performance
     register_performance(app,owner_store,store,auth,config_lock)
+    from app.local_ai import register as register_local_ai
+    live_local_ai = not (production or demo or public_url or public_showcase)
+    register_local_ai(app,auth,live_local_ai)
 
     @app.exception_handler(ValueError)
     async def bad_input(request, exc):
@@ -402,6 +405,7 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
                 "message_favorites": os.environ.get("AIMATE_MESSAGE_FAVORITES_ENABLED") != "0",
                 "feedback_review": os.environ.get("AIMATE_FEEDBACK_REVIEW_ENABLED") != "0",
                 "performance": os.environ.get("AIMATE_PERFORMANCE_ENABLED") != "0",
+                "local_ai": live_local_ai and os.environ.get("AIMATE_LOCAL_AI_ENABLED") != "0",
                 "connection_checks": store.connection_checks(),
                 "connection_defaults": {"jenkins": {"username": getpass.getuser() if not public_url and not demo else "",
                                                       "url": "" if public_showcase else os.environ.get("JENKINS_URL", "")}},
@@ -968,6 +972,8 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
         if not isinstance(body, dict):
             raise ValueError("Expected a question object")
         cid, question = body.get("conversation"), body.get("question")
+        from app.local_ai import selection as local_selection
+        local_model = local_selection(body,request,live_local_ai)
         chat_store = session["private_chats"].get(cid, store)
         if chat_store is store:
             store.require_conversation(cid)
@@ -1033,9 +1039,13 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
                     from app.demo import run_demo_turn
                     turn = run_demo_turn(store, cid, question, backend=backend)
                 else:
-                    if store.config().get("ai", {}).get("provider") == "chatgpt":
+                    if not local_model and store.config().get("ai", {}).get("provider") == "chatgpt":
                         require_local_chatgpt()
-                    turn = run_turn(chat_store, cid, question, client_factory=client_factory,
+                    turn_store = chat_store
+                    if local_model:
+                        from app.local_ai import LocalStore
+                        turn_store = LocalStore(chat_store,local_model)
+                    turn = run_turn(turn_store, cid, question, client_factory=ai_client if local_model else client_factory,
                                     services_factory=services_factory, chatgpt=chatgpt, model_mode=model_mode,
                                     images=image_blocks, role=session.get("role", "admin"),template_mode=template_mode,
                                     vault_access=lambda: chat_store is store and valid_session(session["token"]) and vault_unlocked(session),
@@ -1062,13 +1072,13 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
                                 store.execute("INSERT OR REPLACE INTO attachment_previews VALUES (?,?)", (turn_id, encrypted))
                     if event["event"] == "model":
                         selected_model = event["model"]
-                    if not demo and event["event"] == "done" and event.get("model"):
+                    if not demo and not local_model and event["event"] == "done" and event.get("model"):
                         store.record_ai_activity(turn_config, event["model"])
                     yield "data: " + json.dumps(event, ensure_ascii=False) + "\n\n"
             except asyncio.CancelledError:
                 raise
             except Exception as exc:
-                if not demo and getattr(exc, "status_code", None) in {401, 403, 404}:
+                if not demo and not local_model and getattr(exc, "status_code", None) in {401, 403, 404}:
                     store.record_ai_activity(turn_config, selected_model, ok=False, message=ai_error(exc))
                 message = ai_error(exc)
                 if getattr(exc, "status_code", None) is not None:
@@ -1076,7 +1086,9 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
                     store.execute("INSERT INTO ai_failures VALUES (?,?,?,?,?)",
                                   (reference, cid, exc.status_code, message, time.time()))
                     message += " Reference: " + reference
-                yield "data: " + json.dumps({"event": "error", "message": scrub(message, store.config())}) + "\n\n"
+                from app.local_ai import can_offer
+                yield "data: " + json.dumps({"event": "error", "message": scrub(message, store.config()),
+                    "local_fallback":not local_model and can_offer(exc,request,live_local_ai)}) + "\n\n"
             finally:
                 try:
                     if "turn" in locals() and hasattr(turn, "aclose"):

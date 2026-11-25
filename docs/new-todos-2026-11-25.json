@@ -57,8 +57,8 @@
   },
   {
     "id": "backlog-291b901efdd0fc05fec8526c",
-    "title": "P1 · WIP — Smart missing-repository discovery\n\nCurrent-question repository reads validate identity using the saved host/token without changing saved scope. Reviewed additions stay pending until confirmed. Anthropic and Responses gateway coverage and browser validation pending.",
-    "completed": false,
+    "title": "P1 · Done — Smart missing-repository discovery\n\nExplicit current-question repositories can be identity-verified and read without saving scope or executing writes. Reviewed additions work through Anthropic and Responses gateways; cross-repo/foreign-host, disabled-feature and revoked-access checks passed. 280 integration, 65 browser checks and all seven GitHub workflows passed.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45638899190",
+    "completed": true,
     "type": "enhancement",
     "priority": "P1"
   },
@@ -197,7 +197,7 @@
   },
   {
     "id": "backlog-local-ai-fallback",
-    "title": "P1 · Planned — Local offline AI fallback and cached context\n\nDetect cloud authentication/network failures and offer an explicit local-model fallback. Keep local inference separate from connector internet access; use scoped cached evidence with freshness labels. Local runtime/model and laptop capabilities await user details.",
+    "title": "P1 · WIP — Local offline AI fallback and cached context\n\nOllama and verified Qwen3 4B weights installed. Real streamed local answer passed. Explicit Local/Cloud choice, opt-in failed-cloud retry, readable saved context, scoped connector tools, cloud-model rejection and zero-API-cost usage ledger implemented; final automated and live-app verification pending.",
     "completed": false,
     "type": "feature",
     "priority": "P1"

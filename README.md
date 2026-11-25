@@ -8,6 +8,8 @@ Admin / Developer: [measured performance and before/after baselines](docs/perfor
 
 [Read a requested repo before saving it](docs/repository-discovery.md).
 
+[Local AI fallback with Ollama](docs/local-ai.md) — optional, no cloud credentials.
+
 [App checklist and validation gaps](docs/todo-audit-2026-11-24.md) — 31 of the audited 44 items complete; 13 remain open.
 [Platform roadmap](TODO.md) — desktop, VS Code and optional backends.
 
