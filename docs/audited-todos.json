@@ -216,7 +216,7 @@
   },
   {
     "id": "audit-followup-record-safety",
-    "title": "P0 · Record safety · WIP — Lock editing/deletion in My Diary and To-do\n\nNew request: default locked icon in each dialog; disable updates/delete/completion changes until explicitly unlocked. Implementation and regression validation pending.",
-    "completed": false
+    "title": "P0 · Record safety · Done — Lock editing/deletion in My Diary and To-do\n\nDefault-locked monochrome icons guard existing Diary/To-do edits, deletes and completion updates. New entries, copying and viewing remain available. Relocking blocks form updates and reopening/reloading resets protection; Windows/Linux and 24-browser CI passed. This is an accidental-edit UI guard, not a replacement for server roles.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45531085801",
+    "completed": true
   }
 ]

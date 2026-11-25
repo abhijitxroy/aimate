@@ -3,7 +3,10 @@
 [App checklist and validation gaps](docs/todo-audit-2026-11-24.md) — 27 of the original 42 items remain complete; 15 reopened.
 [Platform roadmap](TODO.md) — desktop, VS Code and optional backends.
 
-[![Tests](https://github.com/abhijitxroy/aimate/actions/workflows/tests.yml/badge.svg)](https://github.com/abhijitxroy/aimate/actions/workflows/tests.yml)
+[![Unit](https://github.com/abhijitxroy/aimate/actions/workflows/unit.yml/badge.svg)](https://github.com/abhijitxroy/aimate/actions/workflows/unit.yml)
+[![Integration](https://github.com/abhijitxroy/aimate/actions/workflows/integration.yml/badge.svg)](https://github.com/abhijitxroy/aimate/actions/workflows/integration.yml)
+[![Regression](https://github.com/abhijitxroy/aimate/actions/workflows/regression.yml/badge.svg)](https://github.com/abhijitxroy/aimate/actions/workflows/regression.yml)
+[![Flaky checks](https://github.com/abhijitxroy/aimate/actions/workflows/flaky.yml/badge.svg)](https://github.com/abhijitxroy/aimate/actions/workflows/flaky.yml)
 
 A standalone, local workspace for asking questions across your GitHub
 repositories, Jira projects and Jenkins jobs. Built from scratch with FastAPI,
@@ -433,13 +436,19 @@ and cache details that were not previously saved.
 
 The test suite uses local HTTP mocks and a fake AI client; it never spends AI
 credits or writes to a real project.
-GitHub Actions runs the suite on Windows and Linux for each push and pull request.
+GitHub Actions separates unit, integration, browser regression and flaky checks
+into [four workflows](docs/test-workflows.md). Python unit/integration suites run
+on Windows and Linux; browser workflows use isolated Chromium fixtures.
 Demo tests reject any attempt to use the real HTTP transport and cover reads,
 proposals, confirm/cancel, replay protection, scope restrictions and audit records.
 
 ```powershell
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
+
+Run a specific suite with `python tools/run_test_suite.py unit`,
+`integration`, `regression` or `flaky`. Flaky checks repeat critical interactions
+three times and fail if any attempt fails.
 
 If dependencies are unavailable, the input/scope checks can run independently:
 

@@ -1,0 +1,27 @@
+name: Flaky checks
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  reliability:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install -r requirements-dev.txt
+      - run: python -m playwright install --with-deps chromium
+      - name: Repeat concurrency, navigation, restart, layout and lock checks
+        run: python tools/run_test_suite.py flaky --repeat 3 --report flaky-report.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: flaky-report
+          path: flaky-report.json
+          if-no-files-found: warn
+          retention-days: 14

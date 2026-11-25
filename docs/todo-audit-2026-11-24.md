@@ -1,6 +1,6 @@
 # AiMate TODO audit — 24 November 2026
 
-Updated 25 November 2026: **27 of the original 42 items remain Done; 15 reopened for remaining scope or live-validation gaps. Two follow-ups: Tools layout verified; Diary/To-do safety locks in progress.**
+Updated 25 November 2026: **27 of the original 42 items remain Done; 15 reopened for remaining scope or live-validation gaps. Both follow-ups—Tools layout and Diary/To-do safety locks—passed CI.**
 Scope: running restored app at C:/Users/abhijit4/AiMate and source branch `improvements/verified-backlog`. Verified batches were applied locally and saved into the OneDrive migration kit.
 Original feature evidence: CI passed Windows/Linux unit suites, 22 browser/HTTP regressions and 10 JavaScript rendering tests. That discovery suite contained 291 tests, with browser tests run separately. This is automated evidence, not comprehensive live-service validation. [Original feature CI](https://github.com/abhijitxroy/aimate/actions/runs/45523407168).
 Done means the bounded feature has automated or directly verified evidence, not a guarantee of 100% correctness. In progress means remaining scope or validation is explicitly listed. It does not imply arbitrary file support, unlimited context, live provider invoice access, enterprise SSO, deployment or a guarantee that remote sources never change.
@@ -54,7 +54,7 @@ P0 = correctness/security blockers; P1 = reliability and efficiency; P2 = existi
 | P3 · Service | Another level of user assistance | In progress | The checkpoint/evidence workspace is implemented and tested with fixtures. An actual Jira-to-PR-to-exact-build investigation, freshness checks and full source coverage with the configured model remain unverified. |
 
 | P0 · Layout | Tools toggle must not move right-hand chat | Full | Reproduced and fixed grid/sidebar overflow; four viewport sizes, long sidebar and preserved chat scroll verified in CI: https://github.com/abhijitxroy/aimate/actions/runs/45529941350 |
-| P0 · Record safety | Lock My Diary/To-do updates and deletion | In progress | New request; implement default-locked controls, explicit unlock and reopen/reload regression checks. |
+| P0 · Record safety | Lock My Diary/To-do updates and deletion | Full | Default-locked monochrome icons guard existing Diary/To-do edits, deletes and completion updates. New entries, copying and viewing remain available. Relocking blocks form updates and reopening/reloading resets protection; Windows/Linux and 24-browser CI passed. This is an accidental-edit UI guard, not a replacement for server roles. CI: https://github.com/abhijitxroy/aimate/actions/runs/45531085801 |
 
 Completed sequence: correctness/context → privacy/access → bounded reads/tokens → usage/documents/concurrency → diagnostics/recovery/cleanup → prompts/styles/task types → monogram colours/composer → investigation workspace.
 

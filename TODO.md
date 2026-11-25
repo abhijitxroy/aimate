@@ -2,7 +2,7 @@
 
 Current app checklist, corrected on **25 November 2026: 27 of the original
 42 items remain Done; 15 reopened for remaining scope or missing live validation**.
-The Tools layout follow-up passed CI; Diary/To-do safety locks are in progress.
+Both the Tools layout and Diary/To-do safety-lock follow-ups passed CI.
 See [the status table](docs/todo-audit-2026-11-24.md)
 and [the app To-do export](docs/audited-todos.json).
 
