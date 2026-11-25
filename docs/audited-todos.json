@@ -201,8 +201,8 @@
   },
   {
     "id": "audit-e3cb16cd4ed8e5d7808fcf7d",
-    "title": "P3 · Composer · Planned — B/U/I, colour, indentation, tables, panels, etc.\n\nComposer is a plain textarea; rendered answers support Markdown. No rich-text authoring toolbar.",
-    "completed": false
+    "title": "P3 · Composer · Done — B/U/I, colour, indentation, tables, panels, etc.\n\nCollapsed formatting toolbar supports B/I/U, colour, headings, paragraphs, lists, indentation, code, rules, wrap, tables and callout panels with preview. Portable text and safe rendering survive edit/export/reload; local and Linux/Windows/browser CI passed.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45522299918",
+    "completed": true
   },
   {
     "id": "audit-0913c4c7266e5c1236b1e71e",

@@ -1,6 +1,7 @@
 """Real browser + HTTP + SSE checks against a fully isolated fixture backend."""
 import os
 import io
+import re
 import socket
 import subprocess
 import sys
@@ -126,6 +127,29 @@ class BrowserRegressionTests(unittest.TestCase):
         self.page.evaluate("id => openConversation(id)",existing)
         self.expect(self.page.locator("#messages .message.user strong")).to_have_text("Formatted")
         self.expect(self.page.locator("#messages .message.user table")).to_contain_text("Test")
+
+    def test_investigation_checkpoint_reopens_and_continue_does_not_submit(self):
+        self.page.locator("#conversations").get_by_role("button", name="Old continuity reference", exact=True).click()
+        self.page.locator("#chatMenu summary").click()
+        self.page.locator("#openInvestigation").click()
+        self.page.locator("#investigationPreset").select_option("debug")
+        self.page.locator("#investigationTarget").fill("Synthetic build #11")
+        self.page.locator("#investigationNotes").fill("Read first page.\nNext: remaining log pages.")
+        self.page.locator("#investigationSteps input").first.check()
+        self.page.get_by_role("button",name="Save checkpoint",exact=True).click()
+        self.expect(self.page.locator("#investigationStatus")).to_contain_text("Checkpoint saved")
+        existing=self.page.evaluate("cid")
+        self.page.reload()
+        self.page.evaluate("id => openConversation(id)",existing)
+        self.expect(self.page.locator("#chatTitle")).to_have_text("Old continuity reference")
+        self.page.locator("#chatMenu summary").click()
+        self.page.locator("#openInvestigation").click()
+        self.expect(self.page.locator("#investigationNotes")).to_have_value("Read first page.\nNext: remaining log pages.")
+        self.expect(self.page.locator("#investigationSteps input").first).to_be_checked()
+        before=len(self.context.request.get(self.url+f"/api/conversations/{existing}").json()["turns"])
+        self.page.get_by_role("button",name="Continue in askbar",exact=True).click()
+        self.expect(self.page.locator("#question")).to_have_value(re.compile("Synthetic build #11"))
+        self.assertEqual(len(self.context.request.get(self.url+f"/api/conversations/{existing}").json()["turns"]),before)
 
     def test_usage_budget_and_bill_comparison_persist(self):
         self.page.locator("#sidebarTools").evaluate("(el) => { el.open = true; }")

@@ -270,6 +270,22 @@ class ChatGPTTests(unittest.TestCase):
         for secret in ("jira-private-token", "jenkins-private-token"):
             self.assertNotIn(secret, instructions)
 
+    def test_chatgpt_receives_investigation_checkpoint(self):
+        from app.investigation_workspace import save
+        self.connect()
+        config=fixture_config()
+        config["ai"]={"provider":"chatgpt","model":"test-model"}
+        self.store.save_config(config)
+        cid=self.store.new_conversation()
+        save(self.store,cid,{"preset":"review","target":"PR #11","notes":"Read missing base files","checked":[0]})
+        async def run():
+            return [e async for e in run_turn(self.store,cid,"Continue",chatgpt=self.connection,model_mode="standard")]
+        asyncio.run(run())
+        request=next(r for r in self.requests if r.url.path == "/v1/responses")
+        instructions=json.loads(request.content)["instructions"]
+        self.assertIn("Read missing base files",instructions)
+        self.assertIn("not verified findings",instructions)
+
     def test_http_callback_cross_site_exception_is_narrow_and_requires_csrf_start(self):
         app = create_app(self.store, demo=False, chatgpt_transport=self.transport)
         with TestClient(app, base_url="http://127.0.0.1:8765") as client:

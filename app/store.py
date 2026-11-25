@@ -66,6 +66,7 @@ class Store:
             CREATE TABLE IF NOT EXISTS conversation_archives (conversation TEXT PRIMARY KEY, archived INTEGER NOT NULL);
             CREATE TABLE IF NOT EXISTS conversation_icons (conversation TEXT PRIMARY KEY, icon TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS conversation_icon_styles (conversation TEXT PRIMARY KEY, color TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS investigation_records (conversation TEXT PRIMARY KEY, body TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS conversation_references (conversation TEXT PRIMARY KEY, source TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS knowledge (id TEXT PRIMARY KEY, key TEXT NOT NULL,
                 value TEXT NOT NULL, group_id TEXT, updated REAL NOT NULL);

@@ -21,6 +21,7 @@
   <script src="/static/maintenance_ui.js" defer></script>
   <script src="/static/library_ui.js" defer></script>
   <script src="/static/composer_ui.js" defer></script>
+  <script src="/static/investigation_ui.js" defer></script>
 </head>
 <body>
   <section id="loginScreen" class="login-screen">
@@ -106,6 +107,17 @@
       <button class="theme-option" type="button" data-theme-choice="black-blue" aria-pressed="false"><span class="theme-preview black-blue" aria-hidden="true"><i></i><b></b></span><strong>Alienware</strong><small>Black &amp; blue</small></button>
     </div>
     <p class="hint">Saved in this browser.</p>
+  </dialog>
+  <dialog id="investigationDialog" class="investigation-dialog">
+    <div class="dialog-head"><h2>Investigation workspace</h2><button class="close" data-close="investigationDialog" aria-label="Close investigation">×</button></div>
+    <form id="investigationForm">
+      <div class="grid"><label>Workflow<select id="investigationPreset"></select></label><label>Target<input id="investigationTarget" maxlength="500" placeholder="Issue, PR or build" required></label></div>
+      <div id="investigationSteps" class="investigation-steps"></div>
+      <label>Checkpoint<textarea id="investigationNotes" rows="3" maxlength="6000" placeholder="What you found, what remains, and where to resume…"></textarea></label>
+      <div class="conversation-action-buttons"><button type="submit" class="primary">Save checkpoint</button><button id="resumeInvestigation" type="button">Continue in askbar</button></div>
+      <p id="investigationStatus" class="hint" role="status"></p>
+    </form>
+    <details class="investigation-evidence" open><summary>Read evidence</summary><p class="hint">Saved read results from this chat. Current access and full coverage need rechecking.</p><div id="investigationEvidence"></div></details>
   </dialog>
   <dialog id="helpDialog" aria-labelledby="helpTitle">
     <div class="dialog-head"><h2 id="helpTitle">AiMate help</h2><button class="close" data-close="helpDialog" aria-label="Close help">×</button></div>

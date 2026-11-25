@@ -198,6 +198,8 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
     register_maintenance(app,store,auth,config_lock,active_streams)
     from app.library import register as register_library
     register_library(app,store,auth,config_lock)
+    from app.investigation_workspace import register as register_investigation
+    register_investigation(app, store, auth, config_lock)
 
     @app.exception_handler(ValueError)
     async def bad_input(request, exc):
@@ -827,6 +829,7 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
                 store.db.execute("DELETE FROM conversation_archives WHERE conversation=?", (cid,))
                 store.db.execute("DELETE FROM conversation_icons WHERE conversation=?", (cid,))
                 store.db.execute("DELETE FROM conversation_icon_styles WHERE conversation=?", (cid,))
+                store.db.execute("DELETE FROM investigation_records WHERE conversation=?", (cid,))
                 store.db.execute("DELETE FROM conversation_references WHERE conversation=? OR source=?", (cid, cid))
                 store.db.execute("DELETE FROM memory_index WHERE conversation=?", (cid,))
                 store.db.execute("DELETE FROM review_sessions WHERE conversation=?", (cid,))

@@ -290,6 +290,9 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
     system = SYSTEM + action_capabilities(config) + context_reference + "\nConfigured sources:\n" + json.dumps(scope) + "\nRecent proposal outcomes:\n" + json.dumps(outcomes)
     from app.analysis_styles import instruction
     system += instruction(store,question,template_mode,config)
+    from app.investigation_workspace import context as investigation_context
+    if not config.get("_private"):
+        system += scrub(investigation_context(store, cid, question), config)
     services = services_factory(config)
     if services is not None:
         services.evidence_cache = EvidenceCache(store, config, question)
@@ -487,6 +490,9 @@ async def _run_chatgpt_turn(store, cid, question, connection, services_factory, 
     instructions = SYSTEM + action_capabilities(config) + context_reference + "\nConfigured sources:\n" + json.dumps(scope) + "\nRecent proposal outcomes:\n" + json.dumps(outcomes)
     from app.analysis_styles import instruction
     instructions += instruction(store,question,template_mode,config)
+    from app.investigation_workspace import context as investigation_context
+    if not config.get("_private"):
+        instructions += scrub(investigation_context(store, cid, question), config)
     tools = tools_for(config)
     namespace = {"type": "namespace", "name": "project", "description": "Scoped engineering project tools",
                  "tools": [{"type": "function", "name": t["name"], "description": t["description"],

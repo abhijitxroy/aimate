@@ -489,6 +489,13 @@ fieldset > label { margin-bottom: 12px; }
 .composer-format-tools input[type=color] { width: 28px; height: 27px; padding: 2px; }
 .composer-preview { max-height: 180px; overflow: auto; padding: 10px; border: 1px solid #a8c9ed30; border-radius: 10px; margin: 4px 0; }
 .composer-preview[hidden] { display: none; }
+.investigation-dialog { width: min(820px, calc(100vw - 32px)); }
+.investigation-steps { display: grid; gap: 7px; margin: 14px 0; }
+.investigation-steps label { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.investigation-steps input { width: auto; margin: 0; }
+.investigation-evidence { margin-top: 15px; }
+.investigation-source { display: grid; gap: 5px; border-top: 1px solid var(--line); padding: 10px 0; overflow-wrap: anywhere; }
+.investigation-source small { color: var(--muted); font-size: 10px; }
 .login-link { font-size: 11px; border: 0; background: transparent; color: var(--muted); padding: 8px 0 0; }
 .admin-security { margin-top: 20px; border-top: 1px solid var(--line); padding-top: 18px; }
 .admin-security h3 { font-size: 13px; font-weight: 500; margin-bottom: 5px; }
