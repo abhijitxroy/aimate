@@ -10,6 +10,12 @@ from app.history_budget import compact
 
 
 class TokenBudgetTests(unittest.TestCase):
+    def test_large_image_turn_keeps_the_user_question_when_history_is_compacted(self):
+        turn=[{"role":"user","content":[{"type":"text","text":"Explain this screenshot for DEMO-1."},
+              {"type":"image","source":{"data":"a"*60000}}]},
+              {"role":"assistant","content":[{"type":"text","text":"It shows a failed build."}]}]
+        compacted=compact(turn,1)
+        self.assertEqual(compacted[0],{"role":"user","content":"Explain this screenshot for DEMO-1."})
     def test_compaction_preserves_call_ids_reasoning_and_full_saved_text(self):
         with tempfile.TemporaryDirectory() as directory:
             store = Store(directory)

@@ -24,9 +24,9 @@ def compact(turn, ident):
             content = message.get("content")
             if isinstance(content, str):
                 result.append({"role": message["role"], "content": content[:12000]})
-            elif message.get("role") == "assistant":
+            elif message.get("role") in {"assistant","user"}:
                 text = "\n\n".join(block.get("text", "") for block in content or [] if block.get("type") == "text")
                 if text:
-                    result.append({"role": "assistant", "content": text[:12000]})
+                    result.append({"role": message["role"], "content": text[:12000]})
         return result
     return turn

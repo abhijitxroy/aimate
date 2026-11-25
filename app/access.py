@@ -94,7 +94,7 @@ def authorize(role, method, path):
                      "/api/chatgpt/start", "/api/chatgpt/disconnect", "/api/usage/rates",
                      "/api/usage/budget", "/api/usage/invoice"}
         personal_records = any(path == prefix or path.startswith(prefix + "/") for prefix in
-                               ("/api/conversations", "/api/groups", "/api/knowledge", "/api/todos"))
+                               ("/api/conversations", "/api/groups", "/api/knowledge", "/api/todos", "/api/library"))
         connections = path.startswith("/api/settings/") or (
             path.startswith("/api/connections/") and path.endswith("/test"))
         private_delete = method == "DELETE" and path.startswith("/api/conversations/private-")

@@ -68,6 +68,8 @@ class Store:
             CREATE TABLE IF NOT EXISTS conversation_references (conversation TEXT PRIMARY KEY, source TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS knowledge (id TEXT PRIMARY KEY, key TEXT NOT NULL,
                 value TEXT NOT NULL, group_id TEXT, updated REAL NOT NULL);
+            CREATE TABLE IF NOT EXISTS library_items (id TEXT PRIMARY KEY, title TEXT NOT NULL,
+                body TEXT NOT NULL, kind TEXT NOT NULL, updated REAL NOT NULL);
             CREATE TABLE IF NOT EXISTS todos (id TEXT PRIMARY KEY, title TEXT NOT NULL,
                 completed INTEGER NOT NULL DEFAULT 0, created REAL NOT NULL, updated REAL NOT NULL);
             CREATE VIRTUAL TABLE IF NOT EXISTS memory_index USING fts5(content, conversation UNINDEXED, turn UNINDEXED);

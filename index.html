@@ -21,6 +21,7 @@
   <script src="./app/static/diagnostics_ui.js" defer></script>
   <script src="./app/static/github_guidance_ui.js" defer></script>
   <script src="./app/static/maintenance_ui.js" defer></script>
+  <script src="./app/static/library_ui.js" defer></script>
 </head>
 <body>
   <section id="loginScreen" class="login-screen">
@@ -179,13 +180,14 @@
   <dialog id="knowledgeDialog">
     <div class="dialog-head"><div><p class="eyebrow">YOUR REUSABLE RECORDS</p><h2 class="knowledge-title"><span class="knowledge-title-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v15M12 5C9 3 5 3 2 4v15c3-1 7-1 10 1 3-2 7-2 10-1V4c-3-1-7-1-10 1Z"/><path d="M5 8h4M5 12h4M15 8h4M15 12h4"/></svg></span> My Diary</h2></div><button class="close" data-close="knowledgeDialog" aria-label="Close My Diary">×</button></div>
     <p class="hint">Save facts, links and preferences. AiMate searches relevant records when needed. Use Connections for secret tokens.</p>
-    <div class="record-toolbar"><div class="record-tabs"><button id="viewKnowledge" type="button" aria-pressed="true">View records</button><button id="manageKnowledge" type="button" aria-pressed="false">Add / edit</button></div><input id="knowledgeSearch" placeholder="Find a record…" aria-label="Search My Diary"></div><p id="knowledgeCount" class="hint"></p>
+    <div class="record-toolbar"><div class="record-tabs"><button id="viewKnowledge" type="button" aria-pressed="true">View records</button><button id="manageKnowledge" type="button" aria-pressed="false">Add / edit</button><button id="openLibrary" type="button">Saved prompts</button></div><input id="knowledgeSearch" placeholder="Find a record…" aria-label="Search My Diary"></div><p id="knowledgeCount" class="hint"></p>
     <p id="knowledgeError" class="error" role="alert"></p><div id="knowledgeCards" class="knowledge-cards"></div>
     <div id="knowledgeEditor" class="knowledge-layout" hidden>
       <div><div id="knowledgeList"></div><button id="newRecord" type="button">＋ New record</button></div>
       <form id="knowledgeForm"><label>Key<input id="recordKey" maxlength="100" required placeholder="release_branch"></label><label>Value<textarea id="recordValue" rows="6" maxlength="6000" required placeholder="main · release notes and links…"></textarea></label><label>Area<select id="recordGroup"></select></label><div class="conversation-action-buttons"><button id="deleteRecord" type="button" class="error" hidden>Delete record</button><button class="primary" type="submit">Save record</button></div></form>
     </div>
   </dialog>
+  <dialog id="libraryDialog"><div class="dialog-head"><h2>Saved prompts</h2><button class="close" data-close="libraryDialog" aria-label="Close saved prompts">×</button></div><input id="librarySearch" placeholder="Find a prompt…" aria-label="Find saved prompts"><div id="libraryItems" class="knowledge-cards"></div><details class="usage-card" open><summary>Add / edit</summary><form id="libraryForm"><label>Name<input id="libraryTitle" maxlength="80" required></label><label>Prompt<textarea id="libraryBody" rows="4" maxlength="6000" required></textarea></label><div class="conversation-action-buttons"><button id="newLibrary" type="button">New</button><button id="saveLibrary" class="primary" type="submit">Save prompt</button></div></form></details><p id="libraryError" class="error" role="alert"></p></dialog>
   <dialog id="todoDialog">
     <div class="dialog-head"><div><p class="eyebrow">ONE THING AT A TIME</p><h2>To-do</h2></div><button class="close" data-close="todoDialog" aria-label="Close to-do">×</button></div>
     <form id="todoForm" class="todo-add"><textarea id="todoTitle" rows="4" maxlength="6000" required placeholder="What needs doing?&#10;Paste your checklist or notes here…" aria-label="Task"></textarea><button class="primary" type="submit" id="saveTodo">Add task</button><button id="cancelTodoEdit" type="button" hidden>Cancel</button></form>

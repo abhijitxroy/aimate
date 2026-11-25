@@ -1,5 +1,6 @@
 """Real browser + HTTP + SSE checks against a fully isolated fixture backend."""
 import os
+import io
 import socket
 import subprocess
 import sys
@@ -40,14 +41,18 @@ class BrowserRegressionTests(unittest.TestCase):
             cls.playwright = sync_playwright().start()
             cls.browser = cls.playwright.chromium.launch()
             from playwright.sync_api import expect
-            login_context = cls.browser.new_context()
-            login_page = login_context.new_page()
-            login_page.goto(cls.url)
-            login_page.locator("#password").fill("browser-regression-password")
-            login_page.locator("#loginForm button[type=submit]").click()
-            expect(login_page.locator("#workspace")).to_be_visible()
-            cls.login_state = login_context.storage_state()
-            login_context.close()
+            cls.login_states=[]
+            cls.context_counter=0
+            # Independent sessions keep the real login/chat rate limits enabled.
+            for _ in range(4):
+                login_context = cls.browser.new_context()
+                login_page = login_context.new_page()
+                login_page.goto(cls.url)
+                login_page.locator("#password").fill("browser-regression-password")
+                login_page.locator("#loginForm button[type=submit]").click()
+                expect(login_page.locator("#workspace")).to_be_visible()
+                cls.login_states.append(login_context.storage_state())
+                login_context.close()
         except Exception:
             cls.server.terminate()
             cls.server.wait(timeout=10)
@@ -64,7 +69,9 @@ class BrowserRegressionTests(unittest.TestCase):
     def setUp(self):
         from playwright.sync_api import expect
         self.expect = expect
-        self.context = self.browser.new_context(viewport={"width": 1280, "height": 800}, storage_state=self.login_state)
+        state=self.login_states[type(self).context_counter % len(self.login_states)]
+        type(self).context_counter+=1
+        self.context = self.browser.new_context(viewport={"width": 1280, "height": 800}, storage_state=state)
         self.page = self.context.new_page()
         self.page.goto(self.url)
         self.expect(self.page.locator("#workspace")).to_be_visible()
@@ -122,6 +129,31 @@ class BrowserRegressionTests(unittest.TestCase):
         self.expect(self.page.locator("#confirmCleanup")).to_be_enabled()
         self.page.locator("#confirmCleanup").click()
         self.expect(self.page.locator("#cleanupError")).to_contain_text("Completed")
+
+    def test_saved_prompt_preserves_multiline_text_and_inserts_into_composer(self):
+        self.page.locator("#sidebarTools").evaluate("(el) => { el.open = true; }")
+        self.page.locator("#openKnowledge").click();self.page.locator("#openLibrary").click()
+        self.page.locator("#libraryTitle").fill("Evidence review")
+        text="Summarize this work.\n\n- Evidence\n- Open questions"
+        self.page.locator("#libraryBody").fill(text)
+        self.page.locator("#saveLibrary").click()
+        card=self.page.locator("#libraryItems .knowledge-card").filter(has_text="Evidence review")
+        self.expect(card).to_contain_text("Open questions")
+        card.get_by_role("button",name="Insert",exact=True).click()
+        self.expect(self.page.locator("#question")).to_have_value(text)
+        self.expect(self.page.locator("#libraryDialog")).not_to_be_visible()
+
+    def test_screenshot_message_and_card_survive_reload_with_real_image_provider_blocks(self):
+        from PIL import Image
+        raw=io.BytesIO();Image.new("RGB",(40,30),"navy").save(raw,"PNG")
+        self.page.locator("#textAttachment").set_input_files({"name":"Screenshot.png","mimeType":"image/png","buffer":raw.getvalue()})
+        self.expect(self.page.locator("#attachmentCards")).to_contain_text("Screenshot.png")
+        self.page.locator("#question").fill("Explain the screenshot")
+        self.page.locator("#send").click()
+        self.expect(self.page.locator("#send")).to_be_enabled(timeout=15000)
+        self.page.reload()
+        self.expect(self.page.locator("#messages .message.user")).to_contain_text("Explain the screenshot")
+        self.expect(self.page.locator("#messages .attachment-card")).to_contain_text("Screenshot.png")
 
     def test_large_paste_is_a_document_card_and_saved_message_keeps_card(self):
         self.page.evaluate("""() => {

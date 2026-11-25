@@ -196,6 +196,8 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
     register_github_guidance(app,store,auth,services_factory,lambda session:request_lease(owner_store,sessions,session))
     from app.maintenance import register as register_maintenance
     register_maintenance(app,store,auth,config_lock,active_streams)
+    from app.library import register as register_library
+    register_library(app,store,auth,config_lock)
 
     @app.exception_handler(ValueError)
     async def bad_input(request, exc):

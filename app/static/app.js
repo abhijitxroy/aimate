@@ -842,12 +842,14 @@ async function loadConversation(id, title, version) {
   $("#privateToggle").setAttribute("aria-pressed",String(privateChat));
   $("#welcome").hidden = Boolean(conversation.turns.length || conversation.actions.length);
   for (const turn of conversation.turns) {
-    const user = turn.messages.find(m => m.role === "user" && typeof m.content === "string");
+    const user = turn.messages.find(m => m.role === "user" && (typeof m.content === "string" ||
+      Array.isArray(m.content) && m.content.some(block=>block.type==="text")));
     if (user) {
       const savedFiles = (turn.usage?.attachments || []).map(file =>
         ({...file, ...(turn.attachment_previews || []).find(preview => preview.name === file.name)}));
-      const message = addMessage("user", savedFiles.length ? turn.usage.display_question : user.content, turn.id);
-      message.editText = user.content;
+      const userText=typeof user.content==="string" ? user.content : user.content.filter(block=>block.type==="text").map(block=>block.text).join("\n");
+      const message = addMessage("user", savedFiles.length ? turn.usage.display_question : userText, turn.id);
+      message.editText = userText;
       if (savedFiles.length) renderAttachmentCards(message.body, savedFiles, false);
     }
     let bot;

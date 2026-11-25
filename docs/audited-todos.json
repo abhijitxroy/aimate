@@ -81,8 +81,8 @@
   },
   {
     "id": "audit-4043d434188aa3d55f52b626",
-    "title": "P1 · Maintenance · Planned — Cleanup unused files with dependency checks\n\nChat/record deletion exists; no dependency-aware file cleanup workflow.",
-    "completed": false
+    "title": "P1 · Maintenance · Done — Cleanup unused files with dependency checks\n\nAdmin/developer cleanup previews orphaned attachments, expired snapshots and old rotated logs; rechecks references/revisions/actions, rejects stale review or active streams and preserves chats, records, secrets, live database and backups. Dependency-change, role and browser regressions passed CI.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45514895287",
+    "completed": true
   },
   {
     "id": "audit-6196efe12411494866e879aa",
