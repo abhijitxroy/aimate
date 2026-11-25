@@ -232,14 +232,14 @@
   },
   {
     "id": "backlog-repository-confirmation-ui",
-    "title": "P1 · WIP — Dismiss confirmed repository prompts and preserve message order\n\nRemove stale access-confirmation prompts, collapse repeated diagnostics under Activity and keep saved proposals with their original question/reply. Validate confirmation, reload and navigation races.",
+    "title": "P1 · WIP — Dismiss confirmed repository prompts and preserve message order\n\nHide every completed repo-setting panel and recovery prompt, collapse repeated diagnostics under Activity, restore saved proposals with their original question/reply, and remove sidebar horizontal overflow while keeping nested controls accessible. Local browser checks passed; await final CI before completion.",
     "completed": false,
     "type": "bug",
     "priority": "P1"
   },
   {
     "id": "backlog-message-navigation-rail",
-    "title": "P2 · Planned — Message navigation rail\n\nSlim topic-message markers, hover preview, click to jump and bookmark to existing Favorites, matching the supplied reference. Keep it optional, keyboard accessible, and isolated to the current conversation.",
+    "title": "P2 · WIP — Message navigation rail\n\nSlim topic-message markers, hover preview, click to jump and bookmark to existing Favorites, matching the supplied reference. Keep it optional, keyboard accessible, and isolated to the current conversation.",
     "completed": false,
     "type": "feature",
     "priority": "P2"

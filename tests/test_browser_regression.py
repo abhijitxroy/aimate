@@ -416,6 +416,58 @@ class BrowserRegressionTests(unittest.TestCase):
                 rect=control.bounding_box()
                 self.assertLessEqual(rect["x"]+rect["width"],right)
 
+    def test_message_rail_preview_jump_bookmark_and_navigation_isolation(self):
+        self.page.locator("#conversations").get_by_role("button",name="Old continuity reference",exact=True).click()
+        self.expect(self.page.locator("#chatTitle")).to_have_text("Old continuity reference")
+        rail=self.page.locator(".message-rail")
+        self.expect(rail).to_be_visible()
+        markers=rail.locator("button")
+        self.assertEqual(markers.count(),self.page.locator("#messages article.message").count())
+        target=self.page.evaluate("""() => [...document.querySelectorAll("#messages article.message")]
+            .findIndex(node=>node.querySelector(".body")?.textContent==="Follow-up detail 17")""")
+        self.assertGreaterEqual(target,0)
+        marker=markers.nth(target)
+        marker.hover()
+        preview=self.page.locator(".message-rail-preview")
+        self.expect(preview).to_be_visible()
+        self.expect(preview).to_contain_text("Follow-up detail 17")
+        preview.get_by_role("button",name="Pin message",exact=True).click()
+        self.expect(preview.get_by_role("button",name="Unpin message",exact=True)).to_have_attribute("aria-pressed","true")
+        favorites=self.context.request.get(self.url+"/api/favorites").json()["entries"]
+        self.assertTrue(any("Follow-up detail 17" in row["text"] for row in favorites))
+        marker.click()
+        self.expect(preview).to_be_hidden()
+        self.page.wait_for_function("document.querySelector('#messages').scrollTop>0")
+        markers.first.focus()
+        markers.first.press("ArrowDown")
+        self.expect(markers.nth(1)).to_be_focused()
+        self.expect(preview).to_be_visible()
+        markers.nth(1).press("Escape")
+        self.expect(preview).to_be_hidden()
+        marker.hover()
+        self.page.locator("#question").click()
+        self.expect(preview).to_be_hidden()
+        # A new chat clears the old marker targets and hover text.
+        self.page.locator("#newChat").click()
+        self.expect(rail).to_be_hidden()
+        self.expect(preview).to_be_hidden()
+
+    def test_message_rail_disable_and_plain_text_preview_are_safe(self):
+        self.page.evaluate("""() => {
+            addMessage("user",'<img src=x onerror="window.railUnsafe=true">');
+            addMessage("assistant","Safe reply");
+        }""")
+        self.page.locator(".message-rail button").first.hover()
+        preview=self.page.locator(".message-rail-preview")
+        self.expect(preview).to_be_visible()
+        self.assertEqual(preview.locator("img").count(),0)
+        self.assertFalse(self.page.evaluate("Boolean(window.railUnsafe)"))
+        self.page.add_init_script("window.AiMateFeatures={messageNavigation:false}")
+        self.page.reload()
+        self.expect(self.page.locator("#workspace")).to_be_visible()
+        self.assertEqual(self.page.locator(".message-rail").count(),0)
+        self.expect(self.page.locator("#question")).to_be_visible()
+
     def test_monogram_colour_picker_persists_and_theme_reset(self):
         self.page.evaluate("openConversationIcon(conversationList.find(t => t.title === 'Old continuity reference'))")
         self.page.locator("#monogramIconMode").click()
@@ -1027,8 +1079,9 @@ class BrowserRegressionTests(unittest.TestCase):
         self.expect(card.locator("pre")).to_be_visible()
         card.get_by_role("button", name="Confirm change", exact=True).click()
         self.expect(card).to_have_class("action-card action-completed")
-        self.expect(card).to_contain_text("Completed")
+        self.expect(card).to_be_hidden()
         self.assertEqual(card.locator("pre").count(), 0)
+        self.expect(self.page.locator("#activity")).to_contain_text("Change completed")
         self.assertEqual(card.get_by_role("button", name="Confirm change", exact=True).count(), 0)
         self.page.evaluate("action => drawAction(action, document.querySelector('#messages'))", action)
         self.assertEqual(card.count(), 1)
@@ -1037,9 +1090,11 @@ class BrowserRegressionTests(unittest.TestCase):
         self.page.evaluate("""() => { connectionReports.github = {status: "passed",
             message: "Read access verified.", targets: [{target: "demo/project", ok: true,
             message: "Accessible", details: ["Default branch: main"]}]}; }""")
-        card.get_by_role("button", name="Check connection", exact=True).click()
+        self.page.evaluate("activeSettings='github';openSettings()")
         self.expect(self.page.locator("#settingsDialog")).to_be_visible()
         self.expect(self.page.locator('[data-settings-tab="github"]')).to_have_attribute("aria-selected", "true")
+        self.page.locator("#test-github .connection-details > summary").click()
+        self.page.locator("#test-github .connection-target > summary").first.click()
         self.expect(self.page.locator("#test-github .connection-target p").first).to_be_visible()
         self.expect(self.page.locator("#test-github")).to_contain_text("demo/project")
         # History reconstruction uses the same compact completed view.
@@ -1048,7 +1103,7 @@ class BrowserRegressionTests(unittest.TestCase):
             document.querySelector("#messages").replaceChildren();
             drawAction(action, document.querySelector("#messages"));
         }""", completed)
-        self.expect(self.page.locator(".action-completed")).to_be_visible()
+        self.expect(self.page.locator(".action-completed")).to_be_hidden()
         self.assertEqual(self.page.locator(".action-completed pre").count(), 0)
         # Failed confirmations still retain their diagnostic preview.
         self.page.evaluate("action => drawAction({...action, id: 'failed-change', status: 'failed'}, document.querySelector('#messages'))", action)
@@ -1079,7 +1134,8 @@ class BrowserRegressionTests(unittest.TestCase):
         bot.get_by_role("button",name="Validate & review repository",exact=True).click()
         self.expect(bot.locator(".source-recovery")).to_contain_text("Access verified")
         bot.get_by_role("button",name="Confirm change",exact=True).click()
-        self.expect(bot.locator(".action-completed")).to_be_visible()
+        self.expect(bot.locator('[data-action="recovery-test"]')).to_have_class("action-card action-completed")
+        self.expect(bot.locator(".action-completed")).to_be_hidden()
         self.assertEqual(bot.locator(".source-recovery").count(),0)
         self.assertEqual(bot.get_by_role("button",name="Confirm change",exact=True).count(),0)
         bot.locator(".evidence summary").click()
@@ -1112,7 +1168,7 @@ class BrowserRegressionTests(unittest.TestCase):
         messages=self.page.locator("#messages > .message")
         self.assertEqual(messages.count(),4)
         self.assertEqual(messages.locator(".who").all_text_contents(),["YOU","AiMate","YOU","AiMate"])
-        self.expect(messages.nth(1).locator(".action-completed")).to_be_visible()
+        self.expect(messages.nth(1).locator(".action-completed")).to_be_hidden()
         self.assertEqual(messages.nth(3).locator("[data-action]").count(),0)
         self.assertLess(messages.nth(0).bounding_box()["y"],messages.nth(1).bounding_box()["y"])
         self.assertLess(messages.nth(1).bounding_box()["y"],messages.nth(2).bounding_box()["y"])
@@ -1132,7 +1188,6 @@ class BrowserRegressionTests(unittest.TestCase):
         }""", [first, second])
         self.page.locator('[data-action="first-review"]').get_by_role("button", name="Confirm change", exact=True).click()
         stale = self.page.locator('[data-action="second-review"]')
-        self.expect(stale).to_contain_text("Settings changed")
         self.expect(stale).to_be_hidden()
         self.assertEqual(self.page.locator(".action-card pre").count(), 0)
         self.assertEqual(self.page.get_by_role("button", name="Confirm change", exact=True).count(), 0)

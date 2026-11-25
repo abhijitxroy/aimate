@@ -1,0 +1,17 @@
+/* Overlay occupies the existing chat gutter, never the sidebar or composer. */
+main { position: relative; }
+.message-rail { position: absolute; left: 5px; width: 18px; z-index: 4; display: flex; flex-direction: column; justify-content: space-evenly; align-items: center; }
+.message-rail[hidden], .message-rail-preview[hidden] { display: none; }
+.message-rail > button { display: grid; place-items: center; flex: 1 1 0; min-height: 2px; max-height: 18px; width: 18px; padding: 0; border: 0; border-radius: 3px; background: transparent; color: var(--muted); }
+.message-rail > button::after { content: ""; width: 6px; height: 1px; background: currentColor; opacity: .45; transition: width .15s, opacity .15s; }
+.message-rail > button:hover::after, .message-rail > button:focus-visible::after,
+.message-rail > button[aria-current="true"]::after { width: 12px; opacity: 1; color: var(--accent); }
+.message-rail > button.pinned::after { height: 2px; opacity: .85; }
+.message-rail-preview { position: fixed; z-index: 70; padding: 11px 13px; border: 1px solid var(--line); border-radius: 13px; color: var(--text); background: var(--panel); box-shadow: 0 8px 30px #0004; }
+.message-rail-preview > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.message-rail-preview strong { font-size: 11px; }
+.message-rail-preview p { margin: 6px 0 0; max-height: 160px; overflow: hidden; font-size: 11px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--muted); }
+.message-rail-bookmark { display: grid; place-items: center; padding: 2px; border: 0; background: transparent; color: var(--muted); }
+.message-rail-bookmark[aria-pressed="true"] { color: var(--accent); }
+@media (max-width: 760px) { .message-rail, .message-rail-preview { display: none; } }
+@media (prefers-reduced-motion: reduce) { .message-rail > button::after { transition: none; } }

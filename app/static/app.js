@@ -813,27 +813,8 @@ function drawAction(action, parent) {
   if (action.service === "settings" && action.operation === "update_github_repositories" &&
       ["completed", "superseded", "expired", "cancelled"].includes(action.status)) {
     card.classList.add("action-completed");
-    card.hidden = action.status !== "completed";
-    const labels = {completed: demo ? "✓ Simulated change completed" : "✓ Completed",
-      superseded: "Settings changed · ask again to review", expired: "Proposal expired · ask again to review",
-      cancelled: "Cancelled"};
-    card.append(element("span", action.status === "completed" ? "success" : "muted", labels[action.status]));
-    const connection = element("button", "", "Check connection");
-    connection.type = "button";
-    connection.onclick = () => {
-      activeSettings = "github";
-      openSettings();
-      const details = $("#test-github .connection-details");
-      if (details) details.open = true;
-      const repository = action.preview?.repository;
-      const target = [...$("#test-github").querySelectorAll(".connection-target")]
-        .find(item => item.dataset.target === repository);
-      if (target) {
-        target.open = true;
-        target.scrollIntoView({block: "nearest"});
-      }
-    };
-    card.append(connection);
+    // Keep the ID for stale-packet reconciliation, without any completed panel.
+    card.hidden = true;
     return mount();
   }
   const label = action.operation.replaceAll("_", " ") + (demo ? " (simulated)" : "");
@@ -978,7 +959,7 @@ async function loadConversation(id, title, version) {
   if (conversation.actions.length) {
     const actionGroup = element("div", "message");
     for (const action of conversation.actions) drawAction(action, actionOwners.get(action.id) || actionGroup);
-    if (actionGroup.children.length) $("#messages").append(actionGroup);
+    if ([...actionGroup.children].some(card=>!card.hidden)) $("#messages").append(actionGroup);
   }
   await refreshState();
   scrollMessages();
