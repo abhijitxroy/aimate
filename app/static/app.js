@@ -416,6 +416,7 @@ async function syncConnections() {
 async function refreshState() {
   const state = await api("/api/state");
   if(state.message_favorites===false) {window.AiMateFeatures={...window.AiMateFeatures,messageFavorites:false};}
+  window.AiMateTemporaryChats?.setEnabled(state.temporary_chats!==false);
   $("#openFavorites").hidden=window.AiMateFeatures?.messageFavorites===false;
   if(state.feedback_review===false) {window.AiMateFeatures={...window.AiMateFeatures,feedbackReview:false};}
   $("#openMyFeedback").hidden=window.AiMateFeatures?.feedbackReview===false;
@@ -880,6 +881,7 @@ async function loadConversation(id, title, version) {
   if (running) {
     if (version !== navigationVersion) return;
     cid=id; privateChat=running.private;
+    if(privateChat) window.AiMateTemporaryChats?.restore({temporary:running.temporary});
     $("#messages").replaceChildren(...running.nodes);
     $("#chatTitle").textContent=running.title;
     $("#welcome").hidden=true;
@@ -893,6 +895,7 @@ async function loadConversation(id, title, version) {
   const conversation = await api(`/api/conversations/${id}`);
   if (version !== navigationVersion) return;
   privateChat = Boolean(conversation.private);
+  window.AiMateTemporaryChats?.restore(conversation);
   cid = id;
   syncChatControls();
   archiveView = Boolean(conversationList.find(t => t.id === id)?.archived);
@@ -1003,13 +1006,18 @@ async function ask(question) {
   const activity = text => { if (run) run.activity=text; if (!run || cid===run.cid) $("#activity").textContent=text; };
   try {
     if (!cid) {
-      cid = (await api("/api/conversations", {method: "POST",body:JSON.stringify({private:privateChat})})).id;
+      const created = await api("/api/conversations", {method: "POST",
+        body:JSON.stringify({private:privateChat,temporary:privateChat ? window.AiMateTemporaryChats?.options() : undefined})});
+      cid = created.id;
+      if(privateChat) window.AiMateTemporaryChats?.restore(created);
       if(!privateChat) try { localStorage.setItem("aimate.conversation", cid); } catch { /* optional browser persistence */ }
     }
     const userMessage = addMessage("user", question.trim() || "Read the attached files.");
     if (attachments.length) renderAttachmentCards(userMessage.body, attachments, false);
     bot = addMessage("assistant");
-    run={cid,controller:runController,nodes:[...$("#messages").children],private:privateChat,title:$("#chatTitle").textContent,activity:"Reading your question…"};
+    run={cid,controller:runController,nodes:[...$("#messages").children],private:privateChat,
+      temporary:privateChat ? window.AiMateTemporaryChats?.options()?.lifetime : undefined,
+      title:$("#chatTitle").textContent,activity:"Reading your question…"};
     chatRuns.start(run.cid,run);
     syncChatControls();
     $("#question").value = "";

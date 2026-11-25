@@ -1152,6 +1152,46 @@ class BrowserRegressionTests(unittest.TestCase):
         self.expect(self.page.locator("#geminiSettings")).to_be_hidden()
         self.expect(self.page.locator('#apiCredentials input[name="ai.api_key"]')).to_be_visible()
 
+    def test_temporary_day_chat_survives_reload_and_session_close_is_page_scoped(self):
+        self.page.locator("#privateToggle").click()
+        self.expect(self.page.locator("#temporaryLifetime")).to_be_visible()
+        self.page.locator("#temporaryLifetime").select_option("day")
+        self.page.locator("#question").fill("Temporary day browser fixture")
+        self.page.locator("#send").click()
+        self.expect(self.page.locator("#activity")).to_have_text("Answer complete")
+        chat=self.page.evaluate("cid")
+        self.page.reload()
+        self.expect(self.page.locator("#workspace")).to_be_visible()
+        state=self.context.request.get(self.url+"/api/state").json()
+        self.assertTrue(any(c["id"]==chat and c["temporary"]=="day" for c in state["conversations"]))
+        self.page.evaluate("""async () => {
+            const settings=AiMateTemporaryChats.options();
+            window.syntheticTemporary=await api('/api/conversations',{method:'POST',body:JSON.stringify({
+                private:true,temporary:{...settings,lifetime:'session'}})});
+            await api('/api/conversations/temporary-close',{method:'POST',body:JSON.stringify({page:settings.page})});
+        }""")
+        closed=self.page.evaluate("syntheticTemporary.id")
+        self.assertEqual(self.context.request.get(self.url+"/api/conversations/"+closed).status,400)
+        self.assertEqual(self.context.request.get(self.url+"/api/conversations/"+chat).status,200)
+
+    def test_temporary_session_pagehide_cleanup_and_disabled_lifetime_control(self):
+        self.page.locator("#privateToggle").click()
+        self.page.locator("#question").fill("Temporary session browser fixture")
+        self.page.locator("#send").click()
+        self.expect(self.page.locator("#activity")).to_have_text("Answer complete")
+        chat=self.page.evaluate("cid")
+        with self.page.expect_response(lambda response: response.url.endswith("/api/conversations/temporary-close")):
+            self.page.evaluate("window.dispatchEvent(new PageTransitionEvent('pagehide',{persisted:false}))")
+        self.assertEqual(self.context.request.get(self.url+"/api/conversations/"+chat).status,400)
+        self.page.add_init_script("window.AiMateFeatures={temporaryChats:false}")
+        self.page.reload()
+        self.expect(self.page.locator("#workspace")).to_be_visible()
+        self.page.locator("#privateToggle").click()
+        self.expect(self.page.locator("#temporaryLifetime")).to_have_count(0)
+        self.page.locator("#question").fill("Legacy private browser fixture")
+        self.page.locator("#send").click()
+        self.expect(self.page.locator("#activity")).to_have_text("Answer complete")
+
     def test_feedback_review_reply_confirmed_task_and_disabled_ui(self):
         self.page.locator("#conversations").get_by_role("button",name="Old continuity reference",exact=True).click()
         self.page.locator("#messages").get_by_role("button",name="Feedback",exact=True).click()

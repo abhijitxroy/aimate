@@ -96,9 +96,12 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
     from contextlib import asynccontextmanager
     @asynccontextmanager
     async def lifespan(application):
+        from app.temporary_chats import sweep, stop
+        temporary_sweeper = asyncio.create_task(sweep(sessions))
         try:
             yield
         finally:
+            await stop(temporary_sweeper, sessions)
             workspaces.close()
     app.router.lifespan_context = lifespan
     store, chatgpt = workspaces.store, workspaces.chatgpt
@@ -178,6 +181,9 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
         token = request.cookies.get("project_session", "")
         session = sessions.get(token)
         if not session or time.time() - session["created"] > 12 * 3600:
+            if session:
+                from app.temporary_chats import close_session
+                close_session(session)
             sessions.pop(token, None)
             raise HTTPException(401, "Sign in first")
         if request.method not in {"GET", "HEAD"} and not hmac.compare_digest(
@@ -186,6 +192,8 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
         if session.get("grant"):
             rows = owner_store.rows("SELECT revoked,expires,role FROM access_grants WHERE id=?", (session["grant"],))
             if not rows or rows[0]["revoked"] or rows[0]["expires"] <= time.time():
+                from app.temporary_chats import close_session
+                close_session(session)
                 sessions.pop(token, None)
                 raise HTTPException(401, "Access expired or was revoked.")
             session["role"] = rows[0]["role"]
@@ -193,6 +201,8 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
             authorize(session.get("role", "admin"), request.method, request.url.path)
         except PermissionError as exc:
             raise HTTPException(403, str(exc)) from None
+        from app.temporary_chats import prune
+        prune(session)
         return session
 
     from app.request_trace import register as register_trace
@@ -210,6 +220,8 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
     register_favorites(app,store,auth,config_lock)
     from app.feedback_review import register as register_feedback_review
     register_feedback_review(app,store,auth,config_lock)
+    from app.temporary_chats import register as register_temporary_chats
+    register_temporary_chats(app,auth)
 
     @app.exception_handler(ValueError)
     async def bad_input(request, exc):
@@ -250,6 +262,13 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
     def dev_login(request: Request, response: Response):
         if not local_development(request):
             raise HTTPException(403, "Login bypass is available only in local development mode.")
+        existing = sessions.get(request.cookies.get("project_session", ""))
+        if existing and existing.get("role") == "admin" and not existing.get("grant") and time.time() - existing["created"] < 12 * 3600:
+            return {"csrf": existing["csrf"]}
+        if existing:
+            from app.temporary_chats import close_session
+            close_session(existing)
+            sessions.pop(existing["token"], None)
         return issue_session(response)
 
     @app.post("/api/demo/login")
@@ -357,11 +376,14 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
         # Pairing a new device invalidates other browser sessions.
         for token in list(sessions):
             if token != session["token"]:
-                sessions.pop(token, None)
+                from app.temporary_chats import close_session
+                close_session(sessions.pop(token))
         return {"enabled": True, "recovery_codes": codes}
 
     @app.post("/api/logout")
     def logout(response: Response, session=Depends(auth)):
+        from app.temporary_chats import close_session
+        close_session(session)
         sessions.pop(session["token"], None)
         response.delete_cookie("project_session")
         return {"ok": True}
@@ -382,7 +404,10 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
                                                       "url": "" if public_showcase else os.environ.get("JENKINS_URL", "")}},
                 "chatgpt": {**chatgpt.status(), "available": not demo and not public_url},
                 "groups": store.rows("SELECT * FROM conversation_groups ORDER BY created"),
-                "conversations": [{"id":ident,"title":"Private chat","private":True,"created":time.time(),"pinned":0,"archived":0} for ident in session["private_chats"]] +
+                "temporary_chats": os.environ.get("AIMATE_TEMPORARY_CHATS_ENABLED") != "0",
+                "conversations": [{"id":ident,"title":"Private chat","private":True,"temporary":chat.lifetime,
+                                  "expires":chat.expires,"created":chat.created,"pinned":0,"archived":0}
+                                 for ident,chat in session["private_chats"].items()] +
                     store.rows("SELECT c.*,COALESCE((SELECT t.created FROM turns t WHERE t.conversation=c.id ORDER BY t.id DESC LIMIT 1),c.created) AS last_activity,l.group_id,i.icon,s.color AS icon_color,COALESCE(f.pinned,0) AS pinned,COALESCE(a.archived,0) AS archived FROM conversations c LEFT JOIN conversation_locations l ON l.conversation=c.id LEFT JOIN conversation_icons i ON i.conversation=c.id LEFT JOIN conversation_icon_styles s ON s.conversation=c.id LEFT JOIN conversation_flags f ON f.conversation=c.id LEFT JOIN conversation_archives a ON a.conversation=c.id ORDER BY pinned DESC,last_activity DESC")}
 
     def require_local_chatgpt():
@@ -534,6 +559,8 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
         body = await request.json() if await request.body() else {}
         if not isinstance(body, dict):
             raise ValueError("Expected conversation options.")
+        if "private" in body and type(body["private"]) is not bool:
+            raise ValueError("Private must be true or false.")
         if body.get("private") is True:
             if demo:
                 raise ValueError("Private chats are available in live mode.")
@@ -541,8 +568,11 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
             if len(session["private_chats"]) >= 10:
                 raise ValueError("Close a private chat before opening another.")
             ident = "private-" + secrets.token_hex(16)
-            session["private_chats"][ident] = PrivateChat(store,ident)
-            return {"id":ident,"private":True}
+            from app.temporary_chats import options
+            lifetime, page = options(body)
+            chat = PrivateChat(store,ident,lifetime,page)
+            session["private_chats"][ident] = chat
+            return {"id":ident,"private":True,"temporary":lifetime,"expires":chat.expires}
         group_id = body.get("group_id")
         async with config_lock:
             if group_id is not None:
@@ -766,6 +796,7 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
     def conversation(cid: str, session=Depends(auth)):
         if cid in session["private_chats"]:
             return {"id":cid,"title":"Private chat","private":True,"group_id":None,
+                    "temporary":session["private_chats"][cid].lifetime,"expires":session["private_chats"][cid].expires,
                     "turns":session["private_chats"][cid].turns,"actions":[]}
         store.require_conversation(cid)
         turns = store.rows("SELECT t.id,t.messages,t.created,u.metadata FROM turns t LEFT JOIN turn_usage u ON u.turn=t.id WHERE conversation=? ORDER BY t.id", (cid,))
@@ -841,7 +872,7 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
         if cid in session["private_chats"]:
             if chat_locks.get(cid) and chat_locks[cid].locked():
                 raise HTTPException(409,"Stop the current answer before closing this private chat.")
-            session["private_chats"].pop(cid)
+            session["private_chats"].pop(cid).close()
             chat_locks.pop(cid,None)
             return {"deleted":cid}
         async with config_lock:
@@ -983,6 +1014,11 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
         active_streams[workspace_id]=active_streams.get(workspace_id,0)+1
         from app.access_lease import lease
         access_check = lease(owner_store, sessions, session)
+        if chat_store is not store:
+            original_check = access_check
+            def access_check():
+                original_check()
+                chat_store.check()
 
         async def events():
             turn_config = store.config()

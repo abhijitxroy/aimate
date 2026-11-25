@@ -22,7 +22,7 @@
   },
   {
     "id": "backlog-a41b3ef699989382d68c46ff",
-    "title": "P1 · Planned — Temporary chats: session or one-day expiry\n\nMake lifecycle explicit; purge expired temporary content and avoid adding it to persistent recall/backups.",
+    "title": "P1 · WIP — Temporary chats: session or one-day expiry\n\nOptional in-memory lifetime controls, page-scoped tab-close cleanup, expiry sweeps and active-stream save guards implemented. Session isolation, no disk/recall/backup content, disabled behavior and dev reload session reuse tested. 50 unit, 267 integration and 63 browser tests passed locally. Seven-workflow CI and local installation pending. One-day is a maximum; sign-out, 12-hour authentication expiry or server restart ends it earlier.",
     "completed": false,
     "type": "feature",
     "priority": "P1"
@@ -274,7 +274,7 @@
   },
   {
     "id": "backlog-gemini-antigravity",
-    "title": "P1 · WIP — Gemini / Antigravity Google Cloud connection\n\nVertex AI service-account JSON adapter, masked JSON import, Standard/Analysis presets, scoped function tools, vision, signature continuity, token metering and safe errors implemented. Full local/CI validation pending. Live Google access awaits a replacement credential entered securely in AiMate; the private key pasted in chat was not saved or used.",
+    "title": "P1 · WIP — Gemini / Antigravity Google Cloud connection\n\nVertex AI adapter and masked service-account JSON import installed. Standard/Analysis presets, images, scoped tools, provider-signature continuity, cache/think-token metering and safe errors verified by 50 unit, 262 integration and 61 browser tests; all seven workflows passed. Live Google access awaits a replacement credential entered securely in AiMate. The exposed key was not saved or used.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45606808228",
     "completed": false,
     "type": "feature",
     "priority": "P1"

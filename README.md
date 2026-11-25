@@ -442,8 +442,9 @@ Add / edit to manage records. To-do is a separate local task list with editing,
 completion, deletion and Open / Completed / All views. [Priorities](docs/todo-priorities.md) add P0–P3 selection, sorting and filtering. Tasks persist across
 restarts and are independent of chat history.
 
-**Private** in the composer starts a session-only chat: no transcript, search index
-or image preview is saved to disk. Signing out or restarting clears it. Private
+**Private** in the composer offers Session or Up to 1 day lifetimes: no transcript,
+search index or image preview is saved to disk. [Lifetime details](docs/temporary-chats.md).
+Signing out, login expiry or restarting clears it. Private
 chats cannot prepare changes or recall other chats. Prompts and attachments still
 go to your selected AI provider; token counts remain in the usage ledger.
 
