@@ -196,8 +196,8 @@
   },
   {
     "id": "audit-b84efb70055d7ca73bed78f5",
-    "title": "P3 · Icons · Planned — Change monogram colour\n\nColour follows theme/CSS; no per-icon colour picker/storage.",
-    "completed": false
+    "title": "P3 · Icons · Done — Change monogram colour\n\nChat monograms have a validated colour picker and theme reset. Colours persist in account-scoped encrypted storage and portable backups; restart, invalid-CSS rejection and real-browser checks passed CI.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45521615278",
+    "completed": true
   },
   {
     "id": "audit-e3cb16cd4ed8e5d7808fcf7d",

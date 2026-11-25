@@ -29,6 +29,18 @@ test("untrusted answers cannot introduce HTML, scripts or remote images", () => 
   assert.doesNotMatch(html, /<(script|img|iframe)\b/i);
 });
 
+test("underline and colour escape content and reject arbitrary CSS", () => {
+  const html = render("++<img src=x onerror=alert(1)>++ [colour:#FF7850]<script>x</script>[/colour]");
+  assert.ok(html.includes('class="prompt-underline"'));
+  assert.ok(html.includes('data-prompt-colour="#ff7850"'));
+  assert.doesNotMatch(html, /<(script|img)\b|style=/);
+  for (const invalid of ["red", "#fff", "url(https://example.com)", '#ffffff" onclick="alert(1)']) {
+    assert.doesNotMatch(render(`[colour:${invalid}]Text[/colour]`), /data-prompt-colour=/);
+  }
+  const code = render("```\n++keep++ [colour:#ffffff]literal[/colour]\n```");
+  assert.doesNotMatch(code, /prompt-underline|data-prompt-colour=/);
+});
+
 test("refuses executable, encoded, local and relative links", () => {
   for (const url of ["javascript:alert%281%29", "jav&#x61;script:alert%281%29",
     "data:text/html,hello", "file:///C:/secret", "/api/settings", "//example.com"]) {

@@ -590,7 +590,7 @@ function addMessage(role, text = "", turnId = null) {
   heading.append(element("div", "who", role === "user" ? "YOU" : demo && !pagesPreview ? "AiMate · Scripted demo" : "AiMate"));
   const body = element("div", "body");
   if (role === "assistant") renderAnswer(body, text);
-  else renderDataValue(body, text);
+  else renderPrompt(body, text);
   const message = {root, body, text, turnId, conversationId: cid, reads: 0};
   if (role === "user") {
     const edit = element("button", "message-action", "Edit");

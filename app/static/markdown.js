@@ -5,6 +5,24 @@ answerMarkdown.validateLink = url => {
   try { return ["https:", "http:"].includes(new URL(url).protocol); }
   catch { return false; }
 };
+// Explicit, escaped inline syntax; raw HTML stays disabled.
+answerMarkdown.inline.ruler.before("emphasis", "aimate_format", (state, silent) => {
+  const source = state.src.slice(state.pos);
+  const match = source.match(/^\+\+([^\n]+?)\+\+/) || source.match(/^\[colour:(#[0-9a-fA-F]{6})\]([^\n]+?)\[\/colour\]/);
+  if (!match || match[0].length > 4000) return false;
+  if (!silent) {
+    const token = state.push("aimate_format", "span", 0);
+    token.content = match[2] || match[1];
+    token.meta = match[2] ? {colour: match[1].toLowerCase()} : {underline: true};
+  }
+  state.pos += match[0].length;
+  return true;
+});
+answerMarkdown.renderer.rules.aimate_format = (tokens, index) => {
+  const token = tokens[index], text = answerMarkdown.utils.escapeHtml(token.content);
+  return token.meta.underline ? `<span class="prompt-underline">${text}</span>`
+    : `<span data-prompt-colour="${token.meta.colour}">${text}</span>`;
+};
 const renderAnswerLink = answerMarkdown.renderer.rules.link_open ||
   ((tokens, index, options, env, renderer) => renderer.renderToken(tokens, index, options));
 answerMarkdown.renderer.rules.link_open = (tokens, index, options, env, renderer) => {
@@ -18,6 +36,9 @@ function renderAnswer(body, text) {
   // or add plugins that accept raw model-supplied HTML.
   body.innerHTML = answerMarkdown.render(text);
   if (typeof body.querySelectorAll !== "function") return;
+  for (const span of body.querySelectorAll("[data-prompt-colour]")) {
+    if (/^#[0-9a-f]{6}$/.test(span.dataset.promptColour)) span.style.color = span.dataset.promptColour;
+  }
   for (const table of body.querySelectorAll("table")) {
     const scroll = document.createElement("div"); scroll.className = "answer-table"; scroll.tabIndex = 0;
     scroll.setAttribute("aria-label", "Scrollable table");
@@ -97,6 +118,11 @@ function renderDataValue(body, text) {
   const pre = document.createElement("pre"), code = document.createElement("code");
   code.textContent = text; pre.append(code); body.replaceChildren(pre);
   decorateCodeBlock(pre, code, language);
+}
+
+function renderPrompt(body, text) {
+  if (/(\*\*|__|\+\+|\[colour:|(^|\s)\*[^*]+\*(?=\s|$)|^#{1,6} |^> |^\s*[-*] |^\d+\. |^```|^\|.*\||^---$)/m.test(text)) renderAnswer(body, text);
+  else renderDataValue(body, text);
 }
 
 function richAnswerBlock(kind, data) {
