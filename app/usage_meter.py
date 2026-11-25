@@ -77,6 +77,9 @@ class MeteredStream:
 
     async def __aexit__(self, kind, value, traceback):
         try:
+            if kind and not self.call.reported and hasattr(self.stream,"usage_snapshot"):
+                reported=self.stream.usage_snapshot()
+                if reported is not None:self.call.complete(reported)
             return await self.context.__aexit__(kind, value, traceback)
         finally:
             self.call.__exit__(kind, value, traceback)

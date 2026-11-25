@@ -164,6 +164,20 @@ class LocalAITests(unittest.TestCase):
             self.assertEqual(self.requests,[])
         finally:client.close()
 
+    def test_length_limited_reply_is_not_saved_but_reported_tokens_are_retained(self):
+        self.mode="length";native=Client
+        with patch("app.ollama_local.Client",side_effect=lambda cfg:native(cfg,self.transport)):
+            client,headers=self.client()
+            try:
+                cid=self.store.new_conversation()
+                response=client.post("/api/chat",headers=headers,json={"conversation":cid,"question":"Hello","local_ai":True})
+                self.assertIn('"event": "error"',response.text)
+                self.assertNotIn('"event": "done"',response.text)
+                self.assertEqual(self.store.rows("SELECT id FROM turns WHERE conversation=?",(cid,)),[])
+                self.assertEqual(json.loads(self.store.rows("SELECT tokens FROM usage_events")[0]["tokens"])["output_tokens"],4)
+                self.assertEqual(self.store.rows("SELECT status FROM usage_calls")[0]["status"],"reported")
+            finally:client.close()
+
     def test_loopback_csrf_opt_in_disabled_module_and_demo_boundaries(self):
         client,headers=self.client()
         try:

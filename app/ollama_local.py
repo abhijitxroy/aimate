@@ -199,4 +199,10 @@ class Stream:
         if self.thinking and not self.calls:
             raise ValueError("The local model did not separate its reply from reasoning. Retry a narrower question.")
         return result(self.body["model"],self.text,self.calls,self.final)
+    def usage_snapshot(self):
+        if not self.final:return None
+        counts={key:self.final.get(source) for key,source in
+            (("input_tokens","prompt_eval_count"),("output_tokens","eval_count"))}
+        if not all(type(n) is int and n>=0 for n in counts.values()):return None
+        return SimpleNamespace(model=self.body["model"],usage=SimpleNamespace(**counts))
     async def __aexit__(self,*args):return await self.context.__aexit__(*args)
