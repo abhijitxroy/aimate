@@ -121,7 +121,7 @@ function renderDataValue(body, text) {
 }
 
 function renderPrompt(body, text) {
-  if (/(\*\*|__|\+\+|\[colour:|(^|\s)\*[^*]+\*(?=\s|$)|^#{1,6} |^> |^\s*[-*] |^\d+\. |^```|^\|.*\||^---$)/m.test(text)) renderAnswer(body, text);
+  if (/(\*\*|__|\+\+|\[colour:|(^|\s)\*[^*]+\*(?=\s|$)|^#{1,6} |^> |^\s*[-*] |^\d+\. |^```|^ {4}\S|^\|.*\||^---$)/m.test(text)) renderAnswer(body, text);
   else renderDataValue(body, text);
 }
 

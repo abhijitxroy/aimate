@@ -245,7 +245,7 @@ header .eyebrow { margin-bottom: 7px; }
 .model-selection { margin: 12px 0; }
 .model-selection > summary { cursor: pointer; margin-bottom: 12px; font-size: 12px; }
 .source-chip.off .dot { background: var(--muted); }
-.welcome { margin: auto; width: min(900px, 100%); text-align: center; padding: 24px; }
+.welcome { margin: auto; min-height: 0; overflow: auto; width: min(900px, 100%); text-align: center; padding: 24px; }
 .welcome-icon { display: block; width: 48px; height: 48px; margin: 0 auto 20px; }
 .welcome h1 { font-size: 36px; margin-bottom: 12px; }
 .suggestions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 28px; }
@@ -336,7 +336,7 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; }
 .action-card.action-completed { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; border-color: var(--line); font-size: 12px; }
 .action-completed button { padding: 5px 9px; font-size: 12px; }
 .conversation-duplicate { flex: 0 0 auto; color: var(--muted); font-size: 10px; padding: 1px 4px; border: 1px solid var(--line); border-radius: 5px; }
-.composer-wrap { padding: 10px max(28px, calc((100% - 860px)/2)) 18px; }
+.composer-wrap { flex-shrink: 0; padding: 10px max(28px, calc((100% - 860px)/2)) 18px; }
 .activity { min-height: 23px; font-size: 11px; color: var(--accent); overflow-wrap: anywhere; }
 .composer { padding: 16px; border: 1px solid #9fc5ef44; border-radius: 18px; background: #1b365480; backdrop-filter: blur(24px); box-shadow: 0 12px 40px #0002; }
 .composer textarea { background: transparent; border: 0; resize: none; padding: 0; min-height: 46px; line-height: 1.6; }
@@ -483,11 +483,16 @@ fieldset > label { margin-bottom: 12px; }
 .monogram-colour label { display: flex; align-items: center; gap: 8px; }
 .monogram-colour input[type=color] { width: 42px; height: 32px; padding: 2px; cursor: pointer; }
 .prompt-underline { text-decoration: underline; }
-#composerFormatting > summary { font-size: 11px; width: fit-content; cursor: pointer; opacity: .7; }
-.composer-format-tools { display: flex; flex-wrap: wrap; gap: 4px; padding: 5px 0; }
-.composer-format-tools button { font-size: 11px; padding: 3px 7px; min-height: 27px; }
+#composerFormatting { margin-bottom: 4px; }
+.composer-format-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 3px 0; }
+.composer-format-tools[hidden] { display: none; }
+.composer-format-tools button { font-size: 12px; padding: 3px 7px; min-height: 27px; background: transparent; }
+.composer-format-tools .format-bold { font-weight: 700; }
+.composer-format-tools .format-italic { font-style: italic; }
+.composer-format-tools .format-underline { text-decoration: underline; }
+#composerAdvanced { border-top: 1px solid var(--line); }
 .composer-format-tools input[type=color] { width: 28px; height: 27px; padding: 2px; }
-.composer-preview { max-height: 180px; overflow: auto; padding: 10px; border: 1px solid #a8c9ed30; border-radius: 10px; margin: 4px 0; }
+.composer-preview { max-height: min(180px, 25dvh); overflow: auto; white-space: pre-wrap; padding: 10px; border: 1px solid var(--line); border-radius: 10px; margin: 4px 0; }
 .composer-preview[hidden] { display: none; }
 .investigation-dialog { width: min(820px, calc(100vw - 32px)); }
 .investigation-steps { display: grid; gap: 7px; margin: 14px 0; }

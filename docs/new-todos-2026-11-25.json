@@ -1,0 +1,177 @@
+[
+  {
+    "id": "backlog-3092a5f0dba05ff3cadc3c2c",
+    "title": "P1 · Planned — To-do priority column\n\nAdd priority selection, a compact column, filtering/sorting, legacy defaults and persistence tests.",
+    "completed": false,
+    "type": "feature",
+    "priority": "P1"
+  },
+  {
+    "id": "backlog-8bb6922758ad870f844ad0b4",
+    "title": "P2 · Planned — To-do notifications\n\nAdd opt-in task reminders with configurable due times and clear delivery status; ask for browser permission only on request.",
+    "completed": false,
+    "type": "feature",
+    "priority": "P2"
+  },
+  {
+    "id": "backlog-59bda3f8ee98128d543572e0",
+    "title": "P1 · Planned — Feedback analysis and replies\n\nPersist likes/feedback, classify real issues, track improvement/reply status and support explaining already available functionality.",
+    "completed": false,
+    "type": "enhancement",
+    "priority": "P1"
+  },
+  {
+    "id": "backlog-a41b3ef699989382d68c46ff",
+    "title": "P1 · Planned — Temporary chats: session or one-day expiry\n\nMake lifecycle explicit; purge expired temporary content and avoid adding it to persistent recall/backups.",
+    "completed": false,
+    "type": "feature",
+    "priority": "P1"
+  },
+  {
+    "id": "backlog-d608119e2937248da2214c80",
+    "title": "P1 · Planned — Thin attachment-import progress line\n\nShow accurate staged import progress above the askbar, with failure/cancel behavior and no fake percentages.",
+    "completed": false,
+    "type": "feature",
+    "priority": "P1"
+  },
+  {
+    "id": "backlog-f6f317b98be95e61a00228ea",
+    "title": "P3 · Planned — Life: colourful rainbow theme\n\nAdd an accessible colourful theme across the app; retain readable contrast and current default themes.",
+    "completed": false,
+    "type": "feature",
+    "priority": "P3"
+  },
+  {
+    "id": "backlog-da890d59092ec6c52fbbb6d6",
+    "title": "P3 · Planned — Brown and gold theme\n\nAdd a warm brown/gold palette with consistent forms, tables, syntax colours and accessibility checks.",
+    "completed": false,
+    "type": "feature",
+    "priority": "P3"
+  },
+  {
+    "id": "backlog-0c5119856a84aff65ce7bc4d",
+    "title": "P3 · Planned — External theme import extension\n\nImport validated theme tokens through an optional module; reject executable content and unsafe CSS.",
+    "completed": false,
+    "type": "feature",
+    "priority": "P3"
+  },
+  {
+    "id": "backlog-291b901efdd0fc05fec8526c",
+    "title": "P1 · Planned — Smart missing-repository discovery\n\nValidate read access for an explicitly requested unconfigured repository, report the result and offer a reviewed add-repository proposal.",
+    "completed": false,
+    "type": "enhancement",
+    "priority": "P1"
+  },
+  {
+    "id": "backlog-91000211a030b0606ddd9258",
+    "title": "P2 · Planned — Share tasks, chats and diary records\n\nPrepare chosen formats for Teams/email or other apps, with explicit selection, redaction and user-controlled sending.",
+    "completed": false,
+    "type": "feature",
+    "priority": "P2"
+  },
+  {
+    "id": "backlog-866d22373f0c1ddd402eb49e",
+    "title": "P1 · Planned — Portable structured export and import\n\nPreserve chats, formatting, tasks, diary records, project/group hierarchy and references in a versioned importable package; secrets need separate consent/protection.",
+    "completed": false,
+    "type": "feature",
+    "priority": "P1"
+  },
+  {
+    "id": "backlog-d9019ff220a47ff8fc99a817",
+    "title": "P2 · Planned — Simplify workspace/project/group terminology\n\nCheck actual scope and security differences before consolidating labels; preserve hierarchy, identifiers and existing data.",
+    "completed": false,
+    "type": "enhancement",
+    "priority": "P2"
+  },
+  {
+    "id": "backlog-b7f38c594277bcd96e7d738e",
+    "title": "P2 · Planned — Explain the three-chat concurrency limit\n\nAdd concise in-app help explaining per-workspace three streams, one per chat, resource/rate-limit rationale and Stop behavior.",
+    "completed": false,
+    "type": "task",
+    "priority": "P2"
+  },
+  {
+    "id": "backlog-14d968b6da8ae6c7f704e597",
+    "title": "P2 · Planned — Idle-time improvement and healing proposals\n\nDesign opt-in idle work with explicit action boundaries, validation and a separate activity history; uncertain or externally mutating work waits for required approval.",
+    "completed": false,
+    "type": "feature",
+    "priority": "P2"
+  },
+  {
+    "id": "backlog-2c2bdd529bfd33a0162ec6fb",
+    "title": "P1 · Planned — Per-section performance and improvement dashboard\n\nRecord measured before/after latency, throughput, tokens and resource metrics by section/change; separate real measurements from synthetic benchmarks.",
+    "completed": false,
+    "type": "enhancement",
+    "priority": "P1"
+  },
+  {
+    "id": "backlog-d1f20943bd9f5eedd2aebd1a",
+    "title": "P2 · Planned — Initial chat naming and topic icon\n\nChoose title/icon from initial chat text once; preserve later manual changes and document fallback behavior.",
+    "completed": false,
+    "type": "enhancement",
+    "priority": "P2"
+  },
+  {
+    "id": "audit-followup-record-safety",
+    "title": "P0 · Done — Default locks for To-do and My Diary updates\n\nAlready implemented and verified: locking, reopening/reload, edit/delete and completion guards. CI: https://github.com/abhijitxroy/aimate/actions/runs/45531085801",
+    "completed": true,
+    "type": "feature",
+    "priority": "P0"
+  },
+  {
+    "id": "backlog-c271f2bb931810eef633f7c7",
+    "title": "P2 · Planned — Compare search, retrieval, analysis and visualisation\n\nUse repeatable tasks and measurements to compare the reference Dashboard and AiMate; document gaps and prioritise improvements. Reference repository access remains required.",
+    "completed": false,
+    "type": "triage",
+    "priority": "P2"
+  },
+  {
+    "id": "backlog-0be296b9e4ffbd54c89c40ca",
+    "title": "P3 · Planned — Daily Scrum Master voice assistant\n\nDesign an optional voice module for simple-English notes, clarification questions and available English voice/accent choices. Mic capture must be explicit; speech provider/access needs clarification before implementation.",
+    "completed": false,
+    "type": "feature",
+    "priority": "P3"
+  },
+  {
+    "id": "backlog-944a959b636bdd86f3c93451",
+    "title": "P0 · Planned — Review a locally resolved reference Dashboard merge\n\nRead-only pre-commit review in the existing repository/branch. Verify repository and merge state before proceeding; no unrelated repository changes, reset, merge or deployment.",
+    "completed": false,
+    "type": "task",
+    "priority": "P0"
+  },
+  {
+    "id": "backlog-5f4ed353e76bc6d881bf7a63",
+    "title": "P1 · Done — Separate test workflow YAML files\n\nAlready separated into unit.yml, integration.yml, regression.yml and flaky.yml on improvements/verified-backlog; all four passed. CI: https://github.com/abhijitxroy/aimate/actions/runs/45532202864",
+    "completed": true,
+    "type": "task",
+    "priority": "P1"
+  },
+  {
+    "id": "backlog-f1adf159ed76932fb5bb33e8",
+    "title": "P1 · WIP — Pluggable feature modules and repository skill\n\nSave the rule in skills/pluggable-features/SKILL.md and AGENTS.md; add registration/disable boundaries and enabled/disabled tests. Existing modules still need systematic decoupling.",
+    "completed": false,
+    "type": "enhancement",
+    "priority": "P1"
+  },
+  {
+    "id": "backlog-00dca393be8d0ebae8b00ae4",
+    "title": "P1 · Planned — Separate Quality checks workflow\n\nAdd useful blocking Python/JavaScript checks and generated-page consistency without duplicating test execution.",
+    "completed": false,
+    "type": "task",
+    "priority": "P1"
+  },
+  {
+    "id": "backlog-1ba2892586ef6bd41082a2aa",
+    "title": "P1 · Planned — Separate Security checks workflow\n\nAdd dependency vulnerability and committed-secret checks with deliberate handling of synthetic fixtures; no weakening of app CSP or roles.",
+    "completed": false,
+    "type": "task",
+    "priority": "P1"
+  },
+  {
+    "id": "backlog-73545d0f3eaddba60cdcbcff",
+    "title": "P1 · Planned — Separate Build smoke workflow\n\nValidate the existing package/container starts and Pages assets build safely; no automatic deployment or registry publication.",
+    "completed": false,
+    "type": "task",
+    "priority": "P1"
+  }
+]

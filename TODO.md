@@ -6,6 +6,9 @@ Both the Tools layout and Diary/To-do safety-lock follow-ups passed CI.
 See [the status table](docs/todo-audit-2026-11-24.md)
 and [the app To-do export](docs/audited-todos.json).
 
+The [new request backlog](docs/new-backlog-2026-11-25.md) records the 22 additional
+requests and three CI follow-ups individually.
+
 The platform roadmap below is separate: desktop/VS Code packaging, alternative
 backends, shared-server infrastructure and further API typing/telemetry remain
 planned. Its original planning checkboxes do not supersede the verified app audit.

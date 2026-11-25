@@ -130,14 +130,14 @@ class BrowserRegressionTests(unittest.TestCase):
 
     def test_composer_format_preview_send_and_history_reload(self):
         self.page.locator("#newChat").click()
-        self.page.locator("#composerFormatting summary").click()
+        self.expect(self.page.get_by_role("button",name="Bold",exact=True)).to_be_visible()
         field = self.page.locator("#question")
         field.fill("Formatted")
         field.evaluate("(el) => { el.setSelectionRange(0,el.value.length); el.dispatchEvent(new Event('select')); }")
         self.page.get_by_role("button",name="Bold",exact=True).click()
         self.expect(field).to_have_value("**Formatted**")
-        self.page.get_by_role("button",name="Preview formatted message",exact=True).click()
         self.expect(self.page.locator("#composerPreview strong")).to_have_text("Formatted")
+        self.page.get_by_role("button",name="More formatting",exact=True).click()
         self.page.get_by_role("button",name="Toggle line wrapping",exact=True).click()
         self.expect(field).to_have_attribute("wrap","off")
         field.fill("one\ntwo")
@@ -159,6 +159,101 @@ class BrowserRegressionTests(unittest.TestCase):
         self.page.evaluate("id => openConversation(id)",existing)
         self.expect(self.page.locator("#messages .message.user strong")).to_have_text("Formatted")
         self.expect(self.page.locator("#messages .message.user table")).to_contain_text("Test")
+
+    def test_every_composer_format_control_and_shortcuts_without_sending(self):
+        submitted=[]
+        self.page.on("request",lambda request: submitted.append(request.url) if request.method=="POST" and request.url.endswith("/api/chat") else None)
+        field=self.page.locator("#question")
+        self.expect(self.page.locator("#composerAdvanced")).not_to_be_visible()
+        for title in ("Bold","Italic","Underline","Apply text colour","Bullet list","Numbered list","Code block"):
+            self.expect(self.page.get_by_role("button",name=title,exact=True)).to_be_visible()
+        self.page.get_by_role("button",name="More formatting",exact=True).click()
+        cases=[
+            ("Bold","**Example**","strong"),
+            ("Italic","*Example*","em"),
+            ("Underline","++Example++",".prompt-underline"),
+            ("Apply text colour","[colour:#79baff]Example[/colour]","[data-prompt-colour]"),
+            ("Heading","## Example","h2"),
+            ("Paragraph","\n\nExample\n\n",None),
+            ("Bullet list","- Example","ul"),
+            ("Numbered list","1. Example","ol"),
+            ("Indent","    Example","pre"),
+            ("Code block","```text\nExample\n```","pre"),
+            ("Quote","> Example","blockquote"),
+            ("Information panel","\n\n> [!NOTE]\n> Example\n\n",".answer-callout.note"),
+            ("Warning panel","\n\n> [!WARNING]\n> Example\n\n",".answer-callout.warning"),
+        ]
+        for title,expected,selector in cases:
+            field.fill("Example")
+            field.evaluate("(el) => {el.setSelectionRange(0,el.value.length);el.dispatchEvent(new Event('select'));}")
+            self.page.get_by_role("button",name=title,exact=True).click()
+            self.expect(field).to_have_value(expected)
+            if selector:
+                self.expect(self.page.locator("#composerPreview "+selector)).to_be_visible()
+            else:
+                self.expect(self.page.locator("#composerPreview")).to_contain_text("Example")
+        field.fill("    Example")
+        field.evaluate("(el) => {el.setSelectionRange(0,el.value.length);el.dispatchEvent(new Event('select'));}")
+        self.page.get_by_role("button",name="Outdent",exact=True).click()
+        self.expect(field).to_have_value("Example")
+        field.fill("")
+        field.evaluate("(el) => el.dispatchEvent(new Event('select'))")
+        self.page.get_by_role("button",name="Horizontal rule",exact=True).click()
+        self.expect(self.page.locator("#composerPreview hr")).to_be_visible()
+        field.fill("Example")
+        field.evaluate("(el) => {el.setSelectionRange(0,el.value.length);el.dispatchEvent(new Event('select'));}")
+        self.page.get_by_role("button",name="Insert table",exact=True).click()
+        self.expect(self.page.locator("#composerPreview table")).to_contain_text("Example")
+        for key,expected in (("b","**Example**"),("i","*Example*"),("u","++Example++")):
+            field.fill("Example")
+            field.press("Control+a")
+            field.press("Control+"+key)
+            self.expect(field).to_have_value(expected)
+        self.page.get_by_role("button",name="Preview formatted message",exact=True).click()
+        self.expect(self.page.locator("#composerPreview")).not_to_be_visible()
+        self.page.get_by_role("button",name="More formatting",exact=True).click()
+        self.expect(self.page.locator("#composerAdvanced")).not_to_be_visible()
+        self.expect(self.page.get_by_role("button",name="Bold",exact=True)).to_be_visible()
+        self.page.set_viewport_size({"width":390,"height":720})
+        self.assertLessEqual(self.page.locator("#composerToolbar").bounding_box()["width"],390)
+        self.assertLessEqual(self.page.evaluate("document.documentElement.scrollWidth"),390)
+        self.assertEqual(submitted,[])
+
+    def test_generated_panels_expand_editor_and_reveal_insertions(self):
+        field=self.page.locator("#question")
+        field.fill("")
+        compact=field.bounding_box()["height"]
+        self.page.get_by_role("button",name="More formatting",exact=True).click()
+        self.page.get_by_role("button",name="Warning panel",exact=True).click()
+        self.expect(field).to_have_value("\n\n> [!WARNING]\n> text\n\n")
+        self.expect(self.page.locator("#composerPreview .answer-callout.warning")).to_contain_text("text")
+        self.assertGreater(field.bounding_box()["height"],compact)
+        self.assertTrue(field.evaluate("(el) => el.scrollHeight <= el.clientHeight + 1"))
+        field.fill("Earlier source line\n"*60+"Selected warning")
+        field.evaluate("""(el) => {
+            el.setSelectionRange(el.value.indexOf('Selected warning'),el.value.length);
+            el.scrollTop=0;el.dispatchEvent(new Event('select'));
+        }""")
+        self.page.get_by_role("button",name="Warning panel",exact=True).click()
+        self.assertGreater(field.evaluate("(el) => el.scrollTop"),0)
+        self.assertLessEqual(field.bounding_box()["height"],240)
+        self.expect(self.page.locator("#send")).to_be_in_viewport()
+        self.page.set_viewport_size({"width":390,"height":720})
+        self.expect(field).to_have_css("height",re.compile(r"172\.\d+px"))
+        self.assertLessEqual(field.bounding_box()["height"],173)
+        self.expect(self.page.locator("#send")).to_be_in_viewport()
+        field.fill("")
+        self.assertLessEqual(field.bounding_box()["height"],compact+1)
+
+    def test_disabling_formatter_module_keeps_the_core_askbar_working(self):
+        self.page.add_init_script("window.AiMateFeatures={composerFormatting:false};")
+        self.page.reload()
+        self.expect(self.page.locator("#composerFormatting")).not_to_be_visible()
+        self.page.locator("#newChat").click()
+        self.page.locator("#question").fill("Explain my project")
+        self.page.locator("#send").click()
+        self.expect(self.page.locator("#activity")).to_have_text("Answer complete")
+        self.expect(self.page.locator("#messages .message.user")).to_contain_text("Explain my project")
 
     def test_investigation_checkpoint_reopens_and_continue_does_not_submit(self):
         self.page.locator("#conversations").get_by_role("button", name="Old continuity reference", exact=True).click()

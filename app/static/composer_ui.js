@@ -1,13 +1,45 @@
 /* Markdown authoring: saved text stays portable, no HTML or contenteditable. */
 (() => {
   "use strict";
+  if (window.AiMateFeatures?.composerFormatting === false) {
+    document.querySelector("#composerFormatting").hidden = true;
+    return;
+  }
   const field = document.querySelector("#question");
   const toolbar = document.querySelector("#composerToolbar");
+  const advanced = document.querySelector("#composerAdvanced");
   const preview = document.querySelector("#composerPreview");
-  const format = document.querySelector("#composerFormatting");
+  let previewToggle;
   let selection = [0, 0];
+  function fitEditor() {
+    const scroll = field.scrollTop;
+    field.style.height = "0px";
+    const limit = Math.max(72, Math.min(240, window.innerHeight * .24));
+    field.style.height = Math.max(46, Math.min(field.scrollHeight, limit)) + "px";
+    field.style.overflowY = field.scrollHeight > field.clientHeight ? "auto" : "hidden";
+    field.scrollTop = scroll;
+  }
+  function revealSelection() {
+    // Measure wrapped source up to the insertion, including tables and panels.
+    const mirror = document.createElement("div");
+    const style = getComputedStyle(field);
+    Object.assign(mirror.style, {
+      position:"fixed", visibility:"hidden", pointerEvents:"none",
+      width:field.clientWidth+"px", font:style.font, lineHeight:style.lineHeight,
+      letterSpacing:style.letterSpacing, whiteSpace:field.wrap === "off" ? "pre" : "pre-wrap",
+      overflowWrap:"break-word", padding:style.padding, boxSizing:"border-box",
+    });
+    mirror.textContent = field.value.slice(0, field.selectionEnd) + "\u200b";
+    document.body.append(mirror);
+    const bottom = mirror.getBoundingClientRect().height;
+    mirror.remove();
+    const top = bottom - parseFloat(style.lineHeight);
+    if (bottom > field.scrollTop + field.clientHeight) field.scrollTop = bottom - field.clientHeight;
+    else if (top < field.scrollTop) field.scrollTop = Math.max(0, top);
+  }
   for (const event of ["select", "keyup", "click", "input"]) field.addEventListener(event, () => {
     selection = [field.selectionStart, field.selectionEnd];
+    if (event === "input") fitEditor();
     if (!preview.hidden) renderPrompt(preview, field.value);
   });
   function replace(value, start, end, selectedStart = start, selectedEnd = start + value.length) {
@@ -16,9 +48,12 @@
       return;
     }
     field.setRangeText(value, start, end, "end");
+    preview.hidden = false;
+    previewToggle?.setAttribute("aria-pressed","true");
     field.focus({preventScroll:true});
     field.setSelectionRange(selectedStart, selectedEnd);
     field.dispatchEvent(new Event("input", {bubbles:true}));
+    revealSelection();
   }
   function wrap(before, after = before, fallback = "text") {
     const [start, end] = selection;
@@ -27,54 +62,67 @@
   }
   function lines(prefix, fallback = "text") {
     const [selectedStart, selectedEnd] = selection;
-    const start = field.value.lastIndexOf("\n", selectedStart - 1) + 1;
-    let end = field.value.indexOf("\n", selectedEnd);
+    const start = selectedStart === 0 ? 0 : field.value.lastIndexOf("\n", selectedStart - 1) + 1;
+    const boundary = selectedEnd > selectedStart && field.value[selectedEnd - 1] === "\n" ? selectedEnd - 1 : selectedEnd;
+    let end = field.value.indexOf("\n", boundary);
     if (end < 0) end = field.value.length;
     const text = field.value.slice(start, end) || fallback;
     replace(text.split("\n").map((line, i) => typeof prefix === "function" ? prefix(line, i) : prefix + line).join("\n"), start, end);
   }
-  function button(label, action, title = label) {
+  function button(label, action, title = label, extra = false) {
     const node = document.createElement("button");
     node.type = "button"; node.textContent = label; node.title = title; node.setAttribute("aria-label",title);
     node.onmousedown = event => event.preventDefault();
-    node.onclick = action; toolbar.append(node); return node;
+    node.onclick = action; (extra ? advanced : toolbar).append(node); return node;
   }
-  button("B", () => wrap("**"), "Bold");
-  button("I", () => wrap("*"), "Italic");
-  button("U", () => wrap("++"), "Underline");
+  const bold=button("B", () => wrap("**"), "Bold"); bold.className="format-bold";
+  const italic=button("I", () => wrap("*"), "Italic"); italic.className="format-italic";
+  const underline=button("U", () => wrap("++"), "Underline"); underline.className="format-underline";
   const colour = document.createElement("input");
   colour.type = "color"; colour.value = "#79baff"; colour.setAttribute("aria-label","Text colour");
   toolbar.append(colour);
   button("Colour", () => wrap("[colour:" + colour.value + "]", "[/colour]"), "Apply text colour");
-  button("H", () => lines("## "), "Heading");
-  button("¶", () => wrap("\n\n", "\n\n"), "Paragraph");
+  button("H", () => lines("## "), "Heading",true);
+  button("¶", () => wrap("\n\n", "\n\n"), "Paragraph",true);
   button("•", () => lines("- "), "Bullet list");
   button("1.", () => lines((line,i) => `${i+1}. ${line}`), "Numbered list");
-  button("→", () => lines("    "), "Indent");
-  button("←", () => lines(line => line.replace(/^ {1,4}|\t/, "")), "Outdent");
+  button("→", () => lines("    "), "Indent",true);
+  button("←", () => lines(line => line.replace(/^ {1,4}|\t/, "")), "Outdent",true);
   button("</>", () => wrap("```text\n", "\n```"), "Code block");
-  button("—", () => wrap("\n\n---\n\n", "", ""), "Horizontal rule");
-  button("Table", () => wrap("\n\n| Column | Value |\n| --- | --- |\n| ", " | Value |\n\n", "Item"));
-  button("Info", () => lines("> "), "Quote");
-  button("Note", () => wrap("\n\n> [!NOTE]\n> ", "\n\n"), "Information panel");
-  button("Warning", () => wrap("\n\n> [!WARNING]\n> ", "\n\n"), "Warning panel");
+  button("—", () => wrap("\n\n---\n\n", "", ""), "Horizontal rule",true);
+  button("Table", () => wrap("\n\n| Column | Value |\n| --- | --- |\n| ", " | Value |\n\n", "Item"), "Insert table",true);
+  button("Info", () => lines("> "), "Quote",true);
+  button("Note", () => wrap("\n\n> [!NOTE]\n> ", "\n\n"), "Information panel",true);
+  button("Warning", () => wrap("\n\n> [!WARNING]\n> ", "\n\n"), "Warning panel",true);
   const wrapping = button("Wrap", () => {
     const on = field.wrap !== "off";
     field.wrap = on ? "off" : "soft";
     wrapping.setAttribute("aria-pressed", String(!on));
     field.style.whiteSpace = on ? "pre" : "pre-wrap";
-  }, "Toggle line wrapping");
+    fitEditor(); revealSelection();
+  }, "Toggle line wrapping",true);
   wrapping.setAttribute("aria-pressed","true");
-  const toggle = button("Preview", () => {
+  previewToggle = button("Preview", () => {
     preview.hidden = !preview.hidden;
-    toggle.setAttribute("aria-pressed", String(!preview.hidden));
+    previewToggle.setAttribute("aria-pressed", String(!preview.hidden));
     if (!preview.hidden) renderPrompt(preview, field.value);
   }, "Preview formatted message");
-  toggle.setAttribute("aria-pressed","false");
-  format.addEventListener("toggle", () => {
-    if (!format.open) { preview.hidden = true; toggle.setAttribute("aria-pressed","false"); }
+  previewToggle.setAttribute("aria-pressed","false");
+  const more = button("More", () => {
+    advanced.hidden = !advanced.hidden;
+    more.setAttribute("aria-expanded",String(!advanced.hidden));
+  }, "More formatting");
+  more.setAttribute("aria-expanded","false"); more.setAttribute("aria-controls","composerAdvanced");
+  field.addEventListener("keydown", event => {
+    if (!(event.ctrlKey || event.metaKey) || event.altKey || event.isComposing) return;
+    const action={b:bold,i:italic,u:underline}[event.key.toLowerCase()];
+    if (!action) return;
+    event.preventDefault(); selection=[field.selectionStart,field.selectionEnd]; action.click();
   });
   document.addEventListener("aimate:state", () => {
-    if (!field.value && !preview.hidden) renderPrompt(preview, "");
+    if (!field.value) { preview.hidden=true;previewToggle.setAttribute("aria-pressed","false"); }
+    fitEditor();
   });
+  window.addEventListener("resize", fitEditor);
+  fitEditor();
 })();
