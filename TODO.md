@@ -1,6 +1,12 @@
 # AiMate — next work on the new laptop
 
-Status: planned. Start after restoring and checking the existing workspace.
+Current app checklist: **42 audited product items completed and CI-verified on
+25 November 2026**. See [the completion table](docs/todo-audit-2026-11-24.md)
+and [the app To-do export](docs/audited-todos.json).
+
+The platform roadmap below is separate: desktop/VS Code packaging, alternative
+backends, shared-server infrastructure and further API typing/telemetry remain
+planned. Its original planning checkboxes do not supersede the verified app audit.
 The user authorized implementing the improvements below in order, using sensible
 defaults and providing short progress updates. Preserve the existing UI and data.
 

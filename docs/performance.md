@@ -17,4 +17,6 @@ reuse, error handling, cancellation and sequential writes.
 
 The benchmark measures the scheduling change with controlled source latency;
 it does not predict real provider/network latency or public-server capacity.
-Durable evidence caching and further history-token reduction are separate work.
+Encrypted immutable-source snapshots and bounded history excerpts are now
+implemented; see [token efficiency](token-efficiency.md). Mutable source reads
+remain fresh, and cache reuse is scoped to the connection and credentials.

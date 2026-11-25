@@ -1,6 +1,7 @@
 # AiMate
 
-[Next work on the new laptop](TODO.md) — phased upgrades and verification checklist.
+[Verified app checklist](docs/todo-audit-2026-11-24.md) — 42 completed product items.
+[Platform roadmap](TODO.md) — desktop, VS Code and optional backends.
 
 [![Tests](https://github.com/abhijitxroy/aimate/actions/workflows/tests.yml/badge.svg)](https://github.com/abhijitxroy/aimate/actions/workflows/tests.yml)
 
@@ -10,10 +11,10 @@ ChatGPT Responses or Claude tool calling, SQLite and plain browser JavaScript.
 
 **[Try the public demo →](https://abhijitxroy.github.io/aimate/)**
 
-The public showcase runs in your browser with fictional data and scripted
-answers. You can inspect evidence, confirm or cancel sample changes, and reset
-the demo. It requires no account, tokens or AI subscription.
-The live AI integration is available in the local Python application below.
+GitHub Pages packages the same interface as the local app, with isolated
+in-memory preview records. Live AI and service access require the Python
+application or a connected backend. The separate local demo mode uses fictional
+data and scripted answers without credentials.
 The office-laptop workspace retains authorized work connections. A separately
 hosted public workspace uses a fresh data store and approved personal sources;
 it never inherits the office workspace's credentials or conversations.
@@ -243,6 +244,13 @@ may be billed even when no completed turn is saved. See [the work plan](ROADMAP.
 for performance, token optimization, billing, vault, privacy and role work.
 
 ## What is implemented
+
+Recent verified additions: [saved prompts](docs/saved-prompts.md),
+[analysis templates](docs/analysis-styles.md), [task types](docs/task-types.md),
+[monogram colours](docs/monogram-colours.md), [composer formatting](docs/composer-formatting.md)
+and a [resumable investigation workspace](docs/investigation-workspace.md).
+Usage budgets, scoped evidence paging, protected storage and role isolation are
+covered in the [completion table](docs/todo-audit-2026-11-24.md).
 
 **Read and investigate**
 

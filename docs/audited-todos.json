@@ -206,7 +206,7 @@
   },
   {
     "id": "audit-0913c4c7266e5c1236b1e71e",
-    "title": "P3 · Service · Planned — Another level of user assistance\n\nRecommendations below; no dedicated new service layer implemented.",
-    "completed": false
+    "title": "P3 · Service · Done — Another level of user assistance\n\nResumable conversation-bound Ticket→PR→build, PR-review and build-investigation workspaces persist checklists and checkpoints. Actual saved-read evidence is filtered by current scope with timestamps, fingerprints and explicit coverage gaps; both providers receive bounded continuation context. Account isolation, restart, no-auto-submit and Windows/Linux/browser CI passed.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45523407168",
+    "completed": true
   }
 ]
