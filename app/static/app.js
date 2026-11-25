@@ -1933,13 +1933,15 @@ $("#deleteRecord").onclick = async () => {
 let todoTasks = [], todoFilter = "open", todoEditId = null;
 function resetTodoEditor() {
   todoEditId = null; $("#todoTitle").value = ""; $("#saveTodo").textContent = "Add task"; $("#cancelTodoEdit").hidden = true;
+  $("#todoType").value="task";
 }
 function renderTodos() {
   const list = $("#todoList"); list.replaceChildren();
   const open = todoTasks.filter(task => !task.completed).length;
   $("#todoCount").textContent = `${open} open · ${todoTasks.length - open} completed`;
   for (const button of $("#todoFilters").querySelectorAll("button")) button.setAttribute("aria-pressed", String(button.dataset.filter === todoFilter));
-  for (const task of todoTasks.filter(t => todoFilter === "all" || Boolean(t.completed) === (todoFilter === "completed"))) {
+  for (const task of todoTasks.filter(t => (todoFilter === "all" || Boolean(t.completed) === (todoFilter === "completed")) &&
+    (!$("#todoTypeFilter").value || (t.type || "task")===$("#todoTypeFilter").value))) {
     const row = element("div", "todo-row" + (task.completed ? " completed" : ""));
     const label = element("label", "todo-label"), checkbox = element("input");
     checkbox.type = "checkbox"; checkbox.checked = Boolean(task.completed);
@@ -1951,7 +1953,9 @@ function renderTodos() {
     };
     const text = element("span", "todo-text", task.title);
     text.id = `todo-text-${task.id}`;
-    label.append(checkbox, text);
+    const kind=element("span","todo-kind",(task.type || "task").replace(/^./,c=>c.toUpperCase()));
+    kind.title="Task type";
+    label.append(checkbox,kind, text);
     const expand = element("button", "todo-expand", "Show more");
     expand.type = "button";
     expand.setAttribute("aria-expanded", "false");
@@ -1968,7 +1972,7 @@ function renderTodos() {
       try { await navigator.clipboard.writeText(task.title); copy.textContent = "Copied"; }
       catch { $("#todoError").textContent = "Clipboard unavailable. Select the task text to copy."; }
     };
-    edit.onclick = () => { todoEditId = task.id; $("#todoTitle").value = task.title; $("#saveTodo").textContent = "Save"; $("#cancelTodoEdit").hidden = false; $("#todoTitle").focus(); };
+    edit.onclick = () => { todoEditId = task.id; $("#todoTitle").value = task.title; $("#todoType").value=task.type || "task"; $("#saveTodo").textContent = "Save"; $("#cancelTodoEdit").hidden = false; $("#todoTitle").focus(); };
     remove.onclick = async () => {
       try { await api(`/api/todos/${task.id}`, {method:"DELETE"}); if (todoEditId === task.id) resetTodoEditor(); await loadTodos(); }
       catch (error) { $("#todoError").textContent = error.message; }
@@ -1985,11 +1989,12 @@ $("#openTodos").onclick = async () => {
   try { await loadTodos(); } catch (error) { $("#todoError").textContent = error.message; }
 };
 $("#todoFilters").onclick = event => { const button = event.target.closest("[data-filter]"); if (button) { todoFilter = button.dataset.filter; renderTodos(); } };
+$("#todoTypeFilter").onchange=renderTodos;
 $("#cancelTodoEdit").onclick = resetTodoEditor;
 $("#todoForm").onsubmit = async event => {
   event.preventDefault(); $("#saveTodo").disabled = true; $("#todoError").textContent = "";
   try {
-    await api(todoEditId ? `/api/todos/${todoEditId}` : "/api/todos", {method:todoEditId ? "PATCH" : "POST", body:JSON.stringify({title:$("#todoTitle").value})});
+    await api(todoEditId ? `/api/todos/${todoEditId}` : "/api/todos", {method:todoEditId ? "PATCH" : "POST", body:JSON.stringify({title:$("#todoTitle").value,type:$("#todoType").value})});
     resetTodoEditor(); await loadTodos();
   } catch (error) { $("#todoError").textContent = error.message; }
   finally { $("#saveTodo").disabled = false; }

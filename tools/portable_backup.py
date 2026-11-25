@@ -37,7 +37,7 @@ EXCLUDED = {".git", ".venv", ".data", ".demo-data", ".public-data", "_site",
             "__pycache__", ".pytest_cache", "node_modules", ".migration-venv"}
 TABLES = ("conversations", "turns", "knowledge", "todos", "vault_entries", "review_sessions", "conversation_briefs",
           "access_grants", "usage_events", "feedback", "actions", "documents", "usage_calls",
-          "usage_preferences", "usage_invoices", "library_items")
+          "usage_preferences", "usage_invoices", "library_items","todo_types")
 LIMIT = 512 * 1024 * 1024
 
 

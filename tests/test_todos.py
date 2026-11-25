@@ -58,3 +58,17 @@ class TodoTests(unittest.TestCase):
         changed = text + "\n- Publish notes"
         self.client.patch("/api/todos/" + result.json()["id"], headers=self.headers, json={"title": changed})
         self.assertEqual(self.client.get("/api/todos").json()["tasks"][0]["title"], changed)
+
+    def test_type_persists_without_changing_legacy_task_rows_and_invalid_type_is_rejected(self):
+        self.store.execute("INSERT INTO todos VALUES (?,?,0,?,?)",("legacy","Legacy task",1,1))
+        self.assertEqual(self.client.get("/api/todos").json()["tasks"][0]["type"],"task")
+        ident=self.client.post("/api/todos",headers=self.headers,json={"title":"Investigate\n- logs","type":"bug"}).json()["id"]
+        self.assertEqual(self.client.patch("/api/todos/"+ident,headers=self.headers,json={"type":"triage"}).status_code,200)
+        reopened=Store(self.directory.name)
+        self.assertEqual(reopened.rows("SELECT kind FROM todo_types WHERE id=?",(ident,))[0]["kind"],"triage")
+        reopened.db.close()
+        for invalid in ("unknown",None,[],True):
+            self.assertEqual(self.client.patch("/api/todos/"+ident,headers=self.headers,json={"type":invalid}).status_code,400)
+        self.assertEqual(self.client.get("/api/todos").json()["tasks"][0]["title"],"Investigate\n- logs")
+        self.client.delete("/api/todos/"+ident,headers=self.headers)
+        self.assertEqual(self.store.rows("SELECT * FROM todo_types"),[])

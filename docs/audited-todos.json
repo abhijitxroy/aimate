@@ -186,8 +186,8 @@
   },
   {
     "id": "audit-b0f4e50a4f5a4b5d8e355c8f",
-    "title": "P3 · Analysis · WIP — Analysis templates and skills\n\nResponse format guidance and structured Markdown/components exist. No reusable analysis-template/skill registry or selected template workflow.",
-    "completed": false
+    "title": "P3 · Analysis · Done — Analysis templates and skills\n\nAuto/plain/review/debug/investigate response styles and account-scoped custom templates/declarative skills are selectable independently of model choice. Explicit scope/coverage/evidence guidance, secret redaction, unavailable-style validation and browser selection passed CI; skills do not execute arbitrary code.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45519515973",
+    "completed": true
   },
   {
     "id": "audit-3a691f7d991e8d3df4a90393",

@@ -158,6 +158,26 @@ class BrowserRegressionTests(unittest.TestCase):
         self.page.locator("#send").click()
         self.expect(self.page.locator("#send")).to_be_enabled(timeout=15000)
 
+    def test_task_type_column_filter_and_edit_preserve_multiline_text(self):
+        self.page.locator("#sidebarTools").evaluate("(el) => { el.open = true; }")
+        self.page.locator("#openTodos").click()
+        self.page.locator("#todoType").select_option("bug")
+        self.page.locator("#todoTitle").fill("Typed task\n- Keep details")
+        self.page.locator("#saveTodo").click()
+        row=self.page.locator(".todo-row").filter(has_text="Typed task")
+        self.expect(row.locator(".todo-kind")).to_have_text("Bug")
+        self.page.locator("#todoTypeFilter").select_option("feature")
+        self.expect(self.page.locator(".todo-row").filter(has_text="Typed task")).to_have_count(0)
+        self.page.locator("#todoTypeFilter").select_option("bug")
+        row=self.page.locator(".todo-row").filter(has_text="Typed task")
+        row.get_by_role("button",name="Edit",exact=True).click()
+        self.expect(self.page.locator("#todoType")).to_have_value("bug")
+        self.expect(self.page.locator("#todoTitle")).to_have_value("Typed task\n- Keep details")
+        self.page.locator("#todoType").select_option("triage")
+        self.page.locator("#saveTodo").click()
+        self.page.locator("#todoTypeFilter").select_option("triage")
+        self.expect(self.page.locator(".todo-row").filter(has_text="Typed task").locator(".todo-kind")).to_have_text("Triage")
+
     def test_screenshot_message_and_card_survive_reload_with_real_image_provider_blocks(self):
         from PIL import Image
         raw=io.BytesIO();Image.new("RGB",(40,30),"navy").save(raw,"PNG")
@@ -208,7 +228,7 @@ class BrowserRegressionTests(unittest.TestCase):
     def test_todo_expansion_preserves_text_and_visible_controls(self):
         self.page.locator("#sidebarTools").evaluate("(el) => { el.open = true; }")
         self.page.locator("#openTodos").click()
-        row = self.page.locator(".todo-row").first
+        row = self.page.locator(".todo-row").filter(has_text="Long task")
         text = row.locator(".todo-text")
         self.expect(text).to_contain_text("Step 19")
         collapsed = text.bounding_box()["height"]
