@@ -155,8 +155,8 @@
   },
   {
     "id": "backlog-00dca393be8d0ebae8b00ae4",
-    "title": "P1 · Planned — Separate Quality checks workflow\n\nAdd useful blocking Python/JavaScript checks and generated-page consistency without duplicating test execution.",
-    "completed": false,
+    "title": "P1 · Done — Separate Quality checks workflow\n\nSeparate quality.yml passed with focused Python lint, syntax checks for all JavaScript sources and generated Pages/source consistency; all four test workflows also passed.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45537640913",
+    "completed": true,
     "type": "task",
     "priority": "P1"
   },
