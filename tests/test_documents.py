@@ -112,5 +112,7 @@ class DocumentTests(unittest.TestCase):
                 self.assertEqual(response.status_code,200)
                 self.assertIn("Metadata only",response.json()["notice"])
                 too_big={"name":"big","data":"a"*(28*1024*1024)}
-                self.assertEqual(client.post("/api/attachments/document",headers=headers,json=too_big).status_code,413)
+                rejected=client.post("/api/attachments/document",headers=headers,json=too_big)
+                self.assertEqual(rejected.status_code,413)
+                self.assertIn("20 MB",rejected.json()["detail"])
             store.db.close()

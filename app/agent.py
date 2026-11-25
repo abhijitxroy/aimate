@@ -425,7 +425,6 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
             store.save_turn(cid, scrub(messages[start:], config),
                             {"model": selection["model"], "mode": model_mode, "route": selection["route"],
                              "usage": usage, "by_model": by_model, "notice": selection.get("notice")})
-            store.execute("UPDATE conversations SET title=? WHERE id=? AND title='New conversation'", (question[:100], cid))
         yield {"event": "done", "usage": usage, "model": selection["model"], "mode": model_mode, "by_model": by_model}
     finally:
         try:
@@ -579,7 +578,6 @@ async def _run_chatgpt_turn(store, cid, question, connection, services_factory, 
         if not calls:
             store.save_turn(cid, scrub(saved, config), {"model": model, "mode": model_mode, "route": selection["route"],
                                         "usage": usage, "by_model": by_model, "notice": selection.get("notice")})
-            store.execute("UPDATE conversations SET title=? WHERE id=? AND title='New conversation'", (question[:100], cid))
             yield {"event": "done", "usage": usage, "model": model, "mode": model_mode, "by_model": by_model}
             return
         results = []

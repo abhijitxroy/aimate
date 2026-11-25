@@ -187,5 +187,33 @@
     "completed": true,
     "type": "enhancement",
     "priority": "P1"
+  },
+  {
+    "id": "backlog-intel-ai-provider-options",
+    "title": "P1 · Planned — Intel AI connection options\n\nExtend the verified Claude/GPT Bedrock connections with supported Gemini and gateway APIs. Codex, Cowork and OpenCode are client applications; require their non-secret API/endpoint instructions before claiming them as providers. Preserve current credentials and test each adapter separately.",
+    "completed": false,
+    "type": "feature",
+    "priority": "P1"
+  },
+  {
+    "id": "backlog-local-ai-fallback",
+    "title": "P1 · Planned — Local offline AI fallback and cached context\n\nDetect cloud authentication/network failures and offer an explicit local-model fallback. Keep local inference separate from connector internet access; use scoped cached evidence with freshness labels. Local runtime/model and laptop capabilities await user details.",
+    "completed": false,
+    "type": "feature",
+    "priority": "P1"
+  },
+  {
+    "id": "backlog-daily-jira-email",
+    "title": "P2 · Planned — Daily Jira-creation email digest\n\nPrepare a reviewed daily summary of created Jira issues for a selected distribution list. Recipient, Jira scope, send time and approved mail service are required before scheduling or sending. No silent issue creation or email sends.",
+    "completed": false,
+    "type": "feature",
+    "priority": "P2"
+  },
+  {
+    "id": "backlog-message-favorites",
+    "title": "P2 · Planned — Pin favorite chat messages\n\nPin/unpin individual saved messages, provide a favorites view with original-chat links, preserve formatting and workspace isolation, and keep favorites through portable backup/restore.",
+    "completed": false,
+    "type": "feature",
+    "priority": "P2"
   }
 ]

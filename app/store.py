@@ -277,6 +277,8 @@ class Store:
                 self.db.execute("INSERT INTO turn_usage VALUES (?,?)", (cur.lastrowid, json.dumps(metadata)))
             from app.context_brief import record
             record(self, cid, messages)
+            from app.conversation_identity import initialize
+            initialize(self,cid,messages)
             self.db.commit()
 
     def action(self, aid):

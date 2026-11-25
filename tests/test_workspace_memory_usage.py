@@ -3,6 +3,7 @@ import json
 import asyncio
 import tempfile
 import unittest
+from unittest.mock import patch
 from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
@@ -35,6 +36,21 @@ class WorkspaceTests(unittest.TestCase):
 
     def post(self, path, body=None):
         return self.client.post(path, headers=self.headers, json=body)
+
+    def test_chat_identity_is_initial_only_preserves_manual_choices_and_disabled_icon(self):
+        cid=self.store.new_conversation()
+        self.store.save_turn(cid,[{"role":"user","content":"Review GitHub PR 17"}])
+        self.assertEqual(self.store.rows("SELECT title FROM conversations WHERE id=?",(cid,))[0]["title"],"Review GitHub PR 17")
+        self.assertEqual(self.store.rows("SELECT icon FROM conversation_icons WHERE conversation=?",(cid,))[0]["icon"],"📦")
+        self.client.patch("/api/conversations/"+cid,headers=self.headers,json={"title":"My review","icon":"💎"})
+        self.store.save_turn(cid,[{"role":"user","content":"Now debug a Jenkins failure"}])
+        self.assertEqual(self.store.rows("SELECT title FROM conversations WHERE id=?",(cid,))[0]["title"],"My review")
+        self.assertEqual(self.store.rows("SELECT icon FROM conversation_icons WHERE conversation=?",(cid,))[0]["icon"],"💎")
+        with patch.dict("os.environ",{"AIMATE_INITIAL_IDENTITY_ENABLED":"0"}):
+            plain=self.store.new_conversation()
+            self.store.save_turn(plain,[{"role":"user","content":"Health notes"}])
+            self.assertEqual(self.store.rows("SELECT title FROM conversations WHERE id=?",(plain,))[0]["title"],"Health notes")
+            self.assertEqual(self.store.rows("SELECT icon FROM conversation_icons WHERE conversation=?",(plain,)),[])
 
     def test_recent_chat_time_uses_latest_message_and_preserves_creation_and_pins(self):
         newer=self.store.new_conversation("Newer chat")

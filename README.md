@@ -499,3 +499,9 @@ API references: [ChatGPT local OAuth](https://developers.openai.com/siwc/token-s
 ## Code and conversation updates
 
 Code, JSON and YAML use local syntax colors in every theme. See [formatting examples](docs/syntax-highlighting.md). Editing resends within the same chat. Project settings move a project with its chats and subprojects.
+
+Attachment import shows a thin progress line: local file reading uses measured bytes; server validation is indeterminate. Cancel stops the pending request without adding a card. Set `window.AiMateFeatures.importProgress=false` to disable this optional UI.
+
+Saved chats receive a title and topic icon from their first saved question. Later questions preserve both, including manual names/icons. Set `AIMATE_INITIAL_IDENTITY_ENABLED=0` to retain titles while disabling automatic icon assignment.
+
+A workspace permits three concurrent replies, one per chat, to bound resources and provider rate pressure. Stop affects only the visible chat. Help → Troubleshooting explains the limit.

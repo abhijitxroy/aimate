@@ -32,6 +32,15 @@ label { display: flex; flex-direction: column; gap: 8px; font-size: 12px; }
 .recent-page-controls .recent-chats-toggle svg { flex-shrink: 0; }
 .recent-page-controls .recent-chats-toggle:disabled { opacity: .35; cursor: default; }
 .conversation-section-divider { width: 100%; margin: 12px 0 8px; border: 0; border-top: 1px solid var(--line); }
+.import-progress { margin-bottom: 5px; }
+.import-progress-track { height: 2px; overflow: hidden; background: var(--line); border-radius: 2px; }
+.import-progress-track span { display: block; height: 100%; background: var(--accent); }
+.import-progress.indeterminate .import-progress-track span { animation: import-travel 1.2s ease-in-out infinite alternate; }
+.import-progress-caption { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--muted); }
+.import-progress-caption small { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 10px; }
+.import-progress-caption button { padding: 2px 5px; border: 0; background: transparent; font-size: 10px; }
+@keyframes import-travel { to { transform: translateX(180%); } }
+@media (prefers-reduced-motion: reduce) { .import-progress.indeterminate .import-progress-track span { animation: none; } }
 .recents-section > summary { display: flex; align-items: center; gap: 5px; cursor: pointer; list-style: none; margin-top: 0; }
 .recents-section > summary::-webkit-details-marker { display: none; }
 .recents-chevron { flex-shrink: 0; transform: rotate(-90deg); }

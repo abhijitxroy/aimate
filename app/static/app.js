@@ -8,11 +8,12 @@ function syncChatControls() {
   $("#workspace").dataset.answering=String(chatRuns.size());
   $("#newChat").title=chatRuns.size() ? `${chatRuns.size()} chats answering · start another` : "New conversation";
   busy = Boolean(run); controller = run?.controller || null;
-  $("#send").disabled = busy; $("#modelMode").disabled = busy; $("#stop").hidden = !busy;
+  $("#send").disabled = busy || Boolean(window.AiMateImportProgress?.busy()); $("#modelMode").disabled = busy; $("#stop").hidden = !busy;
   $("#analysisStyle").disabled=busy;
   document.querySelectorAll("[data-edit-message]").forEach(button => { button.disabled = busy; });
 }
 function navigationBlocked() { return busy && !chatRuns.get(cid); }
+window.addEventListener("aimate-import-state",syncChatControls);
 let initializingChat = null, openingChat = null, restoringChat = null, queuedAsk = false, navigationVersion = 0;
 const pagesPreview = Boolean(window.AiMatePagesPreview);
 let access = {role:"admin",configure:true,write:false,manage_records:true,audit:true};
@@ -955,6 +956,7 @@ async function loadConversation(id, title, version) {
 }
 
 async function ask(question) {
+  if (window.AiMateImportProgress?.busy()) { $("#activity").textContent="Wait for the attachment import or cancel it."; return; }
   if (busy || (!question.trim() && !pendingAttachments.length)) return;
   if (chatRuns.size() >= 3) { $("#activity").textContent="Three chats are answering. Wait for one to finish."; return; }
   const pending = initializingChat || restoringChat || openingChat;
@@ -1514,15 +1516,28 @@ function insertQuestion(text) {
   if (text.length > room) $("#activity").textContent = "Input limit reached · some text was omitted.";
 }
 async function addTextFiles(files) {
+  if(window.AiMateImportProgress?.busy()) { $("#activity").textContent="An attachment import is already running."; return; }
+  const operation=window.AiMateImportProgress?.begin() || new AbortController();
+  const version=navigationVersion;
+  try { await importTextFiles(files,operation,version); }
+  catch(error) { $("#activity").textContent=error.name==="AbortError" ? "Attachment import cancelled." : error.message; }
+  finally { window.AiMateImportProgress?.finish(operation); }
+}
+async function importTextFiles(files,operation,version) {
+  const check=()=>{if(operation.signal.aborted || version!==navigationVersion) throw new DOMException("Import cancelled","AbortError");};
+  const load=file=>fileDataUrl(file,{signal:operation.signal,onprogress:(loaded,total)=>window.AiMateImportProgress?.stage(operation,"Reading "+file.name,loaded,total)});
   for (const file of files) {
+    check();
+    window.AiMateImportProgress?.stage(operation,"Reading "+file.name);
     if (pendingAttachments.length >= 6) { $("#activity").textContent = "Attach up to 6 files per message."; break; }
     if (/^image\/(png|jpeg|webp|gif)$/.test(file.type) || /\.(png|jpe?g|webp|gif)$/i.test(file.name)) {
       if (file.size > 12 * 1024 * 1024 || pendingAttachments.filter(item=>item.kind === "image").length >= 4) {
         $("#activity").textContent = "Use up to 4 images, under 12 MB each."; continue;
       }
       try {
-        const source = await fileDataUrl(file), picture = new Image();
+        const source = await load(file), picture = new Image();
         picture.src = source; await picture.decode();
+        check();window.AiMateImportProgress?.stage(operation,"Preparing "+file.name);
         const ratio = Math.min(1, 2048 / Math.max(picture.width, picture.height));
         const canvas = document.createElement("canvas");
         canvas.width = Math.max(1, Math.round(picture.width * ratio));
@@ -1536,15 +1551,17 @@ async function addTextFiles(files) {
         }
         pendingAttachments.push({id:crypto.randomUUID(),name:file.name || "Screenshot.jpg",size:Math.ceil(data.length * .75),kind:"image",preview,data});
         renderPendingAttachments(); $("#activity").textContent = "Image attached."; $("#question").focus({preventScroll:true});
-      } catch { $("#activity").textContent = "This image could not be read. Try a PNG or JPEG."; }
+      } catch(error) { if(error.name==="AbortError") throw error; $("#activity").textContent = "This image could not be read. Try a PNG or JPEG."; }
       continue;
     }
     const documentBytes=Number($("#attachText").dataset.documentBytes) || 4*1024*1024;
     if (file.size > documentBytes) { $("#activity").textContent=`Use a document up to ${documentBytes/(1024*1024)} MB.`; continue; }
     try {
       $("#activity").textContent = "Validating attachment…";
-      const data=(await fileDataUrl(file)).split(",")[1];
-      const result=await api("/api/attachments/document",{method:"POST",body:JSON.stringify({name:file.name,data})});
+      const data=(await load(file)).split(",")[1];
+      check();window.AiMateImportProgress?.stage(operation,"Validating "+file.name);
+      const result=await api("/api/attachments/document",{method:"POST",signal:operation.signal,body:JSON.stringify({name:file.name,data})});
+      check();
       if (result.text.length + pendingAttachments.reduce((n,item)=>n+(item.text?.length || 0),0)>3_000_000) throw new Error("Combined document text exceeds 3,000,000 characters.");
       if (pendingAttachments.length+1+(result.images?.length || 0)>6 || pendingAttachments.filter(f=>f.kind==="image").length+(result.images?.length || 0)>4) throw new Error("Use up to six attachments, including four images/scanned pages.");
       pendingAttachments.push({...result,images:undefined,id:crypto.randomUUID()});
@@ -1552,11 +1569,19 @@ async function addTextFiles(files) {
       renderPendingAttachments();
       $("#activity").textContent=result.notice || "File attached.";
       $("#question").focus({preventScroll:true});
-    } catch(error) { $("#activity").textContent=error.message; }
+    } catch(error) { if(error.name==="AbortError") throw error; $("#activity").textContent=error.message; }
   }
 }
-function fileDataUrl(file) {
-  return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(new Error("Could not read this file."));reader.readAsDataURL(file);});
+function fileDataUrl(file,{signal,onprogress}={}) {
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader(),abort=()=>reader.abort(),done=()=>signal?.removeEventListener("abort",abort);
+    if(signal?.aborted) { reject(new DOMException("Import cancelled","AbortError")); return; }
+    reader.onload=()=>{done();resolve(reader.result);};
+    reader.onerror=()=>{done();reject(new Error("Could not read this file."));};
+    reader.onabort=()=>{done();reject(new DOMException("Import cancelled","AbortError"));};
+    reader.onprogress=event=>onprogress?.(event.loaded,event.lengthComputable ? event.total : undefined);
+    signal?.addEventListener("abort",abort,{once:true});reader.readAsDataURL(file);
+  });
 }
 function renderAttachmentCards(container, files, removable = true) {
   for (const file of files) {

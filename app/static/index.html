@@ -18,6 +18,7 @@
   <script src="/static/bedrock_gpt_ui.js" defer></script>
   <script src="/static/field_help.js" defer></script>
   <script src="/static/recent_chats.js" defer></script>
+  <script src="/static/import_progress.js" defer></script>
   <script src="/static/message_time.js" defer></script>
   <script src="/static/todo_priority_ui.js" defer></script>
   <script src="/static/app.js" defer></script>
@@ -159,6 +160,7 @@
       <details><summary>What do the connection dots mean?</summary><p><span class="success">Green</span>: checked targets passed. <span class="warning">Orange</span>: some passed. <span class="error">Red</span>: check failed. Gray: not checked. Hover a dot for its status.</p></details>
       <details><summary>The AI model rejects my request</summary><p>Open AI model settings and check the model, region and endpoint. Your provider must allow that model. An AI connection test may be billable.</p></details>
       <details><summary>Analysis is unavailable</summary><p>Configure an Analysis model in AI settings. Auto can select it for debugging or analysis; Standard uses your regular model.</p></details>
+      <details><summary>How many chats can answer at once?</summary><p>Up to three chats can answer at the same time in one workspace, with one request per chat. This keeps memory use and provider rate limits manageable. Open another chat while one is answering; Stop cancels only the chat you are viewing. Once a request ends, its slot is available again.</p></details>
       <details><summary>I want to continue an older investigation</summary><p>Open the original chat from the sidebar or Search chats. To branch off, use “Continue in new chat” from its top menu. A regular new chat starts a separate conversation.</p></details>
       <details><summary>An attachment isn’t accepted</summary><p>Paste screenshots directly, or use the paperclip. Attach up to six files, including four images. Documents: up to 20 MB each by default; the paperclip shows your server limit. PDFs: 80 pages, or four scanned pages per message. Images are resized to 2048 pixels. Extracted text: 1,000,000 characters per file, 3,000,000 per message; the AI reads it in searchable pages. ZIP expansion and compression limits also apply. Attached content is sent to your selected AI provider when you ask.</p></details>
       <details><summary>I can’t sign in with my authenticator</summary><p>Use a fresh six-digit code and check your device’s automatic time setting. If your authenticator is unavailable, choose “Use a recovery code”; each saved recovery code works once.</p></details>

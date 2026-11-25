@@ -790,6 +790,39 @@ class BrowserRegressionTests(unittest.TestCase):
         self.expect(self.page.locator("#messages .attachment-card")).to_contain_text("large.dat")
         self.expect(self.page.locator("#activity")).to_have_text("Answer complete")
 
+    def test_attachment_progress_cancellation_errors_and_disabled_module(self):
+        self.page.route("**/api/attachments/document",lambda route:None)
+        self.page.locator("#textAttachment").set_input_files({
+            "name":"wait.txt","mimeType":"text/plain","buffer":b"Evidence"})
+        self.expect(self.page.locator(".import-progress")).to_be_visible()
+        self.expect(self.page.locator(".import-progress-caption")).to_contain_text("Validating wait.txt")
+        self.expect(self.page.locator(".import-progress-track")).not_to_have_attribute("aria-valuenow",re.compile(".+"))
+        self.expect(self.page.locator("#send")).to_be_disabled()
+        self.page.locator(".import-progress button").click()
+        self.expect(self.page.locator("#activity")).to_have_text("Attachment import cancelled.")
+        self.expect(self.page.locator(".import-progress")).to_be_hidden()
+        self.expect(self.page.locator("#attachmentCards")).to_be_hidden()
+        self.page.unroute("**/api/attachments/document")
+        self.page.route("**/api/attachments/document",lambda route:route.fulfill(status=413,content_type="application/json",body='{"detail":"Document upload exceeds the 20 MB file limit."}'))
+        self.page.locator("#textAttachment").set_input_files({
+            "name":"rejected.txt","mimeType":"text/plain","buffer":b"Evidence"})
+        self.expect(self.page.locator("#activity")).to_contain_text("20 MB file limit")
+        self.expect(self.page.locator(".import-progress")).to_be_hidden()
+        self.page.unroute("**/api/attachments/document")
+        self.page.evaluate("window.AiMateFeatures={importProgress:false}")
+        self.page.locator("#textAttachment").set_input_files({
+            "name":"optional.txt","mimeType":"text/plain","buffer":b"Evidence"})
+        self.expect(self.page.locator("#attachmentCards")).to_contain_text("optional.txt")
+        self.expect(self.page.locator(".import-progress")).to_be_hidden()
+
+    def test_keyboard_format_shortcuts_apply_to_selected_text(self):
+        field=self.page.locator("#question")
+        field.fill("Selected text")
+        field.select_text()
+        field.press("Control+b")
+        self.expect(field).to_have_value("**Selected text**")
+        self.expect(self.page.get_by_role("button",name="Bold",exact=True)).to_have_attribute("aria-pressed","true")
+
     def test_large_paste_is_a_document_card_and_saved_message_keeps_card(self):
         self.page.evaluate("""() => {
             const transfer = new DataTransfer();

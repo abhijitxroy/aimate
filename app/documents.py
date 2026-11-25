@@ -34,16 +34,22 @@ def archive(raw):
                 raise ValueError("ZIP contains an unsafe, duplicate, linked or encrypted entry.")
             names.add(name.casefold())
             total += item.file_size
-            if item.file_size > 4*1024*1024 or total > 20*1024*1024 or item.file_size > max(1,item.compress_size)*100:
-                raise ValueError("ZIP exceeds extraction-size or compression-ratio limits.")
+            if item.file_size > 4*1024*1024:
+                raise ValueError(f"ZIP entry {name} exceeds the 4 MB expanded-entry limit ({item.file_size:,} bytes).")
+            if total > 20*1024*1024:
+                raise ValueError("ZIP exceeds the 20 MB total expanded-content limit.")
+            if item.file_size > max(1,item.compress_size)*100:
+                raise ValueError(f"ZIP entry {name} exceeds the 100:1 compression-ratio limit.")
         return result
     except (zipfile.BadZipFile, NotImplementedError):
         raise ValueError("This archive is not a supported ZIP.") from None
 
 
 def xml_text(raw):
-    if len(raw) > 4*1024*1024 or re.search(br"<!DOCTYPE|<!ENTITY", raw, re.I):
-        raise ValueError("Office XML contains unsupported entities or excessive content.")
+    if len(raw) > 4*1024*1024:
+        raise ValueError("Office XML exceeds the 4 MB expanded-part limit.")
+    if re.search(br"<!DOCTYPE|<!ENTITY", raw, re.I):
+        raise ValueError("Office XML contains unsupported entities.")
     root = ET.fromstring(raw)
     return "\n".join((node.text or "") for node in root.iter() if node.tag.rsplit("}",1)[-1] in {"t","v"})
 

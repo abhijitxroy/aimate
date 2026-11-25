@@ -134,7 +134,10 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
         if request.url.path in {"/api/attachments/pdf", "/api/attachments/document"}:
             body_limit = upload_body_bytes()
         if request.headers.get("content-length", "0").isdigit() and int(request.headers.get("content-length", "0")) > body_limit:
-            return Response("Request too large", status_code=413)
+            detail = (f"Document upload exceeds the {document_bytes() // (1024 * 1024)} MB file limit."
+                      if request.url.path in {"/api/attachments/pdf", "/api/attachments/document"}
+                      else f"Request exceeds the {body_limit:,}-byte limit. Send fewer attachments or less text.")
+            return Response(json.dumps({"detail": detail}), status_code=413, media_type="application/json")
         if public_policy and request.method not in {"GET", "HEAD"} and request.url.path in {
                 "/api/chat", "/api/knowledge", "/api/todos", "/api/groups"}:
             try:
