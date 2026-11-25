@@ -496,6 +496,12 @@ fieldset > label { margin-bottom: 12px; }
 .investigation-evidence { margin-top: 15px; }
 .investigation-source { display: grid; gap: 5px; border-top: 1px solid var(--line); padding: 10px 0; overflow-wrap: anywhere; }
 .investigation-source small { color: var(--muted); font-size: 10px; }
+.record-head-actions { display: flex; align-items: center; gap: 6px; }
+.record-lock { display: inline-flex; align-items: center; justify-content: center; padding: 7px; background: transparent; border: 1px solid var(--line); }
+.record-lock svg { display: block; }
+.record-lock[aria-pressed=true] { border-color: var(--accent); }
+.todo-row :disabled, #knowledgeCards button:disabled, #knowledgeList button:disabled,
+#deleteRecord:disabled, #knowledgeForm [type=submit]:disabled { cursor: not-allowed; }
 .login-link { font-size: 11px; border: 0; background: transparent; color: var(--muted); padding: 8px 0 0; }
 .admin-security { margin-top: 20px; border-top: 1px solid var(--line); padding-top: 18px; }
 .admin-security h3 { font-size: 13px; font-weight: 500; margin-bottom: 5px; }

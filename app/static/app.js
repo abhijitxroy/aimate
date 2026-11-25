@@ -1874,6 +1874,15 @@ $("#continueChat").onclick = async () => {
   } catch (error) { $("#activity").textContent = error.message; }
 };
 let knowledgeRecords = [], recordId = null;
+const recordLocks = window.AiMateRecordLocks;
+function updateDiaryLock() {
+  const locked = recordLocks.isLocked("diary"), editingLocked = Boolean(recordId) && locked;
+  $("#manageKnowledge").textContent = locked ? "Add record" : "Add / edit";
+  $("#recordKey").readOnly = $("#recordValue").readOnly = editingLocked;
+  $("#recordGroup").disabled = editingLocked;
+  $("#knowledgeForm [type=submit]").disabled = editingLocked;
+  $("#deleteRecord").disabled = locked;
+}
 function knowledgeView(editing = false) {
   editing = editing && access.manage_records;
   $("#manageKnowledge").hidden = !access.manage_records;
@@ -1893,13 +1902,15 @@ function renderKnowledge() {
   for (const record of matches) {
     const button = element("button", record.id === recordId ? "active" : "");
     button.append(element("b", "", record.key), element("small", "", record.group_id ? groupPath(record.group_id) : "Workspace"));
+    button.disabled = recordLocks.isLocked("diary");
     button.onclick = () => editRecord(record); list.append(button);
     const card = element("article", "knowledge-card");
     const heading = element("div", "knowledge-card-head");
     const edit = element("button", "", "Edit"); edit.type = "button";
     edit.hidden = !access.manage_records;
+    edit.disabled = recordLocks.isLocked("diary");
     edit.setAttribute("aria-label", `Edit ${record.key}`);
-    edit.onclick = () => { editRecord(record); knowledgeView(true); $("#recordKey").focus(); };
+    edit.onclick = () => { if (recordLocks.isLocked("diary")) return; editRecord(record); knowledgeView(true); $("#recordKey").focus(); };
     heading.append(element("h3", "", record.key), edit);
     const value = element("div", "knowledge-value");
     renderDataValue(value, record.value);
@@ -1916,18 +1927,20 @@ function renderKnowledge() {
   if (!cards.children.length) cards.append(element("p", "hint", query ? "No matching records." : "Your saved records will appear here. Add your first fact or link."));
 }
 function editRecord(record = null) {
+  if (record && recordLocks.isLocked("diary")) return;
   recordId = record?.id || null;
   $("#recordKey").value = record?.key || "";
   $("#recordValue").value = record?.value || "";
   groupOptions($("#recordGroup"), "Workspace");
   $("#recordGroup").value = record ? record.group_id || "" : conversationList.find(c => c.id === cid)?.group_id || "";
   $("#deleteRecord").hidden = !record;
-  $("#knowledgeError").textContent = ""; renderKnowledge();
+  $("#knowledgeError").textContent = ""; updateDiaryLock(); renderKnowledge();
 }
 async function loadKnowledge() {
   knowledgeRecords = (await api("/api/knowledge")).records; renderKnowledge();
 }
 $("#openKnowledge").onclick = async () => {
+  recordLocks.lock("diary");
   $("#knowledgeDialog").showModal();
   try { await loadKnowledge(); editRecord(); knowledgeView(); } catch (error) { $("#knowledgeError").textContent = error.message; }
 };
@@ -1935,15 +1948,16 @@ $("#knowledgeSearch").oninput = renderKnowledge;
 $("#newRecord").onclick = () => { editRecord(); $("#recordKey").focus(); };
 $("#knowledgeForm").onsubmit = async event => {
   event.preventDefault();
+  if (recordId && recordLocks.isLocked("diary")) { $("#knowledgeError").textContent = "Unlock My Diary to update a saved record."; return; }
   try {
     const result = await api(recordId ? `/api/knowledge/${recordId}` : "/api/knowledge", {
       method:recordId ? "PATCH" : "POST", body:JSON.stringify({
         key:$("#recordKey").value,value:$("#recordValue").value,group_id:$("#recordGroup").value || null})});
-    await loadKnowledge(); editRecord(knowledgeRecords.find(r => r.id === result.id)); knowledgeView();
+    await loadKnowledge(); editRecord(recordLocks.isLocked("diary") ? null : knowledgeRecords.find(r => r.id === result.id)); knowledgeView();
   } catch (error) { $("#knowledgeError").textContent = error.message; }
 };
 $("#deleteRecord").onclick = async () => {
-  if (!recordId) return;
+  if (!recordId || recordLocks.isLocked("diary")) return;
   try { await api(`/api/knowledge/${recordId}`, {method:"DELETE"}); await loadKnowledge(); editRecord(); }
   catch (error) { $("#knowledgeError").textContent = error.message; }
 };
@@ -1951,6 +1965,7 @@ let todoTasks = [], todoFilter = "open", todoEditId = null;
 function resetTodoEditor() {
   todoEditId = null; $("#todoTitle").value = ""; $("#saveTodo").textContent = "Add task"; $("#cancelTodoEdit").hidden = true;
   $("#todoType").value="task";
+  $("#todoTitle").readOnly = false; $("#todoType").disabled = false; $("#saveTodo").disabled = false;
 }
 function renderTodos() {
   const list = $("#todoList"); list.replaceChildren();
@@ -1962,11 +1977,12 @@ function renderTodos() {
     const row = element("div", "todo-row" + (task.completed ? " completed" : ""));
     const label = element("label", "todo-label"), checkbox = element("input");
     checkbox.type = "checkbox"; checkbox.checked = Boolean(task.completed);
-    checkbox.disabled = !access.manage_records;
+    checkbox.disabled = !access.manage_records || recordLocks.isLocked("todos");
     checkbox.onchange = async () => {
+      if (recordLocks.isLocked("todos")) { checkbox.checked = Boolean(task.completed); return; }
       checkbox.disabled = true;
       try { await api(`/api/todos/${task.id}`, {method:"PATCH", body:JSON.stringify({completed:checkbox.checked})}); await loadTodos(); }
-      catch (error) { $("#todoError").textContent = error.message; checkbox.checked = Boolean(task.completed); checkbox.disabled = false; }
+      catch (error) { $("#todoError").textContent = error.message; checkbox.checked = Boolean(task.completed); checkbox.disabled = recordLocks.isLocked("todos"); }
     };
     const text = element("span", "todo-text", task.title);
     text.id = `todo-text-${task.id}`;
@@ -1985,12 +2001,14 @@ function renderTodos() {
     const edit = element("button", "", "Edit"), remove = element("button", "error", "Delete"), copy = element("button", "", "Copy");
     edit.type = remove.type = copy.type = "button";
     edit.hidden = remove.hidden = !access.manage_records;
+    edit.disabled = remove.disabled = recordLocks.isLocked("todos");
     copy.onclick = async () => {
       try { await navigator.clipboard.writeText(task.title); copy.textContent = "Copied"; }
       catch { $("#todoError").textContent = "Clipboard unavailable. Select the task text to copy."; }
     };
-    edit.onclick = () => { todoEditId = task.id; $("#todoTitle").value = task.title; $("#todoType").value=task.type || "task"; $("#saveTodo").textContent = "Save"; $("#cancelTodoEdit").hidden = false; $("#todoTitle").focus(); };
+    edit.onclick = () => { if (recordLocks.isLocked("todos")) return; todoEditId = task.id; $("#todoTitle").value = task.title; $("#todoType").value=task.type || "task"; $("#saveTodo").textContent = "Save"; $("#cancelTodoEdit").hidden = false; $("#todoTitle").focus(); };
     remove.onclick = async () => {
+      if (recordLocks.isLocked("todos")) return;
       try { await api(`/api/todos/${task.id}`, {method:"DELETE"}); if (todoEditId === task.id) resetTodoEditor(); await loadTodos(); }
       catch (error) { $("#todoError").textContent = error.message; }
     };
@@ -2001,6 +2019,7 @@ function renderTodos() {
 }
 async function loadTodos() { todoTasks = (await api("/api/todos")).tasks; renderTodos(); }
 $("#openTodos").onclick = async () => {
+  recordLocks.lock("todos");
   $("#todoForm").hidden = !access.manage_records;
   $("#todoDialog").showModal(); $("#todoError").textContent = ""; resetTodoEditor();
   try { await loadTodos(); } catch (error) { $("#todoError").textContent = error.message; }
@@ -2009,13 +2028,23 @@ $("#todoFilters").onclick = event => { const button = event.target.closest("[dat
 $("#todoTypeFilter").onchange=renderTodos;
 $("#cancelTodoEdit").onclick = resetTodoEditor;
 $("#todoForm").onsubmit = async event => {
-  event.preventDefault(); $("#saveTodo").disabled = true; $("#todoError").textContent = "";
+  event.preventDefault();
+  if (todoEditId && recordLocks.isLocked("todos")) { $("#todoError").textContent = "Unlock To-do to update a saved task."; return; }
+  $("#saveTodo").disabled = true; $("#todoError").textContent = "";
   try {
     await api(todoEditId ? `/api/todos/${todoEditId}` : "/api/todos", {method:todoEditId ? "PATCH" : "POST", body:JSON.stringify({title:$("#todoTitle").value,type:$("#todoType").value})});
     resetTodoEditor(); await loadTodos();
   } catch (error) { $("#todoError").textContent = error.message; }
-  finally { $("#saveTodo").disabled = false; }
+  finally { $("#saveTodo").disabled = Boolean(todoEditId) && recordLocks.isLocked("todos"); }
 };
+document.addEventListener("aimate:record-lock", event => {
+  if (event.detail === "diary") { updateDiaryLock(); renderKnowledge(); }
+  else {
+    const editingLocked = Boolean(todoEditId) && recordLocks.isLocked("todos");
+    $("#todoTitle").readOnly = editingLocked; $("#todoType").disabled = editingLocked;
+    $("#saveTodo").disabled = editingLocked; renderTodos();
+  }
+});
 document.addEventListener("aimate:choice", event => {
   if (busy) return;
   $("#question").value = event.detail;

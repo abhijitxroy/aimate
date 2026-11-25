@@ -1,7 +1,9 @@
 # AiMate — next work on the new laptop
 
-Current app checklist: **42 audited product items completed and CI-verified on
-25 November 2026**. See [the completion table](docs/todo-audit-2026-11-24.md)
+Current app checklist, corrected on **25 November 2026: 27 of the original
+42 items remain Done; 15 reopened for remaining scope or missing live validation**.
+The Tools layout follow-up passed CI; Diary/To-do safety locks are in progress.
+See [the status table](docs/todo-audit-2026-11-24.md)
 and [the app To-do export](docs/audited-todos.json).
 
 The platform roadmap below is separate: desktop/VS Code packaging, alternative

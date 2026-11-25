@@ -1,6 +1,6 @@
 # AiMate
 
-[Verified app checklist](docs/todo-audit-2026-11-24.md) — 42 completed product items.
+[App checklist and validation gaps](docs/todo-audit-2026-11-24.md) — 27 of the original 42 items remain complete; 15 reopened.
 [Platform roadmap](TODO.md) — desktop, VS Code and optional backends.
 
 [![Tests](https://github.com/abhijitxroy/aimate/actions/workflows/tests.yml/badge.svg)](https://github.com/abhijitxroy/aimate/actions/workflows/tests.yml)
@@ -245,7 +245,7 @@ for performance, token optimization, billing, vault, privacy and role work.
 
 ## What is implemented
 
-Recent verified additions: [saved prompts](docs/saved-prompts.md),
+Implemented additions with automated coverage: [saved prompts](docs/saved-prompts.md),
 [analysis templates](docs/analysis-styles.md), [task types](docs/task-types.md),
 [monogram colours](docs/monogram-colours.md), [composer formatting](docs/composer-formatting.md)
 and a [resumable investigation workspace](docs/investigation-workspace.md).

@@ -1,18 +1,18 @@
 [
   {
     "id": "audit-45598b108d57b500ed062e06",
-    "title": "P0 · AI · Done — Auto routing for debug/analysis, manual override; always-Haiku complaint\n\nFixed classifier output budget (32 → 128 tokens). Live Bedrock Auto chose Opus and completed a debugging answer; routine lookup chose Haiku. Manual overrides and offline regressions passed.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45411134828",
-    "completed": true
+    "title": "P0 · AI · WIP — Auto routing for debug/analysis, manual override; always-Haiku complaint\n\nValidation status: IN PROGRESS\nAutomated routing tests pass, but a real Auto-to-Analysis query and manual override against the currently configured account/models remain to be validated. A green connection check alone does not prove both models work.\nPrevious automated evidence (not full live validation):\nFixed classifier output budget (32 → 128 tokens). Live Bedrock Auto chose Opus and completed a debugging answer; routine lookup chose Haiku. Manual overrides and offline regressions passed.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45411134828",
+    "completed": false
   },
   {
     "id": "audit-05866576b3a7fce2e371fb8a",
-    "title": "P0 · Analysis · Done — Comprehensive large-file/PR reviews\n\nPinned line/column readers, full PR manifests, merge-base versions, explicit gaps and encrypted resumable checkpoints. Live GitHub/model checks and Linux/Windows/browser CI passed. Source/API/model limits remain explicit; a read is not a correctness verdict.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45415024500",
-    "completed": true
+    "title": "P0 · Analysis · WIP — Comprehensive large-file/PR reviews\n\nValidation status: IN PROGRESS\nPinned paging and coverage tests pass. A complete live large-PR/file review with the configured model, exact source versions and no unread ranges remains unverified; documented file/cache limits still apply.\nPrevious automated evidence (not full live validation):\nPinned line/column readers, full PR manifests, merge-base versions, explicit gaps and encrypted resumable checkpoints. Live GitHub/model checks and Linux/Windows/browser CI passed. Source/API/model limits remain explicit; a read is not a correctness verdict.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45415024500",
+    "completed": false
   },
   {
     "id": "audit-bc575b0a1ce95434f2f6e7c0",
-    "title": "P0 · Memory · Done — Restart continuity, carry previous knowledge, global project context, hold context until asked\n\nEncrypted reference briefs, project/subgroup recall, relevant Diary notes, full saved-text paging and continued-review checkpoints. Restart/window/privacy/browser checks passed, including live model recall after 18 later turns. Saved references are not current verified facts.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45422422473",
-    "completed": true
+    "title": "P0 · Memory · WIP — Restart continuity, carry previous knowledge, global project context, hold context until asked\n\nValidation status: IN PROGRESS\nScoped briefs and restart tests pass. Long-running real-project continuity and relevant cross-chat recall need validation; unlimited/global retention of all prior context is not implemented.\nPrevious automated evidence (not full live validation):\nEncrypted reference briefs, project/subgroup recall, relevant Diary notes, full saved-text paging and continued-review checkpoints. Restart/window/privacy/browser checks passed, including live model recall after 18 later turns. Saved references are not current verified facts.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45422422473",
+    "completed": false
   },
   {
     "id": "audit-d39c9efd2acfdd5f751e9452",
@@ -36,23 +36,23 @@
   },
   {
     "id": "audit-7b9c4f0f48a5098accc1cb58",
-    "title": "P1 · Speed · Done — Performance improvement\n\nIndependent read rounds run at concurrency 4 with ordered results, single-flight duplicate reuse, cancellation and sequential writes. Windows TLS initialization moved off the event loop. Offline benchmark measured 3.98x scheduling speedup and 96.31% repeated-evidence reduction; actual network latency varies. Windows/Linux/browser CI passed: https://github.com/abhijitxroy/aimate/actions/runs/45439006885",
-    "completed": true
+    "title": "P1 · Speed · WIP — Performance improvement\n\nValidation status: IN PROGRESS\nSynthetic scheduling benchmarks pass. Real provider/network latency, large-project responsiveness and before/after p95 measurements have not been validated.\nPrevious automated evidence (not full live validation):\nIndependent read rounds run at concurrency 4 with ordered results, single-flight duplicate reuse, cancellation and sequential writes. Windows TLS initialization moved off the event loop. Offline benchmark measured 3.98x scheduling speedup and 96.31% repeated-evidence reduction; actual network latency varies. Windows/Linux/browser CI passed: https://github.com/abhijitxroy/aimate/actions/runs/45439006885",
+    "completed": false
   },
   {
     "id": "audit-396aab9dae34f984d0e6feb9",
-    "title": "P1 · Efficiency · Done — Token optimization\n\nHistorical evidence compacted with full saved-record paging; encrypted immutable GitHub snapshots expire after five minutes, invalidate on scope/token rotation and disclose verification time. Mutable sources and fresh/private requests bypass snapshots.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45445074986",
-    "completed": true
+    "title": "P1 · Efficiency · WIP — Token optimization\n\nValidation status: IN PROGRESS\nHistory excerpts and scoped snapshots pass tests. Actual model-token/cost savings and answer quality on representative live workloads still need measurement.\nPrevious automated evidence (not full live validation):\nHistorical evidence compacted with full saved-record paging; encrypted immutable GitHub snapshots expire after five minutes, invalidate on scope/token rotation and disclose verification time. Mutable sources and fresh/private requests bypass snapshots.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45445074986",
+    "completed": false
   },
   {
     "id": "audit-687f51deb551f73dfaceb762",
-    "title": "P1 · Usage · Done — Bill details; day/model usage dashboard\n\nDay/model ledger now includes billable connection tests and incomplete-call notices, cache-aware prices, monthly UTC warn/stop budgets and manual invoice comparisons. Unknown usage and other clients cannot be capped; provider invoice retrieval is not available with an inference key.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45446415311",
-    "completed": true
+    "title": "P1 · Usage · WIP — Bill details; day/model usage dashboard\n\nValidation status: IN PROGRESS\nThe app records provider-reported usage and estimates costs. Actual invoice retrieval/reconciliation and account-approved model/cache rates are not fully validated; unknown usage and other clients are outside its budget guard.\nPrevious automated evidence (not full live validation):\nDay/model ledger now includes billable connection tests and incomplete-call notices, cache-aware prices, monthly UTC warn/stop budgets and manual invoice comparisons. Unknown usage and other clients cannot be capped; provider invoice retrieval is not available with an inference key.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45446415311",
+    "completed": false
   },
   {
     "id": "audit-5e0e05d0b59a4c18ec097760",
-    "title": "P1 · Attachments · Done — Files and pasted screenshots\n\nValidated document/ZIP ingestion, Office/PDF text, scanned PDF images, encrypted conversation-scoped full-text paging/search, large paste cards and restart/private isolation passed CI. Six attachments/four images, explicit size/archive bounds; unsupported binaries are metadata-only, not silently interpreted.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45448311966",
-    "completed": true
+    "title": "P1 · Attachments · WIP — Files and pasted screenshots\n\nValidation status: IN PROGRESS\nScreenshot/document tests pass, but real model interpretation of screenshots and representative Office/PDF files remains unverified. Arbitrary files are not fully supported: unsupported binaries are metadata-only and scanned-PDF limits apply.\nPrevious automated evidence (not full live validation):\nValidated document/ZIP ingestion, Office/PDF text, scanned PDF images, encrypted conversation-scoped full-text paging/search, large paste cards and restart/private isolation passed CI. Six attachments/four images, explicit size/archive bounds; unsupported binaries are metadata-only, not silently interpreted.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45448311966",
+    "completed": false
   },
   {
     "id": "audit-18513c40106ee70b7d8176ec",
@@ -61,23 +61,23 @@
   },
   {
     "id": "audit-96206ae80f69e941a6d4d0ed",
-    "title": "P1 · Concurrency · Done — Multiple asks in parallel\n\nThree separate chats can answer concurrently with isolated conversation IDs/live views and a Stop button scoped to the visible chat. Server enforces three streams per workspace and one per conversation. Cancellation, navigation and CSP-compatible browser regressions passed Windows/Linux/browser CI.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45451165844",
-    "completed": true
+    "title": "P1 · Concurrency · WIP — Multiple asks in parallel\n\nValidation status: IN PROGRESS\nThree-chat mocked stream isolation/cancellation tests pass. Live multi-model concurrency, provider throttling and resource usage remain unvalidated.\nPrevious automated evidence (not full live validation):\nThree separate chats can answer concurrently with isolated conversation IDs/live views and a Stop button scoped to the visible chat. Server enforces three streams per workspace and one per conversation. Cancellation, navigation and CSP-compatible browser regressions passed Windows/Linux/browser CI.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45451165844",
+    "completed": false
   },
   {
     "id": "audit-4e74cf072dc30234a10e3170",
-    "title": "P1 · Code · Done — Modular code and useful logging\n\nUsage routes/UI, metering, documents, stream tracking and request telemetry have separate modules. Bounded JSON request logs omit raw URLs/query text, headers, prompts and credentials; admin/developer diagnostics show timing and request IDs. Role isolation and browser checks passed CI.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45512868739",
-    "completed": true
+    "title": "P1 · Code · WIP — Modular code and useful logging\n\nValidation status: IN PROGRESS\nLogging and extracted modules are implemented. main.py and app.js still contain substantial route/UI logic; the requested modular organization is incremental rather than a completed refactor.\nPrevious automated evidence (not full live validation):\nUsage routes/UI, metering, documents, stream tracking and request telemetry have separate modules. Bounded JSON request logs omit raw URLs/query text, headers, prompts and credentials; admin/developer diagnostics show timing and request IDs. Role isolation and browser checks passed CI.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45512868739",
+    "completed": false
   },
   {
     "id": "audit-153cc4e2f6af2319c269b0a8",
-    "title": "P1 · GitHub · Done — On 404, ask to add repository if appropriate\n\nFailed GitHub reads now offer validated, reviewed add-repo proposals for missing scope and connection guidance for already-configured 404 targets. Saved credentials stay protected; failed access never adds a repo; role checks, live access lease and browser review flow passed CI.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45513925119",
-    "completed": true
+    "title": "P1 · GitHub · WIP — On 404, ask to add repository if appropriate\n\nValidation status: IN PROGRESS\nMocked scope/404/proposal tests pass. A live missing-repo or organization-SSO failure followed by validated add-repo confirmation remains unverified.\nPrevious automated evidence (not full live validation):\nFailed GitHub reads now offer validated, reviewed add-repo proposals for missing scope and connection guidance for already-configured 404 targets. Saved credentials stay protected; failed access never adds a repo; role checks, live access lease and browser review flow passed CI.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45513925119",
+    "completed": false
   },
   {
     "id": "audit-ac198fd1721c14e5f01a8e84",
-    "title": "P1 · Files · Done — Validate/extract/search/analyse ZIP\n\nValidated document/ZIP ingestion, Office/PDF text, scanned PDF images, encrypted conversation-scoped full-text paging/search, large paste cards and restart/private isolation passed CI. Six attachments/four images, explicit size/archive bounds; unsupported binaries are metadata-only, not silently interpreted.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45448311966",
-    "completed": true
+    "title": "P1 · Files · WIP — Validate/extract/search/analyse ZIP\n\nValidation status: IN PROGRESS\nArchive validation and in-memory text search pass tests. Representative real archives still need model analysis validation; nested archives and arbitrary binary contents are not analyzed.\nPrevious automated evidence (not full live validation):\nValidated document/ZIP ingestion, Office/PDF text, scanned PDF images, encrypted conversation-scoped full-text paging/search, large paste cards and restart/private isolation passed CI. Six attachments/four images, explicit size/archive bounds; unsupported binaries are metadata-only, not silently interpreted.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45448311966",
+    "completed": false
   },
   {
     "id": "audit-4043d434188aa3d55f52b626",
@@ -141,8 +141,8 @@
   },
   {
     "id": "audit-6b9c94c6bd0fc9f17b605d3f",
-    "title": "P2 · Usage UI · Done — Burning-token emoji\n\nCompact Auto/token badge; expanded model/token details.",
-    "completed": true
+    "title": "P2 · Usage UI · WIP — Burning-token emoji\n\nValidation status: IN PROGRESS\nThe compact flame badge is rendered, but Anthropic cache-read/cache-write tokens are currently omitted from the answer badge aggregate. Correct the count and verify it against metered usage.\nPrevious automated evidence (not full live validation):\nCompact Auto/token badge; expanded model/token details.",
+    "completed": false
   },
   {
     "id": "audit-8ea5726c1289db2055644eee",
@@ -186,8 +186,8 @@
   },
   {
     "id": "audit-b0f4e50a4f5a4b5d8e355c8f",
-    "title": "P3 · Analysis · Done — Analysis templates and skills\n\nAuto/plain/review/debug/investigate response styles and account-scoped custom templates/declarative skills are selectable independently of model choice. Explicit scope/coverage/evidence guidance, secret redaction, unavailable-style validation and browser selection passed CI; skills do not execute arbitrary code.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45519515973",
-    "completed": true
+    "title": "P3 · Analysis · WIP — Analysis templates and skills\n\nValidation status: IN PROGRESS\nTemplate/skill selection and provider instruction tests pass. Live model adherence to each format, evidence requirements and custom skills still needs validation.\nPrevious automated evidence (not full live validation):\nAuto/plain/review/debug/investigate response styles and account-scoped custom templates/declarative skills are selectable independently of model choice. Explicit scope/coverage/evidence guidance, secret redaction, unavailable-style validation and browser selection passed CI; skills do not execute arbitrary code.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45519515973",
+    "completed": false
   },
   {
     "id": "audit-3a691f7d991e8d3df4a90393",
@@ -201,12 +201,22 @@
   },
   {
     "id": "audit-e3cb16cd4ed8e5d7808fcf7d",
-    "title": "P3 · Composer · Done — B/U/I, colour, indentation, tables, panels, etc.\n\nCollapsed formatting toolbar supports B/I/U, colour, headings, paragraphs, lists, indentation, code, rules, wrap, tables and callout panels with preview. Portable text and safe rendering survive edit/export/reload; local and Linux/Windows/browser CI passed.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45522299918",
-    "completed": true
+    "title": "P3 · Composer · WIP — B/U/I, colour, indentation, tables, panels, etc.\n\nValidation status: IN PROGRESS\nThe authoring toolbar is implemented, but not every individual toolbar operation has a dedicated browser check. Complete that coverage; underline/colour currently accept literal text rather than nested formatting.\nPrevious automated evidence (not full live validation):\nCollapsed formatting toolbar supports B/I/U, colour, headings, paragraphs, lists, indentation, code, rules, wrap, tables and callout panels with preview. Portable text and safe rendering survive edit/export/reload; local and Linux/Windows/browser CI passed.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45522299918",
+    "completed": false
   },
   {
     "id": "audit-0913c4c7266e5c1236b1e71e",
-    "title": "P3 · Service · Done — Another level of user assistance\n\nResumable conversation-bound Ticket→PR→build, PR-review and build-investigation workspaces persist checklists and checkpoints. Actual saved-read evidence is filtered by current scope with timestamps, fingerprints and explicit coverage gaps; both providers receive bounded continuation context. Account isolation, restart, no-auto-submit and Windows/Linux/browser CI passed.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45523407168",
+    "title": "P3 · Service · WIP — Another level of user assistance\n\nValidation status: IN PROGRESS\nThe checkpoint/evidence workspace is implemented and tested with fixtures. An actual Jira-to-PR-to-exact-build investigation, freshness checks and full source coverage with the configured model remain unverified.\nPrevious automated evidence (not full live validation):\nResumable conversation-bound Ticket→PR→build, PR-review and build-investigation workspaces persist checklists and checkpoints. Actual saved-read evidence is filtered by current scope with timestamps, fingerprints and explicit coverage gaps; both providers receive bounded continuation context. Account isolation, restart, no-auto-submit and Windows/Linux/browser CI passed.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45523407168",
+    "completed": false
+  },
+  {
+    "id": "audit-followup-tools-layout",
+    "title": "P0 · Layout · Done — Tools show/hide must not move the chat\n\nReproduced whole-page scrolling, constrained the grid/sidebar and verified stable chat/composer/scroll position with a long sidebar at four viewport sizes. Windows/Linux/23-browser CI passed.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45529941350",
     "completed": true
+  },
+  {
+    "id": "audit-followup-record-safety",
+    "title": "P0 · Record safety · WIP — Lock editing/deletion in My Diary and To-do\n\nNew request: default locked icon in each dialog; disable updates/delete/completion changes until explicitly unlocked. Implementation and regression validation pending.",
+    "completed": false
   }
 ]
