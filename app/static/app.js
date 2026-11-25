@@ -1798,8 +1798,17 @@ $("#conversationActionForm").onsubmit = async event => {
 function conversationMarkdown(conversation) {
     const lines = ["# " + conversation.title.replace(/([\\`*_{}[\]<>#+.!|])/g, "\\$1"), ""];
     for (const turn of conversation.turns) {
-      const user = turn.messages.find(m => m.role === "user" && typeof m.content === "string");
-      if (user) lines.push("## You", "", user.content, "");
+      const user = turn.messages.find(m => m.role === "user" && (typeof m.content === "string" ||
+        Array.isArray(m.content) && m.content.some(block => block.type === "text")));
+      if (user) {
+        const text = turn.usage?.display_question || (typeof user.content === "string" ? user.content :
+          user.content.filter(block => block.type === "text").map(block => block.text).join("\n\n"));
+        lines.push("## You", "", text, "");
+        for (const attachment of turn.usage?.attachments || []) {
+          lines.push("- Attachment: " + attachment.name.replace(/([\\`*_{}[\]<>#+.!|])/g, "\\$1"));
+        }
+        if (turn.usage?.attachments?.length) lines.push("");
+      }
       const answers = turn.messages.filter(m => m.role === "assistant" && Array.isArray(m.content))
         .flatMap(m => m.content.filter(b => b.type === "text").map(b => b.text));
       if (answers.length) lines.push("## AiMate", "", answers.join("\n\n"), "");

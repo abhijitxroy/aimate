@@ -260,6 +260,10 @@ class BrowserRegressionTests(unittest.TestCase):
         self.expect(self.page.locator("#send")).to_be_enabled(timeout=15000)
         self.page.reload()
         self.expect(self.page.locator("#messages .message.user")).to_contain_text("Explain the screenshot")
+        saved=self.context.request.get(self.url+"/api/conversations/"+self.page.evaluate("cid")).json()
+        exported=self.page.evaluate("chat => conversationMarkdown(chat)",saved)
+        self.assertIn("Explain the screenshot",exported)
+        self.assertIn("Attachment: Screenshot\\.png",exported)
         self.expect(self.page.locator("#messages .attachment-card")).to_contain_text("Screenshot.png")
 
     def test_large_paste_is_a_document_card_and_saved_message_keeps_card(self):
