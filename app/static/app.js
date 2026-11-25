@@ -508,7 +508,7 @@ function renderConversationTree(nav, activeGroup) {
       folder.open = expandedGroups.has(group.id) || ancestors.has(group.id);
       const summary = element("summary", "");
       summary.append(element("span", "group-name", group.name));
-      summary.title = `${group.kind}: ${groupPath(group.id)}`;
+      summary.title = `Folder: ${groupPath(group.id)}`;
       const add = element("button", "group-action", "＋"); add.type = "button";
       add.setAttribute("aria-label", "New chat in " + group.name);
       add.onclick = async event => {
@@ -551,7 +551,7 @@ function openGroupDialog(id = null) {
   if (busy) return;
   editingGroup = id;
   const group = conversationGroups.find(g => g.id === id);
-  $("#groupDialogTitle").textContent = group ? "Group settings" : "New project / group";
+  $("#groupDialogTitle").textContent = group ? "Folder settings" : "New folder";
   $("#groupName").value = group?.name || "";
   $("#groupPlacement").hidden = false;
   groupOptions($("#groupParent"), "Top level");
@@ -561,8 +561,6 @@ function openGroupDialog(id = null) {
     }
   }
   $("#groupParent").value = group?.parent || "";
-  $("#groupKind").value = group?.kind || "project";
-  $("#groupKind").closest(".type-field").hidden = Boolean(group);
   $("#removeGroup").hidden = !group;
   $("#saveGroup").textContent = group ? "Save changes" : "Create";
   $("#groupError").textContent = "";
@@ -573,7 +571,6 @@ $("#groupForm").onsubmit = async event => {
   event.preventDefault(); $("#saveGroup").disabled = true;
   try {
     const payload = {name: $("#groupName").value.trim(), parent: $("#groupParent").value || null};
-    if (!editingGroup) Object.assign(payload, {kind: $("#groupKind").value, parent: $("#groupParent").value || null});
     const result = await api(editingGroup ? `/api/groups/${editingGroup}` : "/api/groups", {
       method: editingGroup ? "PATCH" : "POST", body: JSON.stringify(payload)});
     expandedGroups.add(result.id); $("#groupDialog").close(); await refreshState();
@@ -1621,7 +1618,7 @@ function openConversationAction(action, targetId = cid) {
   $("#conversationDialogTitle").textContent = removing ? "Delete conversation?" : moving ? "Move conversation" : "Rename conversation";
   $("#conversationNameLabel").hidden = removing || moving;
   $("#conversationGroupLabel").hidden = !moving;
-  groupOptions($("#conversationGroup"), "Workspace · standalone");
+  groupOptions($("#conversationGroup"), "No folder · this workspace");
   $("#conversationGroup").value = conversationList.find(thread => thread.id === targetId)?.group_id || "";
   $("#conversationName").value = conversationList.find(thread => thread.id === targetId)?.title || $("#chatTitle").textContent;
   $("#conversationName").required = !removing && !moving;
@@ -1643,7 +1640,7 @@ document.body.append(conversationContext);
 function showConversationContext(thread, x, y) {
   if (busy) return;
   conversationContext.replaceChildren();
-  for (const [label, action] of [["Rename", "rename"], ["Change icon", "icon"], ["Move to project / workspace", "move"],
+  for (const [label, action] of [["Rename", "rename"], ["Change icon", "icon"], ["Move to folder", "move"],
     [thread.pinned ? "Unpin" : "Pin", "pin"], ["Copy chat", "copy"], ["Export (.md)", "md"],
     ["Export (.txt)", "txt"], [thread.archived ? "Restore" : "Archive", "archive"], ["Delete", "delete"]]) {
     if (thread.private && !["copy","md","txt","delete"].includes(action)) continue;

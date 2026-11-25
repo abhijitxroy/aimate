@@ -24,7 +24,7 @@ h2 { font-size: 19px; font-weight: 500; margin-bottom: 0; }
 .eyebrow { font-size: 9px; letter-spacing: 1.5px; color: var(--muted); }
 label { display: flex; flex-direction: column; gap: 8px; font-size: 12px; }
 .field-label { display: flex; align-items: center; gap: 6px; }
-.type-field { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.folder-field { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
 .field-info svg { display: block; }
 .field-info { padding: 0; border: 0; background: transparent; color: var(--muted); font-size: 15px; line-height: 1; }
 .field-help { padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--muted); font-size: 11px; line-height: 1.7; }

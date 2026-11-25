@@ -54,7 +54,7 @@
       <button id="newChat" class="new-chat" aria-label="New conversation" title="New conversation"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>New chat</span></button>
       <button id="searchHistory" class="history-search-button" type="button" aria-label="Search saved chats" title="Search saved chats · Ctrl+K"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><span>Search</span></button>
       </div>
-      <div class="conversation-section-head"><p class="eyebrow section-label">CONVERSATIONS</p><button id="newGroup" type="button" title="New project, module or group" aria-label="New project, module or group">＋</button></div>
+      <div class="conversation-section-head"><p class="eyebrow section-label">CONVERSATIONS</p><button id="newGroup" type="button" title="New folder" aria-label="New folder">＋</button></div>
       <button id="archiveView" class="archive-view" type="button" aria-pressed="false">Archived chats</button>
       <nav id="conversations" aria-label="Conversations"></nav>
       <details id="sidebarTools" class="sidebar-bottom">
@@ -74,7 +74,7 @@
       <div id="sidebarResize" class="sidebar-resize" role="separator" tabindex="0" aria-label="Resize conversation sidebar" aria-orientation="vertical" aria-valuemin="64" aria-valuemax="600" aria-valuenow="224" title="Drag to resize · double-click to reset"></div>
     </aside>
     <main>
-      <header><div><p class="eyebrow">PROJECT WORKSPACE</p><h2 id="chatTitle">Ask your project</h2><p id="chatLocation" class="chat-location" hidden></p></div><div class="header-controls"><span id="writeBadge" class="badge">Read mode</span><details id="chatMenu" class="chat-menu" hidden><summary aria-label="Conversation actions" title="Conversation actions">⋯</summary><div><button type="button" id="continueChat">Continue in new chat</button><button type="button" id="pinChat">Pin chat</button><button type="button" id="renameChat">Rename</button><button type="button" id="moveChat">Move to group</button><button type="button" id="copyChat">Copy chat</button><button type="button" id="exportChat">Export Markdown</button><button type="button" id="archiveChat">Archive</button><button type="button" id="deleteChat" class="error">Delete</button></div></details><button id="headerSettings" aria-label="Open connections and settings">⚙</button><button id="mobileMenu" class="mobile-only" aria-label="Workspace menu">☰</button><button id="openAppearance" type="button" class="appearance-button" aria-label="Appearance" title="Appearance"><svg class="sidebar-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg></button></div></header>
+      <header><div><p class="eyebrow">WORKSPACE</p><h2 id="chatTitle">Ask your project</h2><p id="chatLocation" class="chat-location" hidden></p></div><div class="header-controls"><span id="writeBadge" class="badge">Read mode</span><details id="chatMenu" class="chat-menu" hidden><summary aria-label="Conversation actions" title="Conversation actions">⋯</summary><div><button type="button" id="continueChat">Continue in new chat</button><button type="button" id="pinChat">Pin chat</button><button type="button" id="renameChat">Rename</button><button type="button" id="moveChat">Move to folder</button><button type="button" id="copyChat">Copy chat</button><button type="button" id="exportChat">Export Markdown</button><button type="button" id="archiveChat">Archive</button><button type="button" id="deleteChat" class="error">Delete</button></div></details><button id="headerSettings" aria-label="Open connections and settings">⚙</button><button id="mobileMenu" class="mobile-only" aria-label="Workspace menu">☰</button><button id="openAppearance" type="button" class="appearance-button" aria-label="Appearance" title="Appearance"><svg class="sidebar-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg></button></div></header>
       <div class="source-bar" id="sourceBar"></div>
       <p id="demoBanner" class="demo-banner" hidden>DEMO MODE · Fictional data · Scripted answers · Confirmations simulate changes only</p>
       <section id="welcome" class="welcome">
@@ -170,7 +170,7 @@
   </dialog>
   <dialog id="historySearchDialog">
     <div class="dialog-head"><h2>Search chats</h2><button class="close" data-close="historySearchDialog" aria-label="Close chat search">×</button></div>
-    <label class="history-search-input"><span class="hint">Saved messages · all projects and archived chats · no AI tokens</span><input id="historySearchInput" type="search" maxlength="200" placeholder="Find a ticket, PR, build or phrase…" autocomplete="off"></label>
+    <label class="history-search-input"><span class="hint">Saved messages · all folders and archived chats · no AI tokens</span><input id="historySearchInput" type="search" maxlength="200" placeholder="Find a ticket, PR, build or phrase…" autocomplete="off"></label>
     <p id="historySearchStatus" class="hint" role="status">Search your previous work.</p>
     <div id="historySearchResults" class="history-search-results"></div>
   </dialog>
@@ -178,19 +178,19 @@
     <div class="dialog-head"><h2 id="conversationDialogTitle">Rename conversation</h2><button class="close" data-close="conversationDialog" aria-label="Close conversation action">×</button></div>
     <form id="conversationActionForm">
       <label id="conversationNameLabel">Name<input id="conversationName" maxlength="100" autocomplete="off"></label>
-      <label id="conversationGroupLabel" hidden>Project / module / group<select id="conversationGroup"></select></label>
+      <label id="conversationGroupLabel" hidden>Folder<select id="conversationGroup"></select></label>
       <p id="conversationDeleteHint" class="muted" hidden>This deletes this conversation and its saved messages. Completed actions remain in Audit log.</p>
       <p id="conversationActionError" class="error" role="alert"></p>
       <div class="conversation-action-buttons"><button type="button" data-close="conversationDialog">Cancel</button><button id="conversationActionSubmit" class="primary" type="submit">Save name</button></div>
     </form>
   </dialog>
   <dialog id="groupDialog" class="compact-dialog">
-    <div class="dialog-head"><h2 id="groupDialogTitle">New group</h2><button class="close" data-close="groupDialog" aria-label="Close group settings">×</button></div>
+    <div class="dialog-head"><h2 id="groupDialogTitle">New folder</h2><button class="close" data-close="groupDialog" aria-label="Close folder settings">×</button></div>
     <form id="groupForm">
-      <label>Name<input id="groupName" maxlength="80" autocomplete="off" required></label>
-      <div id="groupPlacement"><div class="type-field"><div class="field-label"><label for="groupKind">Type</label><button type="button" class="field-info" data-field-help="groupTypeHelp" aria-label="What these types mean" aria-controls="groupTypeHelp" aria-expanded="false" title="Workspace: separate chats and settings.&#10;Project: chats for one piece of work.&#10;Module: chats for one part of a project.&#10;Group: a folder for related chats."><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7v.1"/></svg></button></div><span id="groupTypeHelp" class="field-help" hidden><b>Workspace:</b> separate chats and settings.<br><b>Project:</b> chats for one piece of work.<br><b>Module:</b> chats for one part of a project.<br><b>Group:</b> a folder for related chats.</span><select id="groupKind"><option value="project">Project</option><option value="module">Module</option><option value="group">Group</option></select></div><label>Inside<select id="groupParent"></select></label></div>
+      <div class="folder-field"><div class="field-label"><label for="groupName">Folder name</label><button type="button" class="field-info" data-field-help="folderHelp" aria-label="About folders and workspaces" aria-controls="folderHelp" aria-expanded="false" title="Folder: organizes chats here. Workspace: separate chats, data and connections."><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7v.1"/></svg></button></div><span id="folderHelp" class="field-help" hidden><b>Folder:</b> organizes chats here. Folders can contain subfolders.<br><b>Workspace:</b> separate chats, data and connections.</span><input id="groupName" maxlength="80" autocomplete="off" required></div>
+      <div id="groupPlacement"><label>Inside<select id="groupParent"></select></label></div>
       <p id="groupError" class="error" role="alert"></p>
-      <div class="conversation-action-buttons"><button id="removeGroup" type="button" class="error" hidden>Delete empty group</button><button type="button" data-close="groupDialog">Cancel</button><button id="saveGroup" class="primary" type="submit">Create</button></div>
+      <div class="conversation-action-buttons"><button id="removeGroup" type="button" class="error" hidden>Delete empty folder</button><button type="button" data-close="groupDialog">Cancel</button><button id="saveGroup" class="primary" type="submit">Create</button></div>
     </form>
   </dialog>
   <dialog id="knowledgeDialog">
@@ -366,7 +366,7 @@
   </dialog>
   <dialog id="menuDialog">
     <div class="dialog-head"><h2>Workspace</h2><button class="close" data-close="menuDialog" aria-label="Close menu">×</button></div>
-    <div class="menu-actions"><button data-menu-action="newChat">New conversation</button><button data-menu-action="searchHistory">Search chats</button><button data-menu-action="newGroup">New project / group</button><button data-menu-action="openKnowledge">My Diary</button><button data-menu-action="openTodos">To-do</button><button data-menu-action="openUsage">Usage &amp; billing</button><button data-menu-action="openSettings">Connections & settings</button><button data-menu-action="archiveView">Archived chats</button><button data-menu-action="openHelp">Help</button><button data-menu-action="logout">Sign out</button></div>
+    <div class="menu-actions"><button data-menu-action="newChat">New conversation</button><button data-menu-action="searchHistory">Search chats</button><button data-menu-action="newGroup">New folder</button><button data-menu-action="openKnowledge">My Diary</button><button data-menu-action="openTodos">To-do</button><button data-menu-action="openUsage">Usage &amp; billing</button><button data-menu-action="openSettings">Connections & settings</button><button data-menu-action="archiveView">Archived chats</button><button data-menu-action="openHelp">Help</button><button data-menu-action="logout">Sign out</button></div>
     <nav id="mobileConversations" aria-label="Saved conversations"></nav>
   </dialog>
 </body>

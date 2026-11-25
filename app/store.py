@@ -210,13 +210,14 @@ class Store:
 
     def require_group(self, group_id):
         if not isinstance(group_id, str) or not self.rows("SELECT id FROM conversation_groups WHERE id=?", (group_id,)):
-            raise ValueError("Choose an existing project, module or group.")
+            raise ValueError("Choose an existing folder.")
 
     def create_group(self, name, kind="group", parent=None):
         if not isinstance(name, str) or not name.strip() or len(name.strip()) > 80:
-            raise ValueError("Use a group name with 1–80 characters.")
+            raise ValueError("Use a folder name with 1–80 characters.")
+        # Legacy kinds remain valid for saved data and older portable backups.
         if not isinstance(kind, str) or kind not in {"project", "module", "group"}:
-            raise ValueError("Choose Project, Module or Group.")
+            raise ValueError("Use a supported folder type.")
         if parent is not None:
             self.require_group(parent)
             depth, ancestor = 1, parent
@@ -224,9 +225,9 @@ class Store:
                 depth += 1
                 ancestor = self.rows("SELECT parent FROM conversation_groups WHERE id=?", (ancestor,))[0]["parent"]
                 if depth > 8:
-                    raise ValueError("Use at most eight levels of groups.")
+                    raise ValueError("Use at most eight levels of folders.")
         if self.rows("SELECT id FROM conversation_groups WHERE lower(name)=lower(?) AND parent IS ?", (name.strip(), parent)):
-            raise ValueError("A group with that name already exists here.")
+            raise ValueError("A folder with that name already exists here.")
         gid = secrets.token_hex(16)
         self.execute("INSERT INTO conversation_groups VALUES (?, ?, ?, ?, ?)", (gid, name.strip(), kind, parent, time.time()))
         return gid

@@ -209,7 +209,7 @@ endpoint. It does not invoke any model or verify inference permission; use
 Runtime discovery uses ListFoundationModels/ListInferenceProfiles; Mantle uses
 its separate `/v1/models` API. No automatic model fallback is enabled.
 
-Use **Search chats** (or **Ctrl+K**) to find saved titles and messages across projects
+Use **Search chats** (or **Ctrl+K**) to find saved titles and messages across folders
 and archived chats. Search runs locally without AI calls or token charges. Open a
 result to jump to the matching turn. Expand the sidebar with its top arrow button,
 or drag its right edge; the width is remembered in this browser. **Change icon**
@@ -403,7 +403,10 @@ respected; TLS verification remains enabled.
 
 ## Chats, knowledge and usage
 
-Chats can be standalone or organized under projects, modules and nested groups.
+Chats can be standalone or organized in folders and subfolders within a workspace.
+A folder organizes chats; a workspace has separate chats, data and connection
+settings. Project, Module and Group are now presented as Folder; their existing
+IDs and contents are preserved, including older portable backups.
 Use the chat menu to rename, move, pin, copy, export Markdown, or continue in a new
 chat. Continuing keeps a reference and a bounded excerpt; it does not duplicate
 the entire transcript. AiMate can search relevant past user/assistant messages
@@ -469,4 +472,4 @@ API references: [ChatGPT local OAuth](https://developers.openai.com/siwc/token-s
 
 ## Code and conversation updates
 
-Code, JSON and YAML use local syntax colors in every theme. See [formatting examples](docs/syntax-highlighting.md). Editing resends within the same chat. Group settings can move a whole project, including its chats and subgroups.
+Code, JSON and YAML use local syntax colors in every theme. See [formatting examples](docs/syntax-highlighting.md). Editing resends within the same chat. Folder settings move a folder with its chats and subfolders.
