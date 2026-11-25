@@ -222,6 +222,8 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
     register_feedback_review(app,store,auth,config_lock)
     from app.temporary_chats import register as register_temporary_chats
     register_temporary_chats(app,auth)
+    from app.performance import register as register_performance
+    register_performance(app,owner_store,store,auth,config_lock)
 
     @app.exception_handler(ValueError)
     async def bad_input(request, exc):
@@ -399,6 +401,7 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
                 "attachment_limits": {"document_bytes": document_bytes()},
                 "message_favorites": os.environ.get("AIMATE_MESSAGE_FAVORITES_ENABLED") != "0",
                 "feedback_review": os.environ.get("AIMATE_FEEDBACK_REVIEW_ENABLED") != "0",
+                "performance": os.environ.get("AIMATE_PERFORMANCE_ENABLED") != "0",
                 "connection_checks": store.connection_checks(),
                 "connection_defaults": {"jenkins": {"username": getpass.getuser() if not public_url and not demo else "",
                                                       "url": "" if public_showcase else os.environ.get("JENKINS_URL", "")}},

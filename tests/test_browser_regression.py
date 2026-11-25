@@ -84,6 +84,35 @@ class BrowserRegressionTests(unittest.TestCase):
     def tearDown(self):
         self.context.close()
 
+    def test_performance_baselines_measure_requests_and_optional_ui_leaves_chat_usable(self):
+        self.page.evaluate("async()=>{for(let i=0;i<6;i++)await api('/api/todos');}")
+        self.page.locator("#headerSettings").click()
+        self.page.locator("#tab-changes").click()
+        self.page.locator("#openPerformance").click()
+        self.expect(self.page.locator("#performanceDialog")).to_be_visible()
+        self.expect(self.page.locator("#performanceRows")).to_contain_text("To-do")
+        self.expect(self.page.locator("#performanceStats")).to_contain_text("Process CPU")
+        self.page.locator("#performanceBaselineLabel").fill("Browser before cache")
+        self.page.locator("#performanceBaselineForm button").click()
+        self.expect(self.page.locator("#performanceBaselineSummary")).to_be_visible()
+        self.expect(self.page.locator("#performanceError")).to_be_empty()
+        self.page.locator('[data-close="performanceDialog"]').click()
+        self.page.locator('[data-close="settingsDialog"]').click()
+        self.page.reload()
+        self.page.locator("#headerSettings").click()
+        self.page.locator("#tab-changes").click()
+        self.page.locator("#openPerformance").click()
+        self.expect(self.page.locator("#performanceBaseline")).to_contain_text("Browser before cache")
+        self.page.locator('[data-close="performanceDialog"]').click()
+        self.page.locator('[data-close="settingsDialog"]').click()
+        self.page.evaluate("()=>{window.AiMateFeatures={...window.AiMateFeatures,performanceDashboard:false};document.dispatchEvent(new Event('aimate:state'));}")
+        self.page.locator("#headerSettings").click()
+        self.page.locator("#tab-changes").click()
+        self.expect(self.page.locator("#openPerformance")).to_be_hidden()
+        self.page.locator('[data-close="settingsDialog"]').click()
+        self.page.locator("#question").fill("Core draft still works")
+        self.expect(self.page.locator("#question")).to_have_js_property("value","Core draft still works")
+
     def test_recents_controls_share_one_row_and_heading_collapses_without_moving_chat(self):
         self.page.evaluate("""async () => {
             for(let i=0;i<9;i++) {

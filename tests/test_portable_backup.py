@@ -83,6 +83,7 @@ class PortableBackupTests(unittest.TestCase):
             CREATE TABLE turn_usage(turn INTEGER PRIMARY KEY, metadata TEXT NOT NULL);
             CREATE TABLE feedback_reviews(id TEXT PRIMARY KEY, state TEXT, assessment TEXT, reply TEXT, evidence TEXT, task TEXT, updated REAL, reviewer TEXT);
             CREATE TABLE todo_priorities(id TEXT PRIMARY KEY, priority TEXT);
+            CREATE TABLE performance_baselines(id TEXT PRIMARY KEY, label TEXT, created REAL, body TEXT);
             CREATE TABLE knowledge(id TEXT, value TEXT);
             CREATE TABLE settings(id INTEGER PRIMARY KEY, encrypted TEXT);
             CREATE TABLE login_otp(id INTEGER PRIMARY KEY, encrypted TEXT);
@@ -96,6 +97,7 @@ class PortableBackupTests(unittest.TestCase):
         db.execute("INSERT INTO turn_usage VALUES (1,?)",(json.dumps({"favorite_roles":["assistant"],"usage":{"input_tokens":17}}),))
         db.execute("INSERT INTO feedback_reviews VALUES ('feedback','planned','confirmed_issue','Review reply','Fixture evidence','saved-task',1,'admin')")
         db.execute("INSERT INTO todo_priorities VALUES ('saved-task','P1')")
+        db.execute("INSERT INTO performance_baselines VALUES ('sample','Before cache',1,?)",(json.dumps({"p95_ms":250}),))
         db.execute("INSERT INTO knowledge VALUES ('note','diary text')")
         for table, value in (("settings", {"token": "synthetic-github-secret"}),
                              ("login_otp", {"secret": "synthetic-totp-secret"})):
@@ -133,6 +135,7 @@ class PortableBackupTests(unittest.TestCase):
         self.assertEqual(exported["stores"][0]["counts"]["review_sessions"], 1)
         self.assertEqual(exported["stores"][0]["counts"]["conversation_briefs"], 1)
         self.assertEqual(exported["stores"][0]["counts"]["todo_priorities"], 1)
+        self.assertEqual(exported["stores"][0]["counts"]["performance_baselines"], 1)
         raw = self.backup.read_bytes()
         for secret in (b"synthetic-github-secret", b"saved chat", self.keys[""], b"synthetic-oauth-secret"):
             self.assertNotIn(secret, raw)
@@ -155,6 +158,7 @@ class PortableBackupTests(unittest.TestCase):
                 self.assertEqual(db.execute("SELECT reply FROM feedback_reviews WHERE id='feedback'").fetchone()[0],"Review reply")
                 self.assertEqual(json.loads(db.execute("SELECT metadata FROM turn_usage WHERE turn=1").fetchone()[0])["favorite_roles"],["assistant"])
                 self.assertEqual(db.execute("SELECT priority FROM todo_priorities WHERE id='saved-task'").fetchone()[0],"P1")
+                self.assertEqual(json.loads(db.execute("SELECT body FROM performance_baselines WHERE id='sample'").fetchone()[0]),{"p95_ms":250})
                 with patch.object(migration, "dpapi", self.device(self.new_device)):
                     migration.verify_db(db, key)
                 self.assertEqual(json.loads(Fernet(key).decrypt(db.execute("SELECT encrypted FROM settings").fetchone()[0].encode())),

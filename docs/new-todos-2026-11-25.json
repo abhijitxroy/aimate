@@ -22,8 +22,8 @@
   },
   {
     "id": "backlog-a41b3ef699989382d68c46ff",
-    "title": "P1 · WIP — Temporary chats: session or one-day expiry\n\nOptional in-memory lifetime controls, page-scoped tab-close cleanup, expiry sweeps and active-stream save guards implemented. Session isolation, no disk/recall/backup content, disabled behavior and dev reload session reuse tested. 50 unit, 267 integration and 63 browser tests passed locally. Seven-workflow CI and local installation pending. One-day is a maximum; sign-out, 12-hour authentication expiry or server restart ends it earlier.",
-    "completed": false,
+    "title": "P1 · Done — Temporary chats: session or one-day expiry\n\nTemporary Private chats support session-close cleanup and a maximum one-day lifetime, with early sign-out/restart expiry documented. Preview retains its setting across refreshes. 50 unit, 267 integration and 63 browser checks passed; all seven exact-commit GitHub workflows passed.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45631807791",
+    "completed": true,
     "type": "feature",
     "priority": "P1"
   },
@@ -99,7 +99,7 @@
   },
   {
     "id": "backlog-2c2bdd529bfd33a0162ec6fb",
-    "title": "P1 · Planned — Per-section performance and improvement dashboard\n\nRecord measured before/after latency, throughput, tokens and resource metrics by section/change; separate real measurements from synthetic benchmarks.",
+    "title": "P1 · WIP — Per-section performance and improvement dashboard\n\nMeasured section timings, observed traffic, errors, resource usage, workspace tokens and protected before/after baselines implemented. Automated, backup and browser validation pending.",
     "completed": false,
     "type": "enhancement",
     "priority": "P1"
@@ -281,8 +281,8 @@
   },
   {
     "id": "backlog-preview-state-refresh",
-    "title": "P1 · WIP — Preserve Preview preference across UI refreshes\n\nLinux browser CI exposed an empty-draft background-refresh reset. Explicit Preview preference now survives refreshes; empty preview panels stay hidden until text is present. Regression added; CI validation pending.",
-    "completed": false,
+    "title": "P1 · Done — Preserve Preview preference across UI refreshes\n\nTemporary Private chats support session-close cleanup and a maximum one-day lifetime, with early sign-out/restart expiry documented. Preview retains its setting across refreshes. 50 unit, 267 integration and 63 browser checks passed; all seven exact-commit GitHub workflows passed.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45631807791",
+    "completed": true,
     "type": "bug",
     "priority": "P1"
   }

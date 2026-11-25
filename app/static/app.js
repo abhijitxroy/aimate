@@ -417,6 +417,7 @@ async function refreshState() {
   const state = await api("/api/state");
   if(state.message_favorites===false) {window.AiMateFeatures={...window.AiMateFeatures,messageFavorites:false};}
   window.AiMateTemporaryChats?.setEnabled(state.temporary_chats!==false);
+  window.AiMatePerformance?.setEnabled(state.performance!==false);
   $("#openFavorites").hidden=window.AiMateFeatures?.messageFavorites===false;
   if(state.feedback_review===false) {window.AiMateFeatures={...window.AiMateFeatures,feedbackReview:false};}
   $("#openMyFeedback").hidden=window.AiMateFeatures?.feedbackReview===false;

@@ -1,0 +1,14 @@
+.performance-dialog { width: min(960px, calc(100vw - 32px)); }
+.performance-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 12px 0; }
+.performance-stat { border: 1px solid var(--line); border-radius: 12px; padding: 12px; min-width: 0; }
+.performance-stat strong { display: block; font-size: 18px; margin-top: 4px; overflow-wrap: anywhere; }
+.performance-controls { display: flex; align-items: end; flex-wrap: wrap; gap: 8px; }
+.performance-controls label { flex: 1 1 210px; min-width: 0; }
+.performance-controls button { flex: 0 0 auto; }
+.performance-table { width: 100%; table-layout: fixed; border-collapse: collapse; margin: 16px 0; font-size: 12px; }
+.performance-table th, .performance-table td { padding: 8px 4px; text-align: left; overflow-wrap: anywhere; border-bottom: 1px solid var(--line); }
+.performance-table th:first-child { width: 20%; }
+@media (max-width: 600px) {
+  .performance-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .performance-table { font-size: 10px; }
+}

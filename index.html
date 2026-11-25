@@ -10,6 +10,7 @@
   <script src="./app/static/theme.js"></script>
   <link rel="icon" href="./app/static/favicon.svg?v=am2" type="image/svg+xml">
   <link rel="stylesheet" href="./app/static/style.css">
+  <link rel="stylesheet" href="./app/static/performance.css">
   <link rel="stylesheet" href="./app/static/theme.css">
   <link rel="stylesheet" href="./app/static/syntax.css">
   <link rel="stylesheet" href="./app/static/message_navigation.css">
@@ -38,6 +39,7 @@
   <script src="./app/static/temporary_chats_ui.js" defer></script>
   <script src="./app/static/usage_ui.js" defer></script>
   <script src="./app/static/diagnostics_ui.js" defer></script>
+  <script src="./app/static/performance_ui.js" defer></script>
   <script src="./app/static/github_guidance_ui.js" defer></script>
   <script src="./app/static/maintenance_ui.js" defer></script>
   <script src="./app/static/library_ui.js" defer></script>
@@ -349,7 +351,7 @@
         <div class="test-row"><button type="button" data-test="jenkins">Save &amp; connect</button></div>
         <div id="test-jenkins" class="connection-result" aria-live="polite"></div>
       </fieldset>
-      <fieldset class="write-setting" id="settings-changes" data-settings-panel="changes" role="tabpanel" aria-labelledby="tab-changes" hidden><legend>Admin</legend><div id="adminWriteControls"><label class="check"><input name="allow_writes" type="checkbox">Allow the assistant to prepare changes</label><p class="hint">Every change still requires Confirm. File edits use a working branch; pull requests start as drafts. Proposals expire after 30 minutes.</p></div><button id="openAudit" type="button">Audit log</button><button id="openDiagnostics" type="button">Diagnostics</button><button id="openMaintenance" type="button">Safe cleanup</button><button id="openAccess" type="button">Workspace access</button><button id="openVault" type="button">Private vault</button><button id="openFeedbackLog" type="button">Feedback</button><div class="admin-security"><h3>Sign-in security</h3><p id="otpStatus" class="hint">Authenticator OTP</p><button id="openOtpSetup" type="button">Set up OTP</button></div></fieldset>
+      <fieldset class="write-setting" id="settings-changes" data-settings-panel="changes" role="tabpanel" aria-labelledby="tab-changes" hidden><legend>Admin</legend><div id="adminWriteControls"><label class="check"><input name="allow_writes" type="checkbox">Allow the assistant to prepare changes</label><p class="hint">Every change still requires Confirm. File edits use a working branch; pull requests start as drafts. Proposals expire after 30 minutes.</p></div><button id="openAudit" type="button">Audit log</button><button id="openDiagnostics" type="button">Diagnostics</button><button id="openPerformance" type="button" hidden>Performance</button><button id="openMaintenance" type="button">Safe cleanup</button><button id="openAccess" type="button">Workspace access</button><button id="openVault" type="button">Private vault</button><button id="openFeedbackLog" type="button">Feedback</button><div class="admin-security"><h3>Sign-in security</h3><p id="otpStatus" class="hint">Authenticator OTP</p><button id="openOtpSetup" type="button">Set up OTP</button></div></fieldset>
       <div class="dialog-footer"><span id="settingsStatus" role="status"></span><button id="saveConnection" class="primary" type="submit">Save AI connection</button></div>
     </form>
   </dialog>
@@ -404,6 +406,18 @@
     <div class="dialog-head"><h2>Workspace</h2><button class="close" data-close="menuDialog" aria-label="Close menu">×</button></div>
     <div class="menu-actions"><button data-menu-action="newChat">New conversation</button><button data-menu-action="searchHistory">Search chats</button><button data-menu-action="newGroup">New project</button><button data-menu-action="openKnowledge">My Diary</button><button data-menu-action="openTodos">To-do</button><button data-menu-action="openUsage">Usage &amp; billing</button><button data-menu-action="openSettings">Connections & settings</button><button data-menu-action="archiveView">Archived chats</button><button data-menu-action="openHelp">Help</button><button data-menu-action="logout">Sign out</button></div>
     <nav id="mobileConversations" aria-label="Saved conversations"></nav>
+  </dialog>
+  <dialog id="performanceDialog" class="performance-dialog">
+    <div class="dialog-head"><h2>Performance</h2><button class="close" data-close="performanceDialog" aria-label="Close performance">×</button></div>
+    <p id="performanceSample" class="hint"></p>
+    <p id="performanceBaselineSummary" class="hint" hidden></p>
+    <div id="performanceStats" class="performance-stats"></div>
+    <div class="performance-controls"><label>Compare with<select id="performanceBaseline"><option value="">Current sample</option></select></label><button id="refreshPerformance" type="button">Refresh</button><button id="removePerformanceBaseline" type="button" disabled>Remove baseline</button></div>
+    <table class="performance-table"><thead><tr><th>Section</th><th>Requests</th><th>p50 ms</th><th>p95 ms</th><th>Req/min</th><th>Errors / interrupted</th><th>p95 change</th></tr></thead><tbody id="performanceRows"></tbody></table>
+    <p id="performanceEmpty" class="hint" hidden>No measurements yet. Use the app, then refresh.</p>
+    <form id="performanceBaselineForm" class="performance-controls"><label>Baseline label<input id="performanceBaselineLabel" maxlength="80" placeholder="Before cache update" pattern="[A-Za-z0-9][A-Za-z0-9 ._-]{0,79}" required></label><button type="submit">Save measured baseline</button></form>
+    <p id="performanceNotice" class="hint"></p><p class="hint">p95 change needs five completed requests in both samples. CPU is cumulative; memory varies by platform.</p>
+    <p id="performanceError" class="error" role="alert"></p>
   </dialog>
 </body>
 </html>
