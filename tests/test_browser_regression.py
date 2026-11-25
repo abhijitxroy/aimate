@@ -80,6 +80,31 @@ class BrowserRegressionTests(unittest.TestCase):
     def tearDown(self):
         self.context.close()
 
+    def test_recents_section_pages_three_then_five_and_does_not_duplicate_chats(self):
+        self.page.evaluate("""async () => {
+            for(let i=0;i<13;i++) {
+                const chat=await api('/api/conversations',{method:'POST',body:'{}'});
+                await api('/api/conversations/'+chat.id,{method:'PATCH',body:JSON.stringify({title:'Paging recent '+i})});
+            }
+            await refreshState();
+        }""")
+        recents=self.page.locator("#recentConversations")
+        self.expect(recents.locator(".conversation-link")).to_have_count(3)
+        self.expect(recents.get_by_role("button",name="Paging recent 12",exact=True)).to_be_visible()
+        recents.get_by_role("button",name="Show five more recent chats",exact=True).click()
+        self.expect(recents.locator(".conversation-link")).to_have_count(8)
+        recents.get_by_role("button",name="Show five more recent chats",exact=True).click()
+        self.expect(recents.locator(".conversation-link")).to_have_count(13)
+        recents.get_by_role("button",name="Show only three recent chats",exact=True).click()
+        self.expect(recents.locator(".conversation-link")).to_have_count(3)
+        self.page.locator("#conversations").get_by_role("button",name="Paging recent 12",exact=True).click()
+        self.expect(self.page.locator("#chatTitle")).to_have_text("Paging recent 12")
+        before=self.context.request.get(self.url+"/api/state").json()["conversations"]
+        self.page.reload()
+        self.expect(recents.locator(".conversation-link")).to_have_count(3)
+        after=self.context.request.get(self.url+"/api/state").json()["conversations"]
+        self.assertEqual({c["id"] for c in before},{c["id"] for c in after})
+
     def test_message_time_follows_tokens_uses_saved_timestamp_and_survives_reload(self):
         self.page.locator("#newChat").click()
         self.page.locator("#question").fill("Timestamp display check")

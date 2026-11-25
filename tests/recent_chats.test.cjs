@@ -2,6 +2,20 @@ const {test}=require("node:test");
 const assert=require("node:assert/strict");
 const recent=require("../app/static/recent_chats.js");
 const chats=Array.from({length:9},(_,i)=>({id:String(i),created:i}));
+test("separate Recents starts with three and reveals five more per click",()=>{
+  const rows=Array.from({length:16},(_,i)=>({id:String(i),created:i}));
+  rows[0].last_activity=100;
+  assert.deepEqual(recent.page(rows,"paging").items.map(t=>t.id),["0","15","14"]);
+  recent.step("paging");
+  assert.equal(recent.page(rows,"paging").items.length,8);
+  recent.step("paging");
+  assert.equal(recent.page(rows,"paging").items.length,13);
+  recent.step("paging");
+  assert.equal(recent.page(rows,"paging").items.length,16);
+  assert.equal(recent.page(rows,"paging").more,false);
+  recent.step("paging",true);
+  assert.equal(recent.page(rows,"paging").items.length,3);
+});
 test("recent chat limits preserve pins/current chat and do not mutate source",()=>{
   const source=chats.map(chat=>({...chat}));
   source[0].pinned=true;

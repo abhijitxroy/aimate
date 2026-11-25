@@ -404,8 +404,11 @@ respected; TLS verification remains enabled.
 ## Chats, knowledge and usage
 
 Chats can be standalone or organized in folders and subfolders within a workspace.
-Each sidebar chat list starts with five recent chats; **Show more / Show less**
-reveals or hides older chats. Pinned chats and the current chat stay visible.
+Folder chat lists start with five chats; **Show more / Show less**
+reveals or hides older chats. Pinned chats and the current chat stay visible in folder lists.
+The separate **Recents** section starts with three chats across folders. Each
+**Show more** click reveals five more; **Show less** returns to three.
+Standalone chats appear there, rather than a second standalone list.
 Recency uses the latest saved message, falling back to creation time. This only
 changes the list view; search, history and saved data remain available.
 Messages show a small faded local time beside the token badge; hover reveals the

@@ -473,8 +473,9 @@ function recentChatView(threads,key) {
 function renderMobileConversations() {
   const mobileNav = $("#mobileConversations");
   mobileNav.replaceChildren();
-  const key=`mobile:${archiveView}`, selection=recentChatView(
-    conversationList.filter(t => Boolean(t.archived) === archiveView),key);
+  const recents=window.AiMateRecentChats, paged=!archiveView && recents?.enabled();
+  const key=`mobile:${archiveView}`, threads=conversationList.filter(t => Boolean(t.archived) === archiveView);
+  const selection=paged ? recents.page(threads,key) : recentChatView(threads,key);
   for (const thread of selection.items) {
     const mobileButton = conversationButton(thread);
     mobileButton.title = (thread.group_id ? groupPath(thread.group_id) : "Standalone chat")+"\n"+mobileButton.title;
@@ -485,7 +486,8 @@ function renderMobileConversations() {
     };
     mobileNav.append(mobileButton);
   }
-  window.AiMateRecentChats?.control(mobileNav,key,selection,renderMobileConversations,"this workspace");
+  if(paged) recents.pageControl(mobileNav,key,selection,renderMobileConversations);
+  else recents?.control(mobileNav,key,selection,renderMobileConversations,"this workspace");
 }
 
 function groupPath(id) {
@@ -509,6 +511,26 @@ function isGroupBelow(id, ancestor) {
   return false;
 }
 function renderConversationTree(nav, activeGroup) {
+  const recents=window.AiMateRecentChats;
+  const separateRecents=!archiveView && recents?.enabled();
+  const refresh=()=>{nav.replaceChildren();renderConversationTree(nav,activeGroup);};
+  let recentIDs=new Set();
+  if (separateRecents) {
+    nav.append(element("p","recent-heading","Recents"));
+    const list=element("div","recent-conversations");list.id="recentConversations";
+    const selection=recents.page(conversationList.filter(t=>!t.archived));
+    recentIDs=new Set(selection.items.map(t=>t.id));
+    for(const thread of selection.items) list.append(conversationRow(thread));
+    recents.pageControl(list,"recents",selection,refresh);
+    if(!selection.items.length) list.append(element("p","group-empty","No recent chats"));
+    nav.append(list);
+    const pinned=conversationList.filter(t=>!t.archived && t.pinned && !t.group_id && !recentIDs.has(t.id));
+    if(pinned.length) {
+      nav.append(element("p","recent-heading","Pinned"));
+      for(const thread of pinned) nav.append(conversationRow(thread));
+    }
+    if(conversationGroups.length) nav.append(element("p","recent-heading","Folders"));
+  }
   const ancestors = new Set();
   for (let group = conversationGroups.find(g => g.id === activeGroup); group;
        group = conversationGroups.find(g => g.id === group.parent)) ancestors.add(group.id);
@@ -544,24 +566,28 @@ function renderConversationTree(nav, activeGroup) {
       };
       node.append(folder);
     }
+    if (parent===null && separateRecents) return;
     const key=`${archiveView}:${parent || "root"}`, selection=recentChatView(
       conversationList.filter(t => (t.group_id || null) === parent && Boolean(t.archived) === archiveView),key);
     for (const thread of selection.items) {
-      const row = element("div", "conversation-row" + (thread.id === cid ? " active" : ""));
-      const button = conversationButton(thread, thread.id === cid ? "active" : "");
-      button.onclick = () => openConversation(thread.id, thread.title);
-      const menu = element("button", "conversation-more", "⋯");
-      menu.type = "button"; menu.setAttribute("aria-label", "Actions for " + thread.title);
-      menu.onclick = event => { event.stopPropagation(); const rect = menu.getBoundingClientRect(); showConversationContext(thread, rect.right, rect.bottom); };
-      row.oncontextmenu = event => { event.preventDefault(); showConversationContext(thread, event.clientX, event.clientY); };
-      row.append(button, menu); node.append(row);
+      node.append(conversationRow(thread));
     }
     window.AiMateRecentChats?.control(node,key,selection,()=>{
       nav.replaceChildren();renderConversationTree(nav,activeGroup);
     },parent ? groupPath(parent) : "this workspace");
   }
   fill(null, nav);
-  if (!conversationList.some(t => Boolean(t.archived) === archiveView)) nav.append(element("p", "group-empty", archiveView ? "No archived chats" : "No conversations yet"));
+  if (!separateRecents && !conversationList.some(t => Boolean(t.archived) === archiveView)) nav.append(element("p", "group-empty", archiveView ? "No archived chats" : "No conversations yet"));
+}
+function conversationRow(thread) {
+  const row=element("div","conversation-row"+(thread.id===cid ? " active" : ""));
+  const button=conversationButton(thread,thread.id===cid ? "active" : "");
+  button.onclick=()=>openConversation(thread.id,thread.title);
+  const menu=element("button","conversation-more","⋯");
+  menu.type="button";menu.setAttribute("aria-label","Actions for "+thread.title);
+  menu.onclick=event=>{event.stopPropagation();const rect=menu.getBoundingClientRect();showConversationContext(thread,rect.right,rect.bottom);};
+  row.oncontextmenu=event=>{event.preventDefault();showConversationContext(thread,event.clientX,event.clientY);};
+  row.append(button,menu);return row;
 }
 function openGroupDialog(id = null) {
   if (busy) return;
