@@ -33,6 +33,9 @@ label { display: flex; flex-direction: column; gap: 8px; font-size: 12px; }
 .recent-page-controls .recent-chats-toggle:disabled { opacity: .35; cursor: default; }
 .conversation-section-divider { width: 100%; margin: 12px 0 8px; border: 0; border-top: 1px solid var(--line); }
 .import-progress { margin-bottom: 5px; }
+.message-favorite { display: inline-flex; align-items: center; padding: 0 3px; }
+.message-favorite[aria-pressed="true"] { color: var(--accent); }
+.message-favorite[aria-pressed="true"] svg { fill: currentColor; }
 .import-progress-track { height: 2px; overflow: hidden; background: var(--line); border-radius: 2px; }
 .import-progress-track span { display: block; height: 100%; background: var(--accent); }
 .import-progress.indeterminate .import-progress-track span { animation: import-travel 1.2s ease-in-out infinite alternate; }

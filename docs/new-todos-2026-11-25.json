@@ -36,22 +36,22 @@
   },
   {
     "id": "backlog-f6f317b98be95e61a00228ea",
-    "title": "P3 · Planned — Life: colourful rainbow theme\n\nAdd an accessible colourful theme across the app; retain readable contrast and current default themes.",
-    "completed": false,
+    "title": "P3 · Done — Life: colourful rainbow theme\n\nLife theme adds colourful surfaces, accents and sidebar icons; readable palette validation, browser switching/persistence and all seven workflows passed.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45573331203",
+    "completed": true,
     "type": "feature",
     "priority": "P3"
   },
   {
     "id": "backlog-da890d59092ec6c52fbbb6d6",
-    "title": "P3 · Planned — Brown and gold theme\n\nAdd a warm brown/gold palette with consistent forms, tables, syntax colours and accessibility checks.",
-    "completed": false,
+    "title": "P3 · Done — Brown and gold theme\n\nBrown and Gold theme covers controls, conversations, code surfaces and forms. Palette contrast, gold action colour, browser persistence and all seven workflows passed.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45573331203",
+    "completed": true,
     "type": "feature",
     "priority": "P3"
   },
   {
     "id": "backlog-0c5119856a84aff65ce7bc4d",
-    "title": "P3 · Planned — External theme import extension\n\nImport validated theme tokens through an optional module; reject executable content and unsafe CSS.",
-    "completed": false,
+    "title": "P3 · Done — External theme import extension\n\nOptional theme module imports versioned JSON up to 4 KB with nine validated hex tokens and contrast checks; rejects CSS/code/URLs. Palette persists locally. Current imports support dark surfaces; Beige remains the built-in light option. Enabled/disabled browser and all seven workflows passed.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45573331203",
+    "completed": true,
     "type": "feature",
     "priority": "P3"
   },
@@ -176,8 +176,8 @@
   },
   {
     "id": "backlog-bedrock-gpt-live-validation",
-    "title": "P1 · WIP — GPT via Bedrock live access\n\nOptional Responses adapter, shared Bedrock key, GPT-6.2 Sol default, manual GPT-6.1 Sol fallback, metering and reviewed tools implemented. Mocked backend/browser checks pass. Actual account/model access still requires Settings → AI → GPT via Bedrock → Save & test; do not mark complete before that check.",
-    "completed": false,
+    "title": "P1 · Done — GPT via Bedrock live access\n\nCurrent GPT-6.2 Sol configuration has matching saved successful AI activity and metered real replies. Actual Bedrock Responses access is verified without new billable prompts. All seven adapter/UI workflows pass. Analysis is separately pending because its model field is empty; future token validity is not guaranteed.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45573331203",
+    "completed": true,
     "type": "feature",
     "priority": "P1"
   },

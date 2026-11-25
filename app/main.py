@@ -206,6 +206,8 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
     register_library(app,store,auth,config_lock)
     from app.investigation_workspace import register as register_investigation
     register_investigation(app, store, auth, config_lock)
+    from app.message_favorites import register as register_favorites
+    register_favorites(app,store,auth,config_lock)
 
     @app.exception_handler(ValueError)
     async def bad_input(request, exc):
@@ -371,6 +373,7 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
                 "workspace": {"personal": bool(session.get("grant"))},
                 "public_showcase": public_showcase,
                 "attachment_limits": {"document_bytes": document_bytes()},
+                "message_favorites": os.environ.get("AIMATE_MESSAGE_FAVORITES_ENABLED") != "0",
                 "connection_checks": store.connection_checks(),
                 "connection_defaults": {"jenkins": {"username": getpass.getuser() if not public_url and not demo else "",
                                                       "url": "" if public_showcase else os.environ.get("JENKINS_URL", "")}},

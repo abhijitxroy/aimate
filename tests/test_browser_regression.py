@@ -824,6 +824,27 @@ class BrowserRegressionTests(unittest.TestCase):
         self.expect(field).to_have_value("**Selected text**")
         self.expect(self.page.get_by_role("button",name="Bold",exact=True)).to_have_attribute("aria-pressed","true")
 
+    def test_message_favorite_restores_and_opens_original_chat_and_unpins(self):
+        self.page.locator("#conversations").get_by_role("button",name="Old continuity reference",exact=True).click()
+        self.page.get_by_role("button",name="Pin AiMate reply",exact=True).click()
+        self.expect(self.page.get_by_role("button",name="Unpin AiMate reply",exact=True)).to_have_attribute("aria-pressed","true")
+        self.page.reload()
+        self.expect(self.page.get_by_role("button",name="Unpin AiMate reply",exact=True)).to_have_attribute("aria-pressed","true")
+        self.page.locator("#sidebarTools > summary").click()
+        self.page.locator("#openFavorites").click()
+        self.expect(self.page.locator("#favoriteMessages")).to_contain_text("Old continuity reference")
+        self.page.locator("#favoriteMessages").get_by_role("button",name="Open chat",exact=True).click()
+        self.expect(self.page.locator("#favoritesDialog")).to_be_hidden()
+        self.page.locator("#openFavorites").click()
+        self.page.locator("#favoriteMessages").get_by_role("button",name="Unpin",exact=True).click()
+        self.expect(self.page.locator("#favoriteMessages .knowledge-card")).to_have_count(0)
+        self.page.locator('[data-close="favoritesDialog"]').click()
+        self.expect(self.page.get_by_role("button",name="Pin AiMate reply",exact=True)).to_be_visible()
+        self.page.add_init_script("window.AiMateFeatures={messageFavorites:false}")
+        self.page.reload()
+        self.expect(self.page.locator("[data-message-favorite]")).to_have_count(0)
+        self.expect(self.page.locator("#openFavorites")).to_be_hidden()
+
     def test_extra_themes_import_validation_persistence_and_disabled_feature(self):
         self.page.locator("#openAppearance").click()
         self.page.locator('[data-theme-choice="life"]').click()

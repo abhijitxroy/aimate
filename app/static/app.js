@@ -413,6 +413,8 @@ async function syncConnections() {
 
 async function refreshState() {
   const state = await api("/api/state");
+  if(state.message_favorites===false) {window.AiMateFeatures={...window.AiMateFeatures,messageFavorites:false};}
+  $("#openFavorites").hidden=window.AiMateFeatures?.messageFavorites===false;
   $("#attachText").dataset.documentBytes = state.attachment_limits?.document_bytes || 4*1024*1024;
   $("#attachText").title = `Attach a file · documents up to ${Number($("#attachText").dataset.documentBytes)/(1024*1024)} MB`;
   csrf = state.csrf;
@@ -680,6 +682,7 @@ function addMessage(role, text = "", turnId = null, created = Date.now()/1000) {
     };
     heading.append(feedback);
   }
+  window.AiMateMessageFavorites?.install(message,role,heading);
   root.append(heading, body);
   window.AiMateMessageTime?.update(message);
   $("#messages").append(root);
@@ -913,6 +916,7 @@ async function loadConversation(id, title, version) {
       const userText=typeof user.content==="string" ? user.content : user.content.filter(block=>block.type==="text").map(block=>block.text).join("\n");
       const message = addMessage("user", savedFiles.length ? turn.usage.display_question : userText, turn.id, turn.created);
       message.editText = userText;
+      window.AiMateMessageFavorites?.update(message,"user",turn.usage?.favorite_roles?.includes("user"));
       if (savedFiles.length) renderAttachmentCards(message.body, savedFiles, false);
     }
     let bot;
@@ -927,6 +931,7 @@ async function loadConversation(id, title, version) {
     if (bot && turn.usage?.model) {
       updateModelInfo(bot, turn.usage);
     }
+    if(bot) window.AiMateMessageFavorites?.update(bot,"assistant",turn.usage?.favorite_roles?.includes("assistant"));
     for (const msg of turn.messages) {
       if (!Array.isArray(msg.content)) continue;
       for (const block of msg.content) {

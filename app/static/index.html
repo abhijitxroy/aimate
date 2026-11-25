@@ -20,6 +20,7 @@
   <script src="/static/field_help.js" defer></script>
   <script src="/static/recent_chats.js" defer></script>
   <script src="/static/import_progress.js" defer></script>
+  <script src="/static/message_favorites.js" defer></script>
   <script src="/static/message_time.js" defer></script>
   <script src="/static/todo_priority_ui.js" defer></script>
   <script src="/static/app.js" defer></script>
@@ -65,6 +66,7 @@
       <details id="sidebarTools" class="sidebar-bottom">
         <summary aria-label="Show or hide tools" title="Show or hide tools"><span>Tools</span><svg class="tools-rail-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg><svg class="tools-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></summary>
         <div class="sidebar-tools">
+        <button id="openFavorites"><svg class="sidebar-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 2.8 5.8 6.4.9-4.6 4.5 1.1 6.3-5.7-3-5.7 3 1.1-6.3-4.6-4.5 6.4-.9Z"/></svg><span>Favorites</span></button>
         <button id="openKnowledge"><svg class="sidebar-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v15M12 5C9 3 5 3 2 4v15c3-1 7-1 10 1 3-2 7-2 10-1V4c-3-1-7-1-10 1Z"/><path d="M5 8h4M5 12h4M15 8h4M15 12h4"/></svg><span>My Diary</span></button>
         <button id="openTodos"><svg class="sidebar-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="m7 12 3 3 7-7"/></svg><span>To-do</span></button>
         <button id="openUsage"><svg class="sidebar-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18M7 16v-4M12 16V8M17 16V5"/></svg><span>Usage &amp; billing</span></button>
@@ -108,6 +110,7 @@
     </main>
   </div>
 
+  <dialog id="favoritesDialog"><div class="dialog-head"><h2>Favorite messages</h2><button class="close" data-close="favoritesDialog" aria-label="Close favorites">×</button></div><div id="favoriteMessages"></div><p id="favoritesError" class="error" role="alert"></p></dialog>
   <dialog id="appearanceDialog" class="compact-dialog" aria-labelledby="appearanceTitle">
     <div class="dialog-head"><h2 id="appearanceTitle">Appearance</h2><button class="close" data-close="appearanceDialog" aria-label="Close appearance">×</button></div>
     <div class="theme-options" role="group" aria-label="Choose your theme">
