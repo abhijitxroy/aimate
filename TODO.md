@@ -1,10 +1,12 @@
 # AiMate — next work on the new laptop
 
-Current app checklist, updated on **25 November 2026: 28 of the original
-42 items Done; 14 remain open for remaining scope or missing live validation**.
-Both the Tools layout and Diary/To-do safety-lock follow-ups passed CI.
-See [the status table](docs/todo-audit-2026-11-24.md)
-and [the app To-do export](docs/audited-todos.json).
+Current recheck on **25 November 2026**: the live To-do list contains
+**48 completed and 32 open** tasks. The original audited app list has 31 completed
+and 13 open records; the live total also includes later requests and legacy
+user-added entries. Incomplete live validation remains open.
+See [the latest request recheck](docs/request-recheck-2026-11-25.md),
+[the original status table](docs/todo-audit-2026-11-24.md), and
+[the app To-do export](docs/audited-todos.json).
 
 The [new request backlog](docs/new-backlog-2026-11-25.md) records the 22 additional
 requests and three CI follow-ups individually.

@@ -211,8 +211,8 @@
   },
   {
     "id": "backlog-message-favorites",
-    "title": "P2 · Planned — Pin favorite chat messages\n\nPin/unpin individual saved messages, provide a favorites view with original-chat links, preserve formatting and workspace isolation, and keep favorites through portable backup/restore.",
-    "completed": false,
+    "title": "P2 · Done — Pin favorite chat messages\n\nSaved user/reply star pins, paged Favorites view, Copy, original-chat navigation and Unpin implemented. Existing encrypted turn metadata preserves formatting and usage; backups restore pins, and deleting/editing away the turn removes its reference. Private/incomplete messages excluded. Enabled/disabled checks, 247 integration, 44 browser and nine backup tests passed; all seven workflows passed.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45575134847",
+    "completed": true,
     "type": "feature",
     "priority": "P2"
   }
