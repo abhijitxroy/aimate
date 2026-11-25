@@ -14,6 +14,34 @@
 .theme-preview.beige { background: #f8f5ef; }
 .theme-preview.beige i { background: #eae3d7; }
 .theme-preview.beige b { background: #fffdf8; border: 1px solid #d4cbbd; }
+.theme-preview.life { background: linear-gradient(135deg,#5e336f,#234f7c,#275c4a); }
+.theme-preview.life i { background: #28243d; }
+.theme-preview.life b { background: linear-gradient(90deg,#ff9bad,#e9d77d,#98dfc0,#9bbdfb,#cbb1fa); }
+.theme-preview.brown-gold { background: #241a14; }
+.theme-preview.brown-gold i { background: #543d28; }
+.theme-preview.brown-gold b { background: #f2c76e; }
+.theme-preview.custom { background: var(--bg); }
+.theme-preview.custom i { background: var(--panel); }
+.theme-preview.custom b { background: var(--accent); }
+.theme-import-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 15px; }
+.theme-import-row button { font-size: 11px; padding: 6px 8px; }
+:root:is([data-theme="life"],[data-theme="brown-gold"],[data-theme="custom"]) body { background: var(--bg); }
+:root:is([data-theme="life"],[data-theme="brown-gold"],[data-theme="custom"]) :is(button,input,textarea,select,.sidebar,.login-card,dialog,.composer,.conversation-row,.help-cards article,.knowledge-card,.todo-row,.usage-card,.usage-summary>div,.metric-card,.answer-chart,.answer-choices,.attachment-card,.assistant .body,.user .body,.action-card,.conversation-context,.chat-menu>div,.model-details,.source-chip,.model-info>summary) {
+  background-color: var(--panel); background-image: none; color: var(--text); border-color: var(--line);
+}
+:root:is([data-theme="life"],[data-theme="brown-gold"],[data-theme="custom"]) :is(.composer textarea,.conversation-row>button,.group-action,.message-action,.conversation-context button,.theme-option,.archive-view,.history-search-button) { background: transparent; }
+:root:is([data-theme="life"],[data-theme="brown-gold"],[data-theme="custom"]) :is(.conversation-row.active,.record-tabs button[aria-pressed="true"],.settings-tabs [aria-selected="true"]) { box-shadow: inset 0 0 0 1px var(--accent); color: var(--accent); }
+:root:is([data-theme="life"],[data-theme="brown-gold"],[data-theme="custom"]) .primary.primary { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+:root:is([data-theme="life"],[data-theme="brown-gold"],[data-theme="custom"]) .composer-bottom #modelMode { background-color: var(--bg); border-color: var(--line); }
+:root:is([data-theme="life"],[data-theme="brown-gold"],[data-theme="custom"]) :is(input,textarea)::placeholder { color: var(--muted); opacity: 1; }
+:root:is([data-theme="life"],[data-theme="brown-gold"],[data-theme="custom"]) :is(.conversation-group>summary,.message-label,.field-help) { color: var(--text); }
+:root:is([data-theme="life"],[data-theme="brown-gold"],[data-theme="custom"]) :is(.body pre,.body code,.body .answer-code,.action-card pre,.code-toolbar,.body th,.chart-track) { background: var(--bg); }
+:root:is([data-theme="life"],[data-theme="brown-gold"],[data-theme="custom"]) :is(.body pre code,.body .answer-code pre) { background: transparent; }
+:root[data-theme="life"] body { background: radial-gradient(ellipse at 10% 0%,#b9578e28,transparent 45%),radial-gradient(ellipse at 95% 35%,#239fbe28,transparent 50%),var(--bg); }
+:root[data-theme="life"] .sidebar-tools>button:nth-child(3n+1) .sidebar-icon { color: #e5b4f3; }
+:root[data-theme="life"] .sidebar-tools>button:nth-child(3n+2) .sidebar-icon { color: #92e7c3; }
+:root[data-theme="life"] .sidebar-tools>button:nth-child(3n) .sidebar-icon { color: #ffda94; }
+:root[data-theme="life"] .composer { border-color: #a994d1; box-shadow: 0 0 18px #8d7ad112; }
 #openAppearance .sidebar-icon { color: #cfbf9c; }
 :root[data-theme="beige"] {
   color-scheme: light;

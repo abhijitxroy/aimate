@@ -1,6 +1,7 @@
 """Real browser + HTTP + SSE checks against a fully isolated fixture backend."""
 import os
 import io
+import json
 import re
 import socket
 import subprocess
@@ -822,6 +823,32 @@ class BrowserRegressionTests(unittest.TestCase):
         field.press("Control+b")
         self.expect(field).to_have_value("**Selected text**")
         self.expect(self.page.get_by_role("button",name="Bold",exact=True)).to_have_attribute("aria-pressed","true")
+
+    def test_extra_themes_import_validation_persistence_and_disabled_feature(self):
+        self.page.locator("#openAppearance").click()
+        self.page.locator('[data-theme-choice="life"]').click()
+        self.expect(self.page.locator("html")).to_have_attribute("data-theme","life")
+        self.page.locator('[data-theme-choice="brown-gold"]').click()
+        self.assertEqual(self.page.evaluate("getComputedStyle(document.documentElement).getPropertyValue('--bg').trim()"),"#241a14")
+        self.expect(self.page.locator("#send")).to_have_css("background-color","rgb(242, 199, 110)")
+        theme=self.page.evaluate("({version:1,name:'My gold',colors:AiMateThemes.palettes['brown-gold']})")
+        upload=self.page.locator(".theme-import-row input")
+        upload.set_input_files({"name":"my-theme.json","mimeType":"application/json","buffer":json.dumps(theme).encode()})
+        self.expect(self.page.locator("html")).to_have_attribute("data-theme","custom")
+        self.expect(self.page.locator("#appearanceDialog")).to_contain_text("Theme imported: My gold")
+        self.page.reload()
+        self.expect(self.page.locator("html")).to_have_attribute("data-theme","custom")
+        self.assertEqual(self.page.evaluate("getComputedStyle(document.documentElement).getPropertyValue('--bg').trim()"),"#241a14")
+        self.page.locator("#openAppearance").click()
+        self.page.locator(".theme-import-row input").set_input_files({
+            "name":"unsafe.json","mimeType":"application/json","buffer":json.dumps({**theme,"css":"url(https://outside)"}).encode()})
+        self.expect(self.page.locator("#appearanceDialog .error")).to_contain_text("nine required colour tokens")
+        self.expect(self.page.locator("html")).to_have_attribute("data-theme","custom")
+        self.page.add_init_script("window.AiMateFeatures={extraThemes:false}")
+        self.page.reload()
+        self.expect(self.page.locator("html")).to_have_attribute("data-theme","navy")
+        self.expect(self.page.locator(".theme-import-row")).to_have_count(0)
+        self.expect(self.page.locator("#question")).to_be_visible()
 
     def test_large_paste_is_a_document_card_and_saved_message_keeps_card(self):
         self.page.evaluate("""() => {

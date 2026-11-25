@@ -29,8 +29,8 @@
   },
   {
     "id": "backlog-d608119e2937248da2214c80",
-    "title": "P1 · Planned — Thin attachment-import progress line\n\nShow accurate staged import progress above the askbar, with failure/cancel behavior and no fake percentages.",
-    "completed": false,
+    "title": "P1 · Done — Thin attachment-import progress line\n\nThin import line uses measured local-read progress and indeterminate validation. Cancel aborts pending imports; failures show their reason. Enabled/disabled browser checks and all seven workflows passed.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45571515851",
+    "completed": true,
     "type": "feature",
     "priority": "P1"
   },
@@ -85,8 +85,8 @@
   },
   {
     "id": "backlog-b7f38c594277bcd96e7d738e",
-    "title": "P2 · Planned — Explain the three-chat concurrency limit\n\nAdd concise in-app help explaining per-workspace three streams, one per chat, resource/rate-limit rationale and Stop behavior.",
-    "completed": false,
+    "title": "P2 · Done — Explain the three-chat concurrency limit\n\nHelp explains three concurrent replies per workspace, one per chat, resource/rate-limit rationale and visible-chat Stop behavior. All seven workflows passed.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45571515851",
+    "completed": true,
     "type": "task",
     "priority": "P2"
   },
@@ -106,8 +106,8 @@
   },
   {
     "id": "backlog-d1f20943bd9f5eedd2aebd1a",
-    "title": "P2 · Planned — Initial chat naming and topic icon\n\nChoose title/icon from initial chat text once; preserve later manual changes and document fallback behavior.",
-    "completed": false,
+    "title": "P2 · Done — Initial chat naming and topic icon\n\nFirst saved question assigns title and topic icon once. Manual names/icons and later questions preserve them; disabled automatic-icon mode retains titles. Integration tests and all seven workflows passed.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45571515851",
+    "completed": true,
     "type": "enhancement",
     "priority": "P2"
   },

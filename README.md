@@ -505,3 +505,5 @@ Attachment import shows a thin progress line: local file reading uses measured b
 Saved chats receive a title and topic icon from their first saved question. Later questions preserve both, including manual names/icons. Set `AIMATE_INITIAL_IDENTITY_ENABLED=0` to retain titles while disabling automatic icon assignment.
 
 A workspace permits three concurrent replies, one per chat, to bound resources and provider rate pressure. Stop affects only the visible chat. Help → Troubleshooting explains the limit.
+
+**Additional themes:** Appearance offers Life and Brown & Gold. Import a version 1 theme JSON (up to 4 KB) using its downloadable template. Only nine hex colour tokens are accepted; dark surfaces and readable text/status contrast are required. Imports contain no CSS, scripts, URLs or external assets. Your browser keeps the palette locally. `window.AiMateFeatures.extraThemes=false` disables these choices without affecting the three core themes. Light theme imports remain unsupported; use Beige.
