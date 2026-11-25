@@ -8,7 +8,7 @@ import time
 import httpx
 
 from app.connectors import OPERATIONS, Services, scrub
-from app.model_routing import ROUTER_SYSTEM, ROUTER_MAX_TOKENS, add_usage, route_input, select_model
+from app.model_routing import ROUTER_SYSTEM, ROUTER_MAX_TOKENS, add_usage, anthropic_usage, route_input, select_model
 from app.memory import TOOLS as MEMORY_TOOLS, context as memory_context, recall
 from app.vault import TOOL as VAULT_TOOL, read as read_vault, redactions as vault_redactions
 from app.review import TOOLS as REVIEW_TOOLS, read as read_review
@@ -327,7 +327,7 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
                 model=config["ai"]["model"], max_tokens=ROUTER_MAX_TOKENS, system=ROUTER_SYSTEM,
                 messages=[{"role": "user", "content": scrub(route_input(question, messages[:-1], context_reference), config)}])
             return ("".join(b.text for b in response.content if getattr(b, "type", "") == "text"),
-                    {"input_tokens": response.usage.input_tokens, "output_tokens": response.usage.output_tokens})
+                    anthropic_usage(response.usage))
         selection = await select_model(config["ai"], model_mode, classify)
         add_usage(usage, by_model, config["ai"]["model"], selection["routing_usage"])
         yield selection
@@ -360,7 +360,7 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
             blocks = [block.model_dump(exclude_none=True) for block in msg.content]
             messages.append({"role": "assistant", "content": scrub(blocks, config)})
             add_usage(usage, by_model, msg.model if getattr(msg, "model", None) else selection["model"],
-                      {"input_tokens": msg.usage.input_tokens, "output_tokens": msg.usage.output_tokens})
+                      anthropic_usage(msg.usage))
             calls = [block for block in blocks if block["type"] == "tool_use"]
             if not calls:
                 if not answer.strip():

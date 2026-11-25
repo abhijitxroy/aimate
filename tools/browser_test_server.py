@@ -29,8 +29,8 @@ class Block:
 
 
 class Stream:
-    def __init__(self, model, text="Analysis model answered.", slow=False):
-        self.model, self.text, self.slow = model, text, slow
+    def __init__(self, model, text="Analysis model answered.", slow=False, cache=False):
+        self.model, self.text, self.slow, self.cache = model, text, slow, cache
 
     async def __aenter__(self):
         return self
@@ -47,8 +47,12 @@ class Stream:
         return chunks()
 
     async def get_final_message(self):
+        usage=SimpleNamespace(input_tokens=60,output_tokens=8)
+        if self.cache:
+            usage.cache_read_input_tokens=400
+            usage.cache_creation_input_tokens=100
         return SimpleNamespace(content=[Block(self.text)], model=self.model,
-                               usage=SimpleNamespace(input_tokens=60, output_tokens=8))
+                               usage=usage)
 
 
 class AI:
@@ -66,7 +70,7 @@ class AI:
         if "Which ticket" in str(kwargs["messages"][-1]["content"]):
             return Stream(kwargs["model"], "DEMO-8437 · PR #1257" if "DEMO-8437" in kwargs["system"]
                           else "Missing saved context.")
-        return Stream(kwargs["model"])
+        return Stream(kwargs["model"],cache="Cache token fixture" in question)
 
     async def close(self):
         pass

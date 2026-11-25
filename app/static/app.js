@@ -208,10 +208,13 @@ function shortModelName(model) {
 function updateModelInfo(message, used) {
   const route = used.route === "analysis" ? "Analysis" : "Standard";
   const mode = used.mode === "auto" ? "Auto" : route;
-  const total = used.usage ? (used.usage.input_tokens || 0) + (used.usage.output_tokens || 0) : null;
+  const total = used.usage ? ["input_tokens","output_tokens","cache_read_input_tokens","cache_creation_input_tokens"]
+    .reduce((sum,key)=>sum+(used.usage[key] || 0),0) : null;
   const label = `${mode}${total === null ? "" : ` · 🔥 ${total.toLocaleString()}`}`;
   const details = [`${used.mode === "auto" ? "Auto → " : ""}${route} · ${used.model}`];
   if (used.usage) details.push(`${(used.usage.input_tokens || 0).toLocaleString()} input / ${(used.usage.output_tokens || 0).toLocaleString()} output tokens`);
+  if (used.usage?.cache_read_input_tokens) details.push(`${used.usage.cache_read_input_tokens.toLocaleString()} cache read tokens`);
+  if (used.usage?.cache_creation_input_tokens) details.push(`${used.usage.cache_creation_input_tokens.toLocaleString()} cache write tokens`);
   if (used.notice) details.push(used.notice);
   if (!message.modelInfo) {
     message.modelInfo = element("details", "model-info");
@@ -233,7 +236,10 @@ function updateModelInfo(message, used) {
     element("code", "model-id", used.model));
   if (used.usage) {
     const tokens = element("div", "model-token-counts");
-    for (const [name, value] of [["Input", used.usage.input_tokens], ["Output", used.usage.output_tokens]]) {
+    const metrics=[["Input",used.usage.input_tokens],["Output",used.usage.output_tokens]];
+    if(used.usage.cache_read_input_tokens) metrics.push(["Cache read",used.usage.cache_read_input_tokens]);
+    if(used.usage.cache_creation_input_tokens) metrics.push(["Cache write",used.usage.cache_creation_input_tokens]);
+    for (const [name, value] of metrics) {
       const metric = element("div");
       metric.append(element("small", "", name), element("strong", "", (value || 0).toLocaleString()));
       tokens.append(metric);
@@ -349,7 +355,9 @@ function conversationButton(thread, className = "") {
     button.append(marker);
   }
   if (thread.pinned) {
-    const pin = element("span", "conversation-pin", "★");
+    const pin = element("span", "conversation-pin");
+    pin.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m16 3 5 5-4 1-3 5-4 1-1 4-4-4 4-1 1-4 5-3ZM5 19l-3 3"/></svg>';
+    pin.title="Pinned";
     pin.setAttribute("aria-hidden", "true");
     button.append(pin);
   }
@@ -514,34 +522,24 @@ function renderConversationTree(nav, activeGroup) {
   const recents=window.AiMateRecentChats;
   const separateRecents=!archiveView && recents?.enabled();
   const refresh=()=>{nav.replaceChildren();renderConversationTree(nav,activeGroup);};
-  let recentIDs=new Set();
-  if (separateRecents) {
-    nav.append(element("p","recent-heading","Recents"));
-    const list=element("div","recent-conversations");list.id="recentConversations";
-    const selection=recents.page(conversationList.filter(t=>!t.archived));
-    recentIDs=new Set(selection.items.map(t=>t.id));
-    for(const thread of selection.items) list.append(conversationRow(thread));
-    recents.pageControl(list,"recents",selection,refresh);
-    if(!selection.items.length) list.append(element("p","group-empty","No recent chats"));
-    nav.append(list);
-    const pinned=conversationList.filter(t=>!t.archived && t.pinned && !t.group_id && !recentIDs.has(t.id));
-    if(pinned.length) {
-      nav.append(element("p","recent-heading","Pinned"));
-      for(const thread of pinned) nav.append(conversationRow(thread));
-    }
-    if(conversationGroups.length) nav.append(element("p","recent-heading","Folders"));
-  }
+  const recentSelection=separateRecents ? recents.page(conversationList.filter(t=>!t.archived)) : null;
+  if(separateRecents && conversationGroups.length) nav.append(element("p","recent-heading","Projects"));
   const ancestors = new Set();
   for (let group = conversationGroups.find(g => g.id === activeGroup); group;
        group = conversationGroups.find(g => g.id === group.parent)) ancestors.add(group.id);
   function fill(parent, node) {
+    const key=`${archiveView}:${parent || "root"}`, selection=recentChatView(
+      conversationList.filter(t => (t.group_id || null) === parent && Boolean(t.archived) === archiveView),key);
+    if(parent!==null || !separateRecents) {
+      for(const thread of selection.items.filter(t=>t.pinned)) node.append(conversationRow(thread));
+    }
     for (const group of conversationGroups.filter(g => g.parent === parent)) {
       if (archiveView && !conversationList.some(t => t.archived && (t.group_id === group.id || isGroupBelow(t.group_id, group.id)))) continue;
       const folder = element("details", "conversation-group"); folder.dataset.group = group.id;
       folder.open = expandedGroups.has(group.id) || ancestors.has(group.id);
       const summary = element("summary", "");
       summary.append(element("span", "group-name", group.name));
-      summary.title = `Folder: ${groupPath(group.id)}`;
+      summary.title = `Project: ${groupPath(group.id)}`;
       const add = element("button", "group-action", "＋"); add.type = "button";
       add.setAttribute("aria-label", "New chat in " + group.name);
       add.onclick = async event => {
@@ -567,9 +565,7 @@ function renderConversationTree(nav, activeGroup) {
       node.append(folder);
     }
     if (parent===null && separateRecents) return;
-    const key=`${archiveView}:${parent || "root"}`, selection=recentChatView(
-      conversationList.filter(t => (t.group_id || null) === parent && Boolean(t.archived) === archiveView),key);
-    for (const thread of selection.items) {
+    for (const thread of selection.items.filter(t=>!t.pinned)) {
       node.append(conversationRow(thread));
     }
     window.AiMateRecentChats?.control(node,key,selection,()=>{
@@ -577,6 +573,20 @@ function renderConversationTree(nav, activeGroup) {
     },parent ? groupPath(parent) : "this workspace");
   }
   fill(null, nav);
+  if(separateRecents) {
+    const recentIDs=new Set(recentSelection.items.map(t=>t.id));
+    const pinned=conversationList.filter(t=>!t.archived && t.pinned && !t.group_id && !recentIDs.has(t.id));
+    if(pinned.length) {
+      nav.append(element("p","recent-heading","Pinned"));
+      for(const thread of pinned) nav.append(conversationRow(thread));
+    }
+    nav.append(element("p","recent-heading","Recents"));
+    const list=element("div","recent-conversations");list.id="recentConversations";
+    for(const thread of recentSelection.items) list.append(conversationRow(thread));
+    recents.pageControl(list,"recents",recentSelection,refresh);
+    if(!recentSelection.items.length) list.append(element("p","group-empty","No recent chats"));
+    nav.append(list);
+  }
   if (!separateRecents && !conversationList.some(t => Boolean(t.archived) === archiveView)) nav.append(element("p", "group-empty", archiveView ? "No archived chats" : "No conversations yet"));
 }
 function conversationRow(thread) {
@@ -593,7 +603,7 @@ function openGroupDialog(id = null) {
   if (busy) return;
   editingGroup = id;
   const group = conversationGroups.find(g => g.id === id);
-  $("#groupDialogTitle").textContent = group ? "Folder settings" : "New folder";
+  $("#groupDialogTitle").textContent = group ? "Project settings" : "New project";
   $("#groupName").value = group?.name || "";
   $("#groupPlacement").hidden = false;
   groupOptions($("#groupParent"), "Top level");
@@ -1666,7 +1676,7 @@ function openConversationAction(action, targetId = cid) {
   $("#conversationDialogTitle").textContent = removing ? "Delete conversation?" : moving ? "Move conversation" : "Rename conversation";
   $("#conversationNameLabel").hidden = removing || moving;
   $("#conversationGroupLabel").hidden = !moving;
-  groupOptions($("#conversationGroup"), "No folder · this workspace");
+  groupOptions($("#conversationGroup"), "No project · this workspace");
   $("#conversationGroup").value = conversationList.find(thread => thread.id === targetId)?.group_id || "";
   $("#conversationName").value = conversationList.find(thread => thread.id === targetId)?.title || $("#chatTitle").textContent;
   $("#conversationName").required = !removing && !moving;
@@ -1688,7 +1698,7 @@ document.body.append(conversationContext);
 function showConversationContext(thread, x, y) {
   if (busy) return;
   conversationContext.replaceChildren();
-  for (const [label, action] of [["Rename", "rename"], ["Change icon", "icon"], ["Move to folder", "move"],
+  for (const [label, action] of [["Rename", "rename"], ["Change icon", "icon"], ["Move to project", "move"],
     [thread.pinned ? "Unpin" : "Pin", "pin"], ["Copy chat", "copy"], ["Export (.md)", "md"],
     ["Export (.txt)", "txt"], [thread.archived ? "Restore" : "Archive", "archive"], ["Delete", "delete"]]) {
     if (thread.private && !["copy","md","txt","delete"].includes(action)) continue;

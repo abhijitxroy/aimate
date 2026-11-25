@@ -1,8 +1,8 @@
 [
   {
     "id": "backlog-3092a5f0dba05ff3cadc3c2c",
-    "title": "P1 · WIP — To-do priority column\n\nP0–P3 metadata, compact column, priority filter/sorting, legacy defaults, safety locks and encrypted backup support implemented. Final browser/backup checks and all seven workflows must pass before completion.",
-    "completed": false,
+    "title": "P1 · Done — To-do priority column\n\nP0–P3 priorities, filtering, sorting, legacy Normal default, edit locks, restart and encrypted portable backup/restore passed local checks and all seven workflows.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45555207046",
+    "completed": true,
     "type": "feature",
     "priority": "P1"
   },

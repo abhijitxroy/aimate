@@ -3,12 +3,27 @@
   "use strict";
   if (window.AiMateFeatures?.composerFormatting === false) {
     document.querySelector("#composerFormatting").hidden = true;
+    document.querySelector("#formatToggle").hidden = true;
     return;
   }
   const field = document.querySelector("#question");
   const toolbar = document.querySelector("#composerToolbar");
   const advanced = document.querySelector("#composerAdvanced");
   const preview = document.querySelector("#composerPreview");
+  const toggle=document.querySelector("#formatToggle"),section=document.querySelector("#composerFormatting");
+  let visible=true;
+  try {visible=localStorage.getItem("aimate.formatting.visible") !== "false";} catch {}
+  function showFormatting() {
+    section.hidden=!visible;
+    toggle.setAttribute("aria-pressed",String(visible));
+    toggle.setAttribute("aria-expanded",String(visible));
+    toggle.title=visible ? "Hide formatting" : "Show formatting";
+  }
+  toggle.onclick=()=>{
+    visible=!visible;showFormatting();
+    try {localStorage.setItem("aimate.formatting.visible",String(visible));} catch {}
+  };
+  showFormatting();
   let previewToggle;
   let selection = [0, 0];
   const formats=window.AiMateComposerFormats;

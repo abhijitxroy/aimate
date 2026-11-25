@@ -80,6 +80,68 @@ class BrowserRegressionTests(unittest.TestCase):
     def tearDown(self):
         self.context.close()
 
+    def test_format_show_hide_preserves_draft_and_remembers_visibility(self):
+        field=self.page.locator("#question")
+        field.fill("**Keep this draft**")
+        toggle=self.page.locator("#formatToggle")
+        self.expect(self.page.locator("#composerFormatting")).to_be_visible()
+        toggle.click()
+        self.expect(self.page.locator("#composerFormatting")).to_be_hidden()
+        self.expect(field).to_have_value("**Keep this draft**")
+        self.expect(toggle).to_have_attribute("title","Show formatting")
+        toggle.click()
+        self.expect(self.page.locator("#composerFormatting")).to_be_visible()
+        self.expect(field).to_have_value("**Keep this draft**")
+        toggle.click()
+        self.page.reload()
+        self.expect(self.page.locator("#composerFormatting")).to_be_hidden()
+        self.expect(toggle).to_have_attribute("aria-expanded","false")
+        toggle.click()
+        self.expect(self.page.get_by_role("button",name="Bold",exact=True)).to_be_visible()
+
+    def test_pin_stays_at_top_of_own_project_before_subprojects_and_recents_below(self):
+        data=self.page.evaluate("""async () => {
+            const parent=await api('/api/groups',{method:'POST',body:JSON.stringify({name:'Pin parent project'})});
+            const child=await api('/api/groups',{method:'POST',body:JSON.stringify({name:'Pin subproject',parent:parent.id})});
+            const other=await api('/api/groups',{method:'POST',body:JSON.stringify({name:'Other pin project'})});
+            const chats=[];
+            for(const title of ['Old pin fixture','New pin fixture']) {
+                const c=await api('/api/conversations',{method:'POST',body:JSON.stringify({group_id:parent.id})});
+                await api('/api/conversations/'+c.id,{method:'PATCH',body:JSON.stringify({title})});
+                chats.push(c.id);
+            }
+            expandedGroups.add(parent.id);await refreshState();return {parent:parent.id,child:child.id,other:other.id,chat:chats[0]};
+        }""")
+        project=self.page.locator(f'[data-group="{data["parent"]}"]')
+        row=project.locator(".conversation-row").filter(has_text="Old pin fixture")
+        row.get_by_role("button",name="Actions for Old pin fixture",exact=True).click()
+        self.page.get_by_role("menuitem",name="Pin",exact=True).click()
+        self.expect(row.locator(".conversation-pin svg")).to_have_count(1)
+        self.assertEqual(project.locator(":scope > .group-children").evaluate(
+            "el => el.firstElementChild.querySelector('.conversation-label').textContent"),"Old pin fixture")
+        state=self.context.request.get(self.url+"/api/state").json()
+        self.assertEqual(next(c for c in state["conversations"] if c["id"]==data["chat"])["group_id"],data["parent"])
+        self.assertTrue(project.evaluate("el => Boolean(el.compareDocumentPosition(document.querySelector('#recentConversations')) & Node.DOCUMENT_POSITION_FOLLOWING)"))
+        row.get_by_role("button",name="Actions for Old pin fixture",exact=True).click()
+        self.page.get_by_role("menuitem",name="Unpin",exact=True).click()
+        self.expect(row.locator(".conversation-pin")).to_have_count(0)
+        self.assertEqual(project.locator(":scope > .group-children").evaluate(
+            "el => el.firstElementChild.dataset.group"),data["child"])
+
+    def test_token_badge_includes_cache_reads_writes_and_restores_saved_breakdown(self):
+        self.page.locator("#newChat").click()
+        self.page.locator("#modelMode").select_option("standard")
+        self.page.locator("#question").fill("Cache token fixture")
+        self.page.locator("#send").click()
+        self.expect(self.page.locator("#send")).to_be_enabled(timeout=15000)
+        badge=self.page.locator(".message.assistant .model-info summary").last
+        self.expect(badge).to_contain_text("568")
+        badge.click()
+        self.expect(self.page.locator(".message.assistant .model-token-counts")).to_contain_text("Cache read")
+        self.expect(self.page.locator(".message.assistant .model-token-counts")).to_contain_text("400")
+        self.expect(self.page.locator(".message.assistant .model-token-counts")).to_contain_text("Cache write")
+        self.page.reload()
+        self.expect(badge).to_contain_text("568")
     def test_task_priorities_persist_filter_and_respect_edit_lock(self):
         if not self.page.locator("#openTodos").is_visible():
             self.page.locator("#sidebarTools summary").click()
@@ -192,21 +254,21 @@ class BrowserRegressionTests(unittest.TestCase):
             "button", name="Old continuity reference", exact=True)
         self.expect(chat).to_have_attribute("title", re.compile(r"Old continuity reference\nCreated: .+"))
         self.page.locator("#newGroup").click()
-        help_button = self.page.get_by_role("button", name="About folders and workspaces", exact=True)
+        help_button = self.page.get_by_role("button", name="About projects and workspaces", exact=True)
         self.expect(self.page.locator("#groupKind")).to_have_count(0)
-        self.expect(self.page.locator("#groupDialogTitle")).to_have_text("New folder")
-        self.expect(self.page.locator("#folderHelp")).to_be_hidden()
+        self.expect(self.page.locator("#groupDialogTitle")).to_have_text("New project")
+        self.expect(self.page.locator("#projectHelp")).to_be_hidden()
         help_button.click()
-        self.expect(self.page.locator("#folderHelp")).to_be_visible()
-        self.expect(self.page.locator("#folderHelp")).to_contain_text("Folder: organizes chats here.")
+        self.expect(self.page.locator("#projectHelp")).to_be_visible()
+        self.expect(self.page.locator("#projectHelp")).to_contain_text("Project: organizes chats here.")
         self.page.locator("#groupName").click()
         self.page.locator("#groupName").fill("Timestamp help project")
-        self.expect(self.page.locator("#folderHelp")).to_be_hidden()
+        self.expect(self.page.locator("#projectHelp")).to_be_hidden()
         self.page.locator("#saveGroup").click()
         self.expect(self.page.locator("#groupDialog")).to_be_hidden()
         self.page.wait_for_function("conversationGroups.some(g => g.name === 'Timestamp help project')")
         self.page.evaluate("openGroupDialog(conversationGroups.find(g => g.name === 'Timestamp help project').id)")
-        self.expect(self.page.locator("#groupDialogTitle")).to_have_text("Folder settings")
+        self.expect(self.page.locator("#groupDialogTitle")).to_have_text("Project settings")
         self.assertEqual(self.page.evaluate(
             "conversationGroups.find(g => g.name === 'Timestamp help project').kind"), "group")
         self.page.locator("#groupName").fill("Timestamp help renamed")

@@ -31,7 +31,7 @@ Claude, ChatGPT account and Anthropic connections remain usable.
 Automated tests use fictional credentials and mocked Bedrock responses.
 Live model/account access still needs the user's Save & test check.
 
-The Folder info button is a separate optional UI module (`field_help.js`);
+The Project info button is a separate optional UI module (`field_help.js`);
 set `window.AiMateFeatures.fieldHelp=false` before it loads to disable it.
 Chat creation times appear in sidebar tooltips in the browser's local
 time zone; they do not send additional model requests.

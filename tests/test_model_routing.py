@@ -7,7 +7,7 @@ from types import SimpleNamespace
 
 from app.agent import run_turn
 from app.connection_checks import check_connection
-from app.model_routing import parse_route, route_input, select_model
+from app.model_routing import add_usage,parse_route, route_input, select_model
 from app.store import Store
 from app.validation import validate_config
 from test_app import FakeBlock, fixture_config, create_app
@@ -15,6 +15,12 @@ from fastapi.testclient import TestClient
 
 
 class RoutingTests(unittest.TestCase):
+    def test_responses_cached_input_is_not_counted_twice(self):
+        usage={"input_tokens":0,"output_tokens":0};by_model={}
+        add_usage(usage,by_model,"gpt",{"input_tokens":100,"output_tokens":10,
+            "input_tokens_details":{"cached_tokens":70},"cache_read_input_tokens":70})
+        self.assertEqual(usage,{"input_tokens":100,"output_tokens":10})
+
     def test_manual_selection_skips_classifier(self):
         async def forbidden():
             raise AssertionError("Manual selection must not classify")
@@ -78,7 +84,8 @@ class RoutingTests(unittest.TestCase):
                 self_assert.assertEqual(kwargs["max_tokens"], 128)
                 self_assert.assertNotIn("private-token", json.dumps(kwargs))
                 return SimpleNamespace(content=[SimpleNamespace(type="text", text='{"route":"analysis"}')],
-                                       usage=SimpleNamespace(input_tokens=12, output_tokens=4))
+                                       usage=SimpleNamespace(input_tokens=12, output_tokens=4,
+                                           cache_read_input_tokens=20,cache_creation_input_tokens=3))
             def stream(self, **kwargs):
                 self.calls.append(("answer", kwargs))
                 class Stream:
@@ -93,7 +100,8 @@ class RoutingTests(unittest.TestCase):
                         return text()
                     async def get_final_message(self):
                         return SimpleNamespace(content=[FakeBlock(type="text", text="Evidence-based analysis.")],
-                                               usage=SimpleNamespace(input_tokens=100, output_tokens=20),
+                                               usage=SimpleNamespace(input_tokens=100, output_tokens=20,
+                                                   cache_read_input_tokens=40,cache_creation_input_tokens=12),
                                                model="analysis-id")
                 return Stream()
             async def close(self):
@@ -110,11 +118,14 @@ class RoutingTests(unittest.TestCase):
                 return [e async for e in run_turn(store, cid, "Debug this failure", client_factory=lambda cfg: ai)]
             events = asyncio.run(collect())
             self.assertEqual([c[1]["model"] for c in ai.calls], ["standard-id", "analysis-id"])
-            self.assertEqual(events[-1]["usage"], {"input_tokens": 112, "output_tokens": 24})
+            self.assertEqual(events[-1]["usage"], {"input_tokens":112,"output_tokens":24,
+                "cache_read_input_tokens":60,"cache_creation_input_tokens":15})
             self.assertEqual(events[-1]["by_model"]["standard-id"]["input_tokens"], 12)
             saved = json.loads(store.rows("SELECT metadata FROM turn_usage")[0]["metadata"])
             self.assertEqual(saved["route"], "analysis")
             self.assertEqual(saved["usage"], events[-1]["usage"])
+            ledger=sum(sum(json.loads(row["tokens"]).values()) for row in store.rows("SELECT tokens FROM usage_events"))
+            self.assertEqual(ledger,sum(saved["usage"].values()))
             self.assertTrue(ai.closed)
             store.db.close()
 

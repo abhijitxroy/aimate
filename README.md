@@ -209,7 +209,7 @@ endpoint. It does not invoke any model or verify inference permission; use
 Runtime discovery uses ListFoundationModels/ListInferenceProfiles; Mantle uses
 its separate `/v1/models` API. No automatic model fallback is enabled.
 
-Use **Search chats** (or **Ctrl+K**) to find saved titles and messages across folders
+Use **Search chats** (or **Ctrl+K**) to find saved titles and messages across projects
 and archived chats. Search runs locally without AI calls or token charges. Open a
 result to jump to the matching turn. Expand the sidebar with its top arrow button,
 or drag its right edge; the width is remembered in this browser. **Change icon**
@@ -403,22 +403,28 @@ respected; TLS verification remains enabled.
 
 ## Chats, knowledge and usage
 
-Chats can be standalone or organized in folders and subfolders within a workspace.
-Folder chat lists start with five chats; **Show more / Show less**
-reveals or hides older chats. Pinned chats and the current chat stay visible in folder lists.
-The separate **Recents** section starts with three chats across folders. Each
+Chats can be standalone or organized in projects and subprojects within a workspace.
+Project chat lists start with five chats; **Show more / Show less**
+reveals or hides older chats. Pinned chats and the current chat stay visible in project lists.
+The separate **Recents** section sits below Projects and starts with three chats across projects. Each
 **Show more** click reveals five more; **Show less** returns to three.
 Standalone chats appear there, rather than a second standalone list.
 Recency uses the latest saved message, falling back to creation time. This only
 changes the list view; search, history and saved data remain available.
 Messages show a small faded local time beside the token badge; hover reveals the
 full date/time with seconds and time zone. Reload uses the saved turn timestamp.
+New answers include separately reported Anthropic cache-read/cache-write tokens
+in the badge and breakdown. Responses API cached input is already included in
+its input total and is not counted twice. Older turns without saved cache counts
+keep their recorded totals; missing historical usage is not guessed.
 Disable the optional module with `window.AiMateFeatures.messageTime=false`.
 The optional `recent_chats.js` module can be disabled with
 `window.AiMateFeatures.recentChats=false`; missing/disabled modules show all chats.
-A folder organizes chats; a workspace has separate chats, data and connection
-settings. Project, Module and Group are now presented as Folder; their existing
+A project organizes chats; a workspace has separate chats, data and connection
+settings. Project, Module and Group are now presented as Project; their existing
 IDs and contents are preserved, including older portable backups.
+Pinning keeps a chat at the top of its own project, ahead of subprojects; unpinning restores its normal order. The **Format** button shows/hides the askbar toolbar and preview without changing the draft.
+
 Use the chat menu to rename, move, pin, copy, export Markdown, or continue in a new
 chat. Continuing keeps a reference and a bounded excerpt; it does not duplicate
 the entire transcript. AiMate can search relevant past user/assistant messages
@@ -484,4 +490,4 @@ API references: [ChatGPT local OAuth](https://developers.openai.com/siwc/token-s
 
 ## Code and conversation updates
 
-Code, JSON and YAML use local syntax colors in every theme. See [formatting examples](docs/syntax-highlighting.md). Editing resends within the same chat. Folder settings move a folder with its chats and subfolders.
+Code, JSON and YAML use local syntax colors in every theme. See [formatting examples](docs/syntax-highlighting.md). Editing resends within the same chat. Project settings move a project with its chats and subprojects.

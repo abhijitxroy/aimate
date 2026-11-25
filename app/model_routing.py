@@ -58,9 +58,25 @@ async def select_model(ai, mode, classify):
     return result
 
 
+def anthropic_usage(value):
+    result={key:getattr(value,key,0) or 0 for key in ("input_tokens","output_tokens")}
+    for key in ("cache_read_input_tokens","cache_creation_input_tokens"):
+        count=getattr(value,key,0) or 0
+        if count: result[key]=count
+    return result
+
+
 def add_usage(usage, by_model, model, incoming):
     row = by_model.setdefault(model, {"input_tokens": 0, "output_tokens": 0})
     for key in ("input_tokens", "output_tokens"):
         value = incoming.get(key, 0) or 0
         usage[key] += value
         row[key] += value
+    # Responses input_tokens already includes cached input. Anthropic reports
+    # read/write cache tokens separately from its ordinary input count.
+    if incoming.get("input_tokens_details") is None:
+        for key in ("cache_read_input_tokens","cache_creation_input_tokens"):
+            value=incoming.get(key,0) or 0
+            if value:
+                usage[key]=usage.get(key,0)+value
+                row[key]=row.get(key,0)+value

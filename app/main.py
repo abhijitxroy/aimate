@@ -536,7 +536,7 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
     async def create_group(request: Request, session=Depends(auth)):
         body = await request.json()
         if not isinstance(body, dict):
-            raise ValueError("Expected folder details.")
+            raise ValueError("Expected project details.")
         async with config_lock:
             return {"id": store.create_group(body.get("name"), body.get("kind", "group"), body.get("parent"))}
 
@@ -648,7 +648,7 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
         body = await request.json()
         name = body.get("name") if isinstance(body, dict) else None
         if not isinstance(name, str) or not name.strip() or len(name.strip()) > 80:
-            raise ValueError("Use a folder name with 1–80 characters.")
+            raise ValueError("Use a project name with 1–80 characters.")
         async with config_lock:
             store.require_group(gid)
             parent = store.rows("SELECT parent FROM conversation_groups WHERE id=?", (gid,))[0]["parent"]
@@ -660,17 +660,17 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
                 ancestor, depth = parent, 1
                 while ancestor:
                     if ancestor == gid:
-                        raise ValueError("A folder cannot be moved inside itself or one of its subfolders.")
+                        raise ValueError("A project cannot be moved inside itself or one of its subprojects.")
                     depth += 1
                     ancestor = groups[ancestor]["parent"]
                 def subtree_depth(ident):
                     children = [g["id"] for g in groups.values() if g["parent"] == ident]
                     return 1 + max((subtree_depth(child) for child in children), default=0)
                 if depth + subtree_depth(gid) - 1 > 8:
-                    raise ValueError("Use at most eight levels of folders.")
+                    raise ValueError("Use at most eight levels of projects.")
             if store.rows("SELECT id FROM conversation_groups WHERE parent IS ? AND lower(name)=lower(?) AND id<>?",
                           (parent, name.strip(), gid)):
-                raise ValueError("A folder with that name already exists here.")
+                raise ValueError("A project with that name already exists here.")
             store.execute("UPDATE conversation_groups SET name=?,parent=? WHERE id=?", (name.strip(), parent, gid))
         return {"id": gid, "name": name.strip(), "parent": parent}
 
@@ -681,7 +681,7 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
             if store.rows("SELECT id FROM conversation_groups WHERE parent=?", (gid,)) or store.rows(
                     "SELECT conversation FROM conversation_locations WHERE group_id=?", (gid,)) or store.rows(
                     "SELECT id FROM knowledge WHERE group_id=?", (gid,)):
-                raise HTTPException(409, "Move its chats and records and remove empty subfolders before deleting this folder.")
+                raise HTTPException(409, "Move its chats and records and remove empty subprojects before deleting this project.")
             store.execute("DELETE FROM conversation_groups WHERE id=?", (gid,))
             return {"deleted": gid}
 
