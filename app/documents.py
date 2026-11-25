@@ -79,6 +79,8 @@ def _ingest(item):
     ext = PurePosixPath(name).suffix.lower()
     result = {"name":name,"size":len(raw),"kind":"document","text":"","notice":""}
     if ext == ".pdf":
+        if not raw.startswith(b"%PDF-"):
+            raise ValueError("This file is not a PDF.")
         from pypdf import PdfReader
         reader = PdfReader(io.BytesIO(raw))
         if reader.is_encrypted or len(reader.pages)>80:

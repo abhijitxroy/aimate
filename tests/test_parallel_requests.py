@@ -31,6 +31,7 @@ class ParallelTests(unittest.IsolatedAsyncioTestCase):
                     tasks=[asyncio.create_task(ask(cid,f"parallel-{i}")) for i,cid in enumerate(ids[:3])]
                     try:
                         await asyncio.wait_for(started.wait(),5)
+                        self.assertEqual((await client.get("/api/maintenance")).status_code,409)
                         self.assertEqual((await ask(ids[0],"duplicate")).status_code,409)
                         self.assertEqual((await ask(ids[3],"overflow")).status_code,429)
                     finally:

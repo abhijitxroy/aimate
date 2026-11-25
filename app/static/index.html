@@ -18,6 +18,7 @@
   <script src="/static/usage_ui.js" defer></script>
   <script src="/static/diagnostics_ui.js" defer></script>
   <script src="/static/github_guidance_ui.js" defer></script>
+  <script src="/static/maintenance_ui.js" defer></script>
 </head>
 <body>
   <section id="loginScreen" class="login-screen">
@@ -201,6 +202,7 @@
     <details class="usage-card"><summary>Compare with a provider bill</summary><p class="hint">Enter the USD amount for this model from your bill. Other apps, taxes and missing usage can explain a difference.</p><form id="usageInvoiceForm"><label>Billing month<input id="invoiceMonth" type="month" required></label><label>Model ID<input id="invoiceModel" list="usageModelOptions" maxlength="200" required></label><label>Billed USD<input id="invoiceAmount" type="number" min="0" max="1000000" step="any" required></label><button type="submit">Save comparison</button></form></details>
     <p id="usageCoverage" class="hint"></p><p id="usageError" class="error" role="alert"></p>
   </dialog>
+  <dialog id="cleanupDialog"><div class="dialog-head"><h2>Safe cleanup</h2><button class="close" data-close="cleanupDialog" aria-label="Close cleanup">×</button></div><div id="cleanupItems"></div><p id="cleanupNotice" class="hint"></p><button id="confirmCleanup" class="primary" type="button">Confirm cleanup</button><p id="cleanupError" class="error" role="status"></p></dialog>
   <dialog id="settingsDialog">
     <div class="dialog-head"><div><p class="eyebrow">MAKE IT YOURS</p><h2>Connections & settings</h2></div><button class="close" data-close="settingsDialog" aria-label="Close settings">×</button></div>
     <p class="muted">Choose a connection. Check access to see what works and what needs fixing.</p>
@@ -290,7 +292,7 @@
         <div class="test-row"><button type="button" data-test="jenkins">Save &amp; connect</button></div>
         <div id="test-jenkins" class="connection-result" aria-live="polite"></div>
       </fieldset>
-      <fieldset class="write-setting" id="settings-changes" data-settings-panel="changes" role="tabpanel" aria-labelledby="tab-changes" hidden><legend>Admin</legend><div id="adminWriteControls"><label class="check"><input name="allow_writes" type="checkbox">Allow the assistant to prepare changes</label><p class="hint">Every change still requires Confirm. File edits use a working branch; pull requests start as drafts. Proposals expire after 30 minutes.</p></div><button id="openAudit" type="button">Audit log</button><button id="openDiagnostics" type="button">Diagnostics</button><button id="openAccess" type="button">Workspace access</button><button id="openVault" type="button">Private vault</button><button id="openFeedbackLog" type="button">Feedback</button><div class="admin-security"><h3>Sign-in security</h3><p id="otpStatus" class="hint">Authenticator OTP</p><button id="openOtpSetup" type="button">Set up OTP</button></div></fieldset>
+      <fieldset class="write-setting" id="settings-changes" data-settings-panel="changes" role="tabpanel" aria-labelledby="tab-changes" hidden><legend>Admin</legend><div id="adminWriteControls"><label class="check"><input name="allow_writes" type="checkbox">Allow the assistant to prepare changes</label><p class="hint">Every change still requires Confirm. File edits use a working branch; pull requests start as drafts. Proposals expire after 30 minutes.</p></div><button id="openAudit" type="button">Audit log</button><button id="openDiagnostics" type="button">Diagnostics</button><button id="openMaintenance" type="button">Safe cleanup</button><button id="openAccess" type="button">Workspace access</button><button id="openVault" type="button">Private vault</button><button id="openFeedbackLog" type="button">Feedback</button><div class="admin-security"><h3>Sign-in security</h3><p id="otpStatus" class="hint">Authenticator OTP</p><button id="openOtpSetup" type="button">Set up OTP</button></div></fieldset>
       <div class="dialog-footer"><span id="settingsStatus" role="status"></span><button id="saveConnection" class="primary" type="submit">Save AI connection</button></div>
     </form>
   </dialog>

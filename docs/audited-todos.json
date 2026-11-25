@@ -71,8 +71,8 @@
   },
   {
     "id": "audit-153cc4e2f6af2319c269b0a8",
-    "title": "P1 · GitHub · WIP — On 404, ask to add repository if appropriate\n\nRepo-add proposal validates access before confirmation; scope/auth errors have hints. No deterministic 404-to-add flow. A 404 can also mean nonexistent or inaccessible data.",
-    "completed": false
+    "title": "P1 · GitHub · Done — On 404, ask to add repository if appropriate\n\nFailed GitHub reads now offer validated, reviewed add-repo proposals for missing scope and connection guidance for already-configured 404 targets. Saved credentials stay protected; failed access never adds a repo; role checks, live access lease and browser review flow passed CI.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45513925119",
+    "completed": true
   },
   {
     "id": "audit-ac198fd1721c14e5f01a8e84",

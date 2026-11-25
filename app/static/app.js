@@ -405,6 +405,7 @@ async function refreshState() {
   $("#openVault").hidden = !access.configure;
   $("#openFeedbackLog").hidden = !access.audit;
   $("#openDiagnostics").hidden = !access.audit;
+  $("#openMaintenance").hidden = !access.audit;
   $("#adminWriteControls").hidden = !access.configure;
   $(".admin-security").hidden = !access.configure;
   $("#newGroup").hidden = !access.manage_records;

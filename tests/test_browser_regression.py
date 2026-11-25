@@ -110,6 +110,19 @@ class BrowserRegressionTests(unittest.TestCase):
         self.expect(self.page.get_by_role("button",name="Confirm change",exact=True)).to_be_visible()
         self.expect(self.page.get_by_role("button",name="Access verified · confirm below",exact=True)).to_be_disabled()
 
+    def test_cleanup_requires_preview_then_explicit_confirmation(self):
+        plan={"documents":[{"id":"orphan","name":"old.txt","bytes":100}],"expired_cache":[],"logs":[],
+              "estimated_bytes":100,"fingerprint":"reviewed","notice":"Referenced data is protected."}
+        self.page.route("**/api/maintenance",lambda route:route.fulfill(json=plan))
+        self.page.route("**/api/maintenance/cleanup",lambda route:route.fulfill(json={
+            "removed":{"documents":1,"expired_cache":0,"logs":0,"skipped_logs":0}}))
+        self.page.evaluate("openSettings()");self.page.locator("#tab-changes").click()
+        self.page.locator("#openMaintenance").click()
+        self.expect(self.page.locator("#cleanupItems")).to_contain_text("old.txt")
+        self.expect(self.page.locator("#confirmCleanup")).to_be_enabled()
+        self.page.locator("#confirmCleanup").click()
+        self.expect(self.page.locator("#cleanupError")).to_contain_text("Completed")
+
     def test_large_paste_is_a_document_card_and_saved_message_keeps_card(self):
         self.page.evaluate("""() => {
             const transfer = new DataTransfer();
