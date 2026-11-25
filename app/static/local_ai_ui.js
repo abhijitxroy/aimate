@@ -24,7 +24,10 @@ window.AiMateLocalAI=(()=>{
   function restorePicker() {if(selected && supported()) provider().value="local";}
   function render() {
     const option=provider().querySelector('[value="local"]');
-    if(option) {option.hidden=!supported();option.disabled=!supported();}
+    if(option) {
+      option.hidden=!supported();option.disabled=!supported();
+      option.parentElement.hidden=!supported();
+    }
     if(!supported()) {
       selected=false;
       if(provider().value==="local") {provider().value=config.ai?.provider || "chatgpt";void updateProvider();}
