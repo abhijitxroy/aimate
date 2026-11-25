@@ -1,4 +1,4 @@
-/* Markdown authoring: saved text stays portable, no HTML or contenteditable. */
+/* Markdown authoring: inline editor styling is optional; saved text stays portable. */
 (() => {
   "use strict";
   if (window.AiMateFeatures?.composerFormatting === false) {
@@ -39,6 +39,7 @@
     }
   }
   function fitEditor() {
+    if(window.AiMateRichComposer?.enabled) {window.AiMateRichComposer.fit();return;}
     const scroll = field.scrollTop;
     field.style.height = "0px";
     const limit = Math.max(72, Math.min(240, window.innerHeight * .24));
@@ -47,6 +48,7 @@
     field.scrollTop = scroll;
   }
   function revealSelection() {
+    if(window.AiMateRichComposer?.enabled) {window.AiMateRichComposer.reveal();return;}
     // Measure wrapped source up to the insertion, including tables and panels.
     const mirror = document.createElement("div");
     const style = getComputedStyle(field);
@@ -76,8 +78,10 @@
       return;
     }
     field.setRangeText(value, start, end, "end");
-    preview.hidden = false;
-    previewToggle?.setAttribute("aria-pressed","true");
+    if(!window.AiMateRichComposer?.enabled) {
+      preview.hidden = false;
+      previewToggle?.setAttribute("aria-pressed","true");
+    }
     field.focus({preventScroll:true});
     field.setSelectionRange(selectedStart, selectedEnd);
     field.dispatchEvent(new Event("input", {bubbles:true}));

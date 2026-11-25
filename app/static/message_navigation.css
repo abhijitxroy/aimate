@@ -6,12 +6,13 @@ main { position: relative; }
 .message-rail > button::after { content: ""; width: 6px; height: 1px; background: currentColor; opacity: .45; transition: width .15s, opacity .15s; }
 .message-rail > button:hover::after, .message-rail > button:focus-visible::after,
 .message-rail > button[aria-current="true"]::after { width: 12px; opacity: 1; color: var(--accent); }
-.message-rail > button.pinned::after { height: 2px; opacity: .85; }
+.message-rail > button.pinned::after { height: 2px; opacity: 1; background: var(--accent); }
 .message-rail-preview { position: fixed; z-index: 70; padding: 11px 13px; border: 1px solid var(--line); border-radius: 13px; color: var(--text); background: var(--panel); box-shadow: 0 8px 30px #0004; }
 .message-rail-preview > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .message-rail-preview strong { font-size: 11px; }
 .message-rail-preview p { margin: 6px 0 0; max-height: 160px; overflow: hidden; font-size: 11px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--muted); }
 .message-rail-bookmark { display: grid; place-items: center; padding: 2px; border: 0; background: transparent; color: var(--muted); }
-.message-rail-bookmark[aria-pressed="true"] { color: var(--accent); }
+.message-rail-bookmark[aria-pressed="true"] { color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, var(--panel)); border-radius: 4px; }
+.message-rail-bookmark[aria-pressed="true"] svg { fill: currentColor; }
 @media (max-width: 760px) { .message-rail, .message-rail-preview { display: none; } }
 @media (prefers-reduced-motion: reduce) { .message-rail > button::after { transition: none; } }

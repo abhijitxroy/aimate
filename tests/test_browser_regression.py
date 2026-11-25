@@ -75,6 +75,9 @@ class BrowserRegressionTests(unittest.TestCase):
         type(self).context_counter+=1
         self.context = self.browser.new_context(viewport={"width": 1280, "height": 800}, storage_state=state)
         self.page = self.context.new_page()
+        if self._testMethodName == "test_generated_panels_expand_editor_and_reveal_insertions":
+            # Keep legacy textarea geometry covered alongside new inline-editor checks.
+            self.page.add_init_script("window.AiMateFeatures={richComposer:false}")
         self.page.goto(self.url)
         self.expect(self.page.locator("#workspace")).to_be_visible()
 
@@ -124,11 +127,11 @@ class BrowserRegressionTests(unittest.TestCase):
         self.expect(self.page.locator("#composerFormatting")).to_be_visible()
         toggle.click()
         self.expect(self.page.locator("#composerFormatting")).to_be_hidden()
-        self.expect(field).to_have_value("**Keep this draft**")
+        self.expect(field).to_have_js_property("value","**Keep this draft**")
         self.expect(toggle).to_have_attribute("title","Show formatting")
         toggle.click()
         self.expect(self.page.locator("#composerFormatting")).to_be_visible()
-        self.expect(field).to_have_value("**Keep this draft**")
+        self.expect(field).to_have_js_property("value","**Keep this draft**")
         toggle.click()
         self.page.reload()
         self.expect(self.page.locator("#composerFormatting")).to_be_hidden()
@@ -202,6 +205,7 @@ class BrowserRegressionTests(unittest.TestCase):
         self.expect(self.page.locator("#todoPriority")).to_be_disabled()
         self.page.locator("#cancelTodoEdit").click()
         self.page.reload()
+        self.expect(self.page.locator("#workspace")).to_be_visible()
         if not self.page.locator("#openTodos").is_visible():
             self.page.locator("#sidebarTools summary").click()
         self.page.locator("#openTodos").click()
@@ -497,26 +501,119 @@ class BrowserRegressionTests(unittest.TestCase):
         self.page.get_by_role("button", name="Save icon", exact=True).click()
         self.expect(badge).not_to_have_css("color","rgb(255, 120, 80)")
 
+    def test_inline_editor_formats_without_preview_and_keeps_strict_csp(self):
+        self.page.add_init_script("""window.richPolicyViolations=[];
+            document.addEventListener('securitypolicyviolation',e=>richPolicyViolations.push(e.violatedDirective));""")
+        self.page.reload()
+        self.expect(self.page.locator("#workspace")).to_be_visible()
+        field=self.page.locator("#question")
+        self.assertEqual(field.evaluate("(el)=>el.tagName"),"DIV")
+        field.fill("Bold Test")
+        field.press("Control+a")
+        field.press("Control+b")
+        self.expect(field).to_have_js_property("value","**Bold Test**")
+        self.expect(field.locator("strong")).to_have_text("Bold Test")
+        self.expect(field.locator("strong")).to_have_css("font-weight","700")
+        self.expect(self.page.locator("#composerPreview")).to_be_hidden()
+        field.fill("*Italic* ++Underline++ [colour:#ff7aaf]Colour[/colour]")
+        self.expect(field.locator("em")).to_have_text("Italic")
+        self.expect(field.locator("u")).to_have_text("Underline")
+        self.expect(field.locator("[data-rich-colour]")).to_have_css("color","rgb(255, 122, 175)")
+        self.expect(self.page.locator("#questionSource")).to_be_hidden()
+        self.assertEqual(self.page.evaluate("richPolicyViolations"),[])
+        field.fill("```text\n**literal** ++literal++ [colour:#ff7aaf]literal[/colour]\n```")
+        self.assertEqual(field.locator("strong,u,[data-rich-colour]").count(),0)
+
+    def test_inline_editor_enter_sends_portable_markdown_and_clears_draft(self):
+        field=self.page.locator("#question")
+        field.fill("**Inline saved bold**")
+        field.press("Enter")
+        self.expect(self.page.locator("#activity")).to_have_text("Answer complete")
+        self.expect(field).to_have_js_property("value","")
+        self.expect(self.page.locator("#messages .message.user strong").last).to_have_text("Inline saved bold")
+        ident=self.page.evaluate("cid")
+        saved=self.context.request.get(self.url+"/api/conversations/"+ident).json()
+        self.assertEqual(saved["turns"][-1]["messages"][0]["content"],"**Inline saved bold**")
+        self.page.reload()
+        self.page.evaluate("id=>openConversation(id)",ident)
+        self.expect(self.page.locator("#messages .message.user strong").last).to_have_text("Inline saved bold")
+
+    def test_inline_editor_undo_and_plain_paste_exclude_html(self):
+        field=self.page.locator("#question")
+        field.fill("Undo me")
+        field.press("Control+a");field.press("Control+b")
+        self.expect(field).to_have_js_property("value","**Undo me**")
+        field.press("Control+z")
+        self.expect(field).to_have_js_property("value","Undo me")
+        field.fill("")
+        self.page.evaluate("""() => {
+            const data=new DataTransfer();
+            data.setData('text/plain','Safe plain text');
+            data.setData('text/html','<img src=x onerror="window.richUnsafe=true">');
+            document.querySelector('#question').dispatchEvent(new ClipboardEvent('paste',
+                {clipboardData:data,bubbles:true,cancelable:true}));
+        }""")
+        self.expect(field).to_have_js_property("value","Safe plain text")
+        self.assertEqual(field.locator("img").count(),0)
+        self.assertFalse(self.page.evaluate("Boolean(window.richUnsafe)"))
+
+    def test_inline_editor_large_paste_and_long_panels_keep_composer_visible(self):
+        field=self.page.locator("#question")
+        self.page.evaluate("""() => {
+            const data=new DataTransfer();data.setData('text/plain','Large pasted record.\\n'.repeat(300));
+            document.querySelector('#question').dispatchEvent(new ClipboardEvent('paste',
+                {clipboardData:data,bubbles:true,cancelable:true}));
+        }""")
+        self.expect(self.page.locator("#attachmentCards")).to_contain_text("Pasted text.txt")
+        self.expect(field).to_have_js_property("value","")
+        self.page.locator("#attachmentCards .attachment-remove").click()
+        field.fill("Earlier source line\n"*60+"Selected warning")
+        field.evaluate("""el=>{el.setSelectionRange(el.value.indexOf('Selected warning'),el.value.length);
+            el.dispatchEvent(new Event('select'));}""")
+        self.page.get_by_role("button",name="More formatting",exact=True).click()
+        self.page.get_by_role("button",name="Warning panel",exact=True).click()
+        self.assertIn("> [!WARNING]\n> Selected warning",field.evaluate("(el)=>el.value"))
+        self.expect(self.page.locator("#composerPreview")).to_be_hidden()
+        self.assertGreater(field.evaluate("(el)=>el.scrollTop"),0)
+        for width,height in ((1280,800),(390,720)):
+            self.page.set_viewport_size({"width":width,"height":height})
+            self.assertLessEqual(self.page.locator(".rich-composer .cm-scroller").bounding_box()["height"],240)
+            self.assertLessEqual(self.page.evaluate("document.documentElement.scrollWidth"),width)
+            self.expect(self.page.locator("#send")).to_be_in_viewport()
+
+    def test_disabling_inline_editor_retains_plain_formatting_and_core_chat(self):
+        self.page.add_init_script("window.AiMateFeatures={richComposer:false}")
+        self.page.reload()
+        self.expect(self.page.locator("#workspace")).to_be_visible()
+        field=self.page.locator("#question")
+        self.assertEqual(field.evaluate("(el)=>el.tagName"),"TEXTAREA")
+        field.fill("Plain fallback");field.press("Control+a");field.press("Control+b")
+        self.expect(field).to_have_js_property("value","**Plain fallback**")
+        self.expect(self.page.locator("#composerPreview strong")).to_have_text("Plain fallback")
+        self.page.locator("#send").click()
+        self.expect(self.page.locator("#activity")).to_have_text("Answer complete")
+
     def test_composer_format_preview_send_and_history_reload(self):
+        self.page.get_by_role("button",name="Preview formatted message",exact=True).click()
         self.page.locator("#newChat").click()
         self.expect(self.page.get_by_role("button",name="Bold",exact=True)).to_be_visible()
         field = self.page.locator("#question")
         field.fill("Formatted")
         field.evaluate("(el) => { el.setSelectionRange(0,el.value.length); el.dispatchEvent(new Event('select')); }")
         self.page.get_by_role("button",name="Bold",exact=True).click()
-        self.expect(field).to_have_value("**Formatted**")
+        self.expect(field).to_have_js_property("value","**Formatted**")
         self.expect(self.page.locator("#composerPreview strong")).to_have_text("Formatted")
         self.page.get_by_role("button",name="More formatting",exact=True).click()
         self.page.get_by_role("button",name="Toggle line wrapping",exact=True).click()
-        self.expect(field).to_have_attribute("wrap","off")
+        self.expect(field).to_have_js_property("wrap","off")
         field.fill("one\ntwo")
         field.evaluate("(el) => { el.setSelectionRange(0,el.value.length); el.dispatchEvent(new Event('select')); }")
         self.page.get_by_role("button",name="Bullet list",exact=True).click()
-        self.expect(field).to_have_value("- one\n- two")
+        self.expect(field).to_have_js_property("value","- one\n- two")
         self.page.get_by_role("button",name="Indent",exact=True).click()
-        self.expect(field).to_have_value("    - one\n    - two")
+        self.expect(field).to_have_js_property("value","    - one\n    - two")
         self.page.get_by_role("button",name="Outdent",exact=True).click()
-        self.expect(field).to_have_value("- one\n- two")
+        self.expect(field).to_have_js_property("value","- one\n- two")
         field.fill("**Formatted**\n\n++Underline++\n\n[colour:#ff7850]Colour[/colour]\n\n| Item | Value |\n| --- | --- |\n| Test | 1 |\n\n> [!WARNING]\n> Check this")
         self.expect(self.page.locator("#composerPreview .prompt-underline")).to_have_text("Underline")
         self.expect(self.page.locator("#composerPreview [data-prompt-colour]")).to_have_css("color","rgb(255, 120, 80)")
@@ -530,6 +627,7 @@ class BrowserRegressionTests(unittest.TestCase):
         self.expect(self.page.locator("#messages .message.user table")).to_contain_text("Test")
 
     def test_every_composer_format_control_and_shortcuts_without_sending(self):
+        self.page.get_by_role("button",name="Preview formatted message",exact=True).click()
         submitted=[]
         self.page.on("request",lambda request: submitted.append(request.url) if request.method=="POST" and request.url.endswith("/api/chat") else None)
         field=self.page.locator("#question")
@@ -556,7 +654,7 @@ class BrowserRegressionTests(unittest.TestCase):
             field.fill("Example")
             field.evaluate("(el) => {el.setSelectionRange(0,el.value.length);el.dispatchEvent(new Event('select'));}")
             self.page.get_by_role("button",name=title,exact=True).click()
-            self.expect(field).to_have_value(expected)
+            self.expect(field).to_have_js_property("value",expected)
             if selector:
                 self.expect(self.page.locator("#composerPreview "+selector)).to_be_visible()
             else:
@@ -564,7 +662,7 @@ class BrowserRegressionTests(unittest.TestCase):
         field.fill("    Example")
         field.evaluate("(el) => {el.setSelectionRange(0,el.value.length);el.dispatchEvent(new Event('select'));}")
         self.page.get_by_role("button",name="Outdent",exact=True).click()
-        self.expect(field).to_have_value("Example")
+        self.expect(field).to_have_js_property("value","Example")
         field.fill("")
         field.evaluate("(el) => el.dispatchEvent(new Event('select'))")
         self.page.get_by_role("button",name="Horizontal rule",exact=True).click()
@@ -577,7 +675,7 @@ class BrowserRegressionTests(unittest.TestCase):
             field.fill("Example")
             field.press("Control+a")
             field.press("Control+"+key)
-            self.expect(field).to_have_value(expected)
+            self.expect(field).to_have_js_property("value",expected)
         self.page.get_by_role("button",name="Preview formatted message",exact=True).click()
         self.expect(self.page.locator("#composerPreview")).not_to_be_visible()
         self.page.get_by_role("button",name="More formatting",exact=True).click()
@@ -589,6 +687,7 @@ class BrowserRegressionTests(unittest.TestCase):
         self.assertEqual(submitted,[])
 
     def test_combined_inline_formats_render_colour_and_persist_after_send(self):
+        self.page.get_by_role("button",name="Preview formatted message",exact=True).click()
         field=self.page.locator("#question")
         field.fill("Hello")
         field.evaluate("(el) => {el.setSelectionRange(0,el.value.length);el.dispatchEvent(new Event('select'));}")
@@ -597,7 +696,7 @@ class BrowserRegressionTests(unittest.TestCase):
         self.page.locator('#composerToolbar input[type="color"]').evaluate(
             "(el) => {el.value='#ff7aaf';el.dispatchEvent(new Event('input'));}")
         self.page.get_by_role("button",name="Apply text colour",exact=True).click()
-        self.expect(field).to_have_value("***++[colour:#ff7aaf]Hello[/colour]++***")
+        self.expect(field).to_have_js_property("value","***++[colour:#ff7aaf]Hello[/colour]++***")
         preview=self.page.locator("#composerPreview")
         self.expect(preview).to_have_text("Hello")
         self.expect(preview.locator("strong")).to_have_text("Hello")
@@ -614,6 +713,7 @@ class BrowserRegressionTests(unittest.TestCase):
         self.expect(saved).to_have_css("color","rgb(255, 122, 175)")
 
     def test_format_indicators_follow_selection_toggle_and_actual_view_state(self):
+        self.page.get_by_role("button",name="Preview formatted message",exact=True).click()
         field=self.page.locator("#question")
         bold=self.page.get_by_role("button",name="Bold",exact=True)
         field.fill("Hello")
@@ -657,12 +757,13 @@ class BrowserRegressionTests(unittest.TestCase):
         self.expect(self.page.get_by_role("button",name="Code block",exact=True)).to_have_attribute("aria-pressed","false")
 
     def test_generated_panels_expand_editor_and_reveal_insertions(self):
+        self.page.get_by_role("button",name="Preview formatted message",exact=True).click()
         field=self.page.locator("#question")
         field.fill("")
         compact=field.bounding_box()["height"]
         self.page.get_by_role("button",name="More formatting",exact=True).click()
         self.page.get_by_role("button",name="Warning panel",exact=True).click()
-        self.expect(field).to_have_value("\n\n> [!WARNING]\n> text\n\n")
+        self.expect(field).to_have_js_property("value","\n\n> [!WARNING]\n> text\n\n")
         self.expect(self.page.locator("#composerPreview .answer-callout.warning")).to_contain_text("text")
         self.assertGreater(field.bounding_box()["height"],compact)
         self.assertTrue(field.evaluate("(el) => el.scrollHeight <= el.clientHeight + 1"))
@@ -712,7 +813,7 @@ class BrowserRegressionTests(unittest.TestCase):
         self.expect(self.page.locator("#investigationSteps input").first).to_be_checked()
         before=len(self.context.request.get(self.url+f"/api/conversations/{existing}").json()["turns"])
         self.page.get_by_role("button",name="Continue in askbar",exact=True).click()
-        self.expect(self.page.locator("#question")).to_have_value(re.compile("Synthetic build #11"))
+        self.page.wait_for_function("() => document.querySelector('#question').value.includes('Synthetic build #11')")
         self.assertEqual(len(self.context.request.get(self.url+f"/api/conversations/{existing}").json()["turns"]),before)
 
     def test_usage_budget_and_bill_comparison_persist(self):
@@ -777,7 +878,7 @@ class BrowserRegressionTests(unittest.TestCase):
         card=self.page.locator("#libraryItems .knowledge-card").filter(has_text="Evidence review")
         self.expect(card).to_contain_text("Open questions")
         card.get_by_role("button",name="Insert",exact=True).click()
-        self.expect(self.page.locator("#question")).to_have_value(text)
+        self.expect(self.page.locator("#question")).to_have_js_property("value",text)
         self.expect(self.page.locator("#libraryDialog")).not_to_be_visible()
 
     def test_custom_analysis_template_can_be_selected_as_request_style(self):
@@ -938,13 +1039,16 @@ class BrowserRegressionTests(unittest.TestCase):
         field.fill("Selected text")
         field.select_text()
         field.press("Control+b")
-        self.expect(field).to_have_value("**Selected text**")
+        self.expect(field).to_have_js_property("value","**Selected text**")
         self.expect(self.page.get_by_role("button",name="Bold",exact=True)).to_have_attribute("aria-pressed","true")
 
     def test_message_favorite_restores_and_opens_original_chat_and_unpins(self):
         self.page.locator("#conversations").get_by_role("button",name="Old continuity reference",exact=True).click()
+        pin=self.page.get_by_role("button",name="Pin AiMate reply",exact=True)
+        inactive=pin.evaluate("(el)=>getComputedStyle(el).backgroundColor")
         self.page.get_by_role("button",name="Pin AiMate reply",exact=True).click()
         self.expect(self.page.get_by_role("button",name="Unpin AiMate reply",exact=True)).to_have_attribute("aria-pressed","true")
+        self.assertNotEqual(inactive,self.page.get_by_role("button",name="Unpin AiMate reply",exact=True).evaluate("(el)=>getComputedStyle(el).backgroundColor"))
         self.page.reload()
         self.expect(self.page.get_by_role("button",name="Unpin AiMate reply",exact=True)).to_have_attribute("aria-pressed","true")
         self.page.locator("#sidebarTools > summary").click()
@@ -957,6 +1061,9 @@ class BrowserRegressionTests(unittest.TestCase):
         self.expect(self.page.locator("#favoriteMessages .knowledge-card")).to_have_count(0)
         self.page.locator('[data-close="favoritesDialog"]').click()
         self.expect(self.page.get_by_role("button",name="Pin AiMate reply",exact=True)).to_be_visible()
+        self.page.mouse.move(0,0)
+        self.page.wait_for_function("""colour=>getComputedStyle(document.querySelector(
+            '[data-message-favorite="assistant"]')).backgroundColor===colour""",arg=inactive)
         self.page.add_init_script("window.AiMateFeatures={messageFavorites:false}")
         self.page.reload()
         self.expect(self.page.locator("[data-message-favorite]")).to_have_count(0)
@@ -1027,7 +1134,7 @@ class BrowserRegressionTests(unittest.TestCase):
             document.querySelector("#question").dispatchEvent(new ClipboardEvent("paste", {clipboardData:transfer,bubbles:true,cancelable:true}));
         }""")
         self.expect(self.page.locator("#attachmentCards")).to_contain_text("Pasted text.txt")
-        self.expect(self.page.locator("#question")).to_have_value("")
+        self.expect(self.page.locator("#question")).to_have_js_property("value","")
         self.page.locator("#question").fill("Summarize the attachment")
         self.page.locator("#send").click()
         self.expect(self.page.locator("#messages .attachment-card")).to_contain_text("Pasted text.txt")

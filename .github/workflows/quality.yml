@@ -23,3 +23,9 @@ jobs:
         run: ruff check --select E9,F63,F7,F82 app tools tests
       - name: Check JavaScript and generated Pages consistency
         run: python tools/quality_checks.py
+      - name: Rebuild the checked-in offline editor
+        run: |
+          npm install --global pnpm@11.25.0 --ignore-scripts
+          pnpm --dir frontend install --frozen-lockfile --ignore-scripts
+          node frontend/build.mjs
+          git diff --exit-code -- app/static/vendor/rich-editor.min.js app/static/vendor/rich-editor-LICENSE.txt

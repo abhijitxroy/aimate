@@ -246,16 +246,37 @@
   },
   {
     "id": "backlog-opencode-gpt-tools-400",
-    "title": "P1 · WIP — Fix OpenCode GPT function-tool HTTP 400\n\nConfirmed gateway diagnosis: GPT-6.2 function tools require Responses. Route GPT via Responses, preserve portable history/tool pairs and usage, strip old opaque reasoning; validate regression and live synthetic tool stream without executing any external tool.",
+    "title": "P1 · Done — Fix OpenCode GPT function-tool HTTP 400\n\nGPT tools now use Responses; the current GPT-6.2 live stream emitted a synthetic tool call successfully, with usage recorded and no external tool executed. Saved-context conversion, 257 integration tests, 52 browser tests and all seven CI workflows passed. Scrollbars are slim, theme-matched and transparent.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45596278288",
     "type": "bug",
     "priority": "P1",
-    "completed": false
+    "completed": true
   },
   {
     "id": "backlog-slim-themed-scrollbars",
-    "title": "P2 · WIP — Slim theme-matched scrollbars\n\nTransparent track, small muted thumb, no arrow buttons. Verify dark/light themes and usable scrolling without changing sidebar or chat layout.",
+    "title": "P2 · Done — Slim theme-matched scrollbars\n\nGPT tools now use Responses; the current GPT-6.2 live stream emitted a synthetic tool call successfully, with usage recorded and no external tool executed. Saved-context conversion, 257 integration tests, 52 browser tests and all seven CI workflows passed. Scrollbars are slim, theme-matched and transparent.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45596278288",
     "type": "enhancement",
     "priority": "P2",
-    "completed": false
+    "completed": true
+  },
+  {
+    "id": "backlog-pin-active-colour",
+    "title": "P2 · WIP — Visible active colour for pinned messages\n\nPinned stars, rail markers and preview bookmarks use the theme accent; unpin restores the inactive appearance. Browser regression and seven required workflows pending.",
+    "completed": false,
+    "type": "enhancement",
+    "priority": "P2"
+  },
+  {
+    "id": "backlog-ai-connection-layout",
+    "title": "P1 · Planned — Clean AI connection layout and Personal/Intel labels\n\nCompact account/model controls and clearly distinguish Personal ChatGPT from Intel-provided Bedrock connections. Preserve saved credentials and authentication behavior.",
+    "completed": false,
+    "type": "enhancement",
+    "priority": "P1"
+  },
+  {
+    "id": "backlog-gemini-antigravity",
+    "title": "P1 · Planned — Gemini / Antigravity Google Cloud connection\n\nTokengen confirms separate seven-day Google Cloud credentials; the Windows CLI installer is supplied. Await non-secret generated authentication/project/location/endpoint/model setup before implementing or claiming connectivity. No credential generation, installation or live Gemini call performed.",
+    "completed": false,
+    "type": "feature",
+    "priority": "P1"
   }
 ]

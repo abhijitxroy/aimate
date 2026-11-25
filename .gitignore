@@ -9,3 +9,4 @@ __pycache__/
 .env
 *.aimate-backup
 .migration-venv/
+frontend/node_modules/

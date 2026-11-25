@@ -6,6 +6,19 @@ on:
 permissions:
   contents: read
 jobs:
+  editor-dependencies:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Check editor dependency vulnerabilities
+        run: |
+          npm install --global pnpm@11.25.0 --ignore-scripts
+          pnpm --dir frontend install --frozen-lockfile --ignore-scripts
+          pnpm --dir frontend audit --prod --audit-level high
   dependencies:
     runs-on: ubuntu-latest
     timeout-minutes: 15

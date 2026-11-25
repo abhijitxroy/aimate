@@ -41,7 +41,7 @@ label { display: flex; flex-direction: column; gap: 8px; font-size: 12px; }
 .conversation-section-divider { width: 100%; margin: 12px 0 8px; border: 0; border-top: 1px solid var(--line); }
 .import-progress { margin-bottom: 5px; }
 .message-favorite { display: inline-flex; align-items: center; padding: 0 3px; }
-.message-favorite[aria-pressed="true"] { color: var(--accent); }
+.message-favorite[aria-pressed="true"] { color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, var(--panel)); border-color: var(--accent); }
 .message-favorite[aria-pressed="true"] svg { fill: currentColor; }
 .feedback-review-card { border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-top: 10px; background: var(--panel); }
 .feedback-review-card > summary { cursor: pointer; display: flex; align-items: center; gap: 10px; font-size: 12px; }
