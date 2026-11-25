@@ -392,6 +392,30 @@ class BrowserRegressionTests(unittest.TestCase):
             self.page.locator("#sidebarTools summary").click()
             self.assertEqual(self.page.evaluate(measure)["composer"],before["composer"])
 
+    def test_sidebar_has_no_horizontal_scroll_and_nested_controls_remain_inside(self):
+        self.page.evaluate("""() => {
+            let parent=document.querySelector("#conversations");
+            for(let i=0;i<8;i++) {
+                const group=document.createElement("details");group.className="conversation-group";group.open=true;
+                group.innerHTML='<summary><span class="group-name">A very long nested project name '+i+
+                    '</span><button class="group-action">+</button><button class="group-action">⋯</button></summary>';
+                const children=document.createElement("div");children.className="group-children";
+                group.append(children);parent.append(group);parent=children;
+            }
+        }""")
+        for width in (224,320):
+            self.page.locator("#workspace").evaluate("(el,width)=>el.style.setProperty('--sidebar-width',width+'px')",width)
+            self.page.locator("#sidebarTools").evaluate("(el)=>el.open=true")
+            sizes=self.page.evaluate("""() => ['.sidebar','.sidebar nav','.sidebar-tools'].map(selector=>{
+                const el=document.querySelector(selector);
+                return {scroll:el.scrollWidth,client:el.clientWidth,x:getComputedStyle(el).overflowX};
+            })""")
+            self.assertTrue(all(item["scroll"]<=item["client"]+1 and item["x"]=="hidden" for item in sizes),sizes)
+            right=self.page.locator(".sidebar").bounding_box()["width"]
+            for control in self.page.locator(".conversation-group .group-action").all():
+                rect=control.bounding_box()
+                self.assertLessEqual(rect["x"]+rect["width"],right)
+
     def test_monogram_colour_picker_persists_and_theme_reset(self):
         self.page.evaluate("openConversationIcon(conversationList.find(t => t.title === 'Old continuity reference'))")
         self.page.locator("#monogramIconMode").click()
@@ -659,6 +683,7 @@ class BrowserRegressionTests(unittest.TestCase):
             const message=addMessage("assistant","The repository is outside scope.");
             renderGitHubGuidance(message,{repo:"demo/new",action:"validate_repository",message:"Validate access before adding."});
         }""")
+        self.page.locator("#messages .evidence summary").last.click()
         self.page.get_by_role("button",name="Validate & review repository",exact=True).click()
         self.expect(self.page.locator('[data-action="scope-review"]')).to_be_visible()
         self.expect(self.page.get_by_role("button",name="Confirm change",exact=True)).to_be_visible()
@@ -1028,6 +1053,69 @@ class BrowserRegressionTests(unittest.TestCase):
         # Failed confirmations still retain their diagnostic preview.
         self.page.evaluate("action => drawAction({...action, id: 'failed-change', status: 'failed'}, document.querySelector('#messages'))", action)
         self.expect(self.page.locator('[data-action="failed-change"] pre')).to_be_visible()
+
+    def test_repository_recovery_dismisses_after_confirm_and_diagnostics_stay_collapsed(self):
+        action={"id":"recovery-test","service":"settings","operation":"update_github_repositories",
+                "status":"pending","preview":{"repository":"demo/recovery"}}
+        self.page.route("**/repository-proposal",lambda route:route.fulfill(json=action))
+        self.page.route("**/api/actions/recovery-test/confirm",
+                        lambda route:route.fulfill(json={**action,"status":"completed"}))
+        self.page.evaluate("""() => {
+            addMessage("user","Add demo/recovery");
+            const bot=addMessage("assistant","Repository access can be reviewed.");
+            bot.conversationId=cid || "synthetic-chat";
+            const guidance={repo:"demo/recovery",action:"validate_repository",message:"Outside saved repository scope."};
+            addToolFailure(bot,"Repository is outside your configured scope",guidance);
+            addToolFailure(bot,"Repository is outside your configured scope",guidance);
+        }""")
+        user=self.page.locator("#messages .message.user").last
+        bot=self.page.locator("#messages .message.assistant").last
+        self.expect(bot.locator(".evidence")).not_to_have_attribute("open","")
+        self.assertEqual(bot.locator(".tool-error").count(),1)
+        self.assertEqual(bot.locator(".source-recovery").count(),1)
+        self.expect(bot.locator(".source-recovery")).to_be_hidden()
+        self.assertLess(user.bounding_box()["y"],bot.bounding_box()["y"])
+        bot.locator(".evidence summary").click()
+        bot.get_by_role("button",name="Validate & review repository",exact=True).click()
+        self.expect(bot.locator(".source-recovery")).to_contain_text("Access verified")
+        bot.get_by_role("button",name="Confirm change",exact=True).click()
+        self.expect(bot.locator(".action-completed")).to_be_visible()
+        self.assertEqual(bot.locator(".source-recovery").count(),0)
+        self.assertEqual(bot.get_by_role("button",name="Confirm change",exact=True).count(),0)
+        bot.locator(".evidence summary").click()
+        self.expect(bot.locator(".tool-error")).to_be_hidden()
+        self.page.evaluate("""action => {
+            const root=document.querySelector("#messages .assistant:last-child");
+            const bot={root,body:root.querySelector(".body"),conversationId:cid};
+            renderGitHubGuidance(bot,{repo:"demo/recovery",action:"validate_repository",message:"Check access"});
+            drawAction(action,root);
+        }""",action)
+        self.assertEqual(bot.locator(".source-recovery").count(),0)
+
+    def test_saved_proposal_keeps_its_original_turn_and_answer_order(self):
+        action={"id":"history-repo","service":"settings","operation":"update_github_repositories",
+                "status":"completed","preview":{"repository":"demo/history"}}
+        saved={"id":"history-order","title":"History order","private":False,"actions":[action],"turns":[
+            {"id":301,"created":1700000000,"messages":[
+                {"role":"user","content":"First question"},
+                {"role":"assistant","content":[{"type":"text","text":"First reply"},
+                 {"type":"tool_use","id":"configure1","name":"configure_repository","input":{"repo":"demo/history"}}]},
+                {"role":"user","content":[{"type":"tool_result","tool_use_id":"configure1",
+                 "content":json.dumps({"proposal":"history-repo","status":"pending"})}]}]},
+            {"id":302,"created":1700000001,"messages":[
+                {"role":"user","content":"Second question"},
+                {"role":"assistant","content":[{"type":"text","text":"Second reply"}]}]}]}
+        self.page.route("**/api/conversations/history-order",lambda route:route.fulfill(json=saved))
+        self.page.route("**/api/conversations/history-order/actions",lambda route:route.fulfill(json={"actions":[action]}))
+        self.page.evaluate("openConversation('history-order','History order')")
+        self.expect(self.page.locator("#chatTitle")).to_have_text("History order")
+        messages=self.page.locator("#messages > .message")
+        self.assertEqual(messages.count(),4)
+        self.assertEqual(messages.locator(".who").all_text_contents(),["YOU","AiMate","YOU","AiMate"])
+        self.expect(messages.nth(1).locator(".action-completed")).to_be_visible()
+        self.assertEqual(messages.nth(3).locator("[data-action]").count(),0)
+        self.assertLess(messages.nth(0).bounding_box()["y"],messages.nth(1).bounding_box()["y"])
+        self.assertLess(messages.nth(1).bounding_box()["y"],messages.nth(2).bounding_box()["y"])
 
     def test_other_obsolete_proposal_collapses_when_confirmation_refreshes_actions(self):
         first = {"id": "first-review", "service": "settings", "operation": "update_github_repositories",

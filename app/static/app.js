@@ -760,7 +760,7 @@ function evidencePanel(message) {
   if (!panel) {
     panel = element("details", "evidence");
     panel.append(element("summary", "", "Sources & activity"));
-    message.root.append(panel);
+    message.body.before(panel);
   }
   return panel;
 }
@@ -784,12 +784,22 @@ function addTool(message, name, input = {}) {
   updateEvidence(message);
 }
 
+function addToolFailure(message, text, guidance) {
+  const panel=evidencePanel(message);
+  // Repeated failed reads remain in the step list; display each diagnostic once.
+  if (![...panel.querySelectorAll(".tool-error")].some(node=>node.textContent===text))
+    panel.append(element("p","error tool-error",text));
+  renderGitHubGuidance(message,guidance);
+}
+
 function drawAction(action, parent) {
   const previous = actionStates.get(action.id);
   if (previous && previous.status !== "pending" && action.status === "pending") action = previous;
   actionStates.set(action.id, action);
-  const existing = [...$("#messages").querySelectorAll("[data-action]")]
+  const existing = [...new Set([...$("#messages").querySelectorAll("[data-action]"),
+    ...(parent?.querySelectorAll("[data-action]") || [])])]
     .filter(item => item.dataset.action === action.id);
+  const owner=existing[0]?.parentElement || parent;
   const card = element("section", "action-card");
   card.dataset.action = action.id;
   const mount = () => {
@@ -797,6 +807,7 @@ function drawAction(action, parent) {
       existing[0].replaceWith(card);
       existing.slice(1).forEach(item => item.remove());
     } else if (parent) parent.append(card);
+    finishRepositoryGuidance(action,owner?.closest(".message") || owner);
     return card;
   };
   if (action.service === "settings" && action.operation === "update_github_repositories" &&
@@ -847,16 +858,18 @@ function drawAction(action, parent) {
         button.title = "Administrator access required";
       }
       button.onclick = async () => {
+        const confirmingConversation=cid;
         for (const b of buttons.children) b.disabled = true;
         try {
           const next = await api(`/api/actions/${action.id}/${decision}`, {method: "POST"});
-          drawAction(next);
+          // A confirmation can finish after navigation. Update its original chat.
+          drawAction(next,owner);
           if (next.service === "settings" && next.status === "completed") await refreshState();
-          $("#activity").textContent = next.status === "completed" ? (demo ? "Simulated change completed. No external service was changed." : "Change completed. Ask a follow-up to continue.") : `Action ${next.status}.`;
+          if (cid===confirmingConversation) $("#activity").textContent = next.status === "completed" ? (demo ? "Simulated change completed. No external service was changed." : "Change completed. Ask a follow-up to continue.") : `Action ${next.status}.`;
         } catch (error) {
           card.append(element("p", "error", error.message));
           // A failed response can mean the operation ran. Reload its recorded state.
-          if (cid) await openConversation(cid, $("#chatTitle").textContent, true).catch(() => {});
+          if (cid && cid===confirmingConversation) await openConversation(cid, $("#chatTitle").textContent, true).catch(() => {});
         }
       };
       buttons.append(button);
@@ -910,6 +923,7 @@ async function loadConversation(id, title, version) {
   $("#chatTitle").textContent = conversation.title || title;
   $("#privateToggle").setAttribute("aria-pressed",String(privateChat));
   $("#welcome").hidden = Boolean(conversation.turns.length || conversation.actions.length);
+  const actionOwners=new Map();
   for (const turn of conversation.turns) {
     const user = turn.messages.find(m => m.role === "user" && (typeof m.content === "string" ||
       Array.isArray(m.content) && m.content.some(block=>block.type==="text")));
@@ -941,6 +955,12 @@ async function loadConversation(id, title, version) {
         if (block.type === "tool_use" && bot) addTool(bot, block.name, block.input);
         if (block.type === "responses" && bot) {
           for (const item of block.items || []) {
+            if (item.type==="function_call_output") {
+              try {
+                const result=JSON.parse(item.output);
+                if (result.proposal) actionOwners.set(result.proposal,bot.root);
+              } catch { /* truncated or plain tool output */ }
+            }
             if (item.type !== "function_call") continue;
             try { addTool(bot, item.name, JSON.parse(item.arguments)); } catch { /* invalid tool arguments */ }
           }
@@ -949,6 +969,7 @@ async function loadConversation(id, title, version) {
           try {
             const result = JSON.parse(block.content);
             if (result.source && bot) addSource(bot, result.source);
+            if (result.proposal && bot) actionOwners.set(result.proposal,bot.root);
           } catch { /* plain text error / truncated result */ }
         }
       }
@@ -956,8 +977,8 @@ async function loadConversation(id, title, version) {
   }
   if (conversation.actions.length) {
     const actionGroup = element("div", "message");
-    for (const action of conversation.actions) drawAction(action, actionGroup);
-    $("#messages").append(actionGroup);
+    for (const action of conversation.actions) drawAction(action, actionOwners.get(action.id) || actionGroup);
+    if (actionGroup.children.length) $("#messages").append(actionGroup);
   }
   await refreshState();
   scrollMessages();
@@ -1051,8 +1072,7 @@ async function ask(question) {
           addTool(bot, event.name, event.input);
         }
         if (event.event === "tool_done" && !event.ok) {
-          bot.root.append(element("p", "error", event.message));
-          renderGitHubGuidance(bot,event.guidance);
+          addToolFailure(bot,event.message,event.guidance);
         }
         if (event.event === "action") drawAction(event.action, bot.root);
         if (event.event === "error") throw new Error(event.message);
