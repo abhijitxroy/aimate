@@ -10,12 +10,13 @@
   const selected=provider.value;
   const groups=[
     ["Personal",["chatgpt","anthropic"]],
-    ["Intel / Bedrock",["bedrock","bedrock-openai","opencode"]]
+    ["Intel / Bedrock",["bedrock","bedrock-openai","opencode"]],
+    ["Intel / Google Cloud",["gemini"]]
   ];
   const names={
     chatgpt:"Personal ChatGPT",anthropic:"Claude · API key",
     bedrock:"Claude · Bedrock", "bedrock-openai":"ChatGPT / Codex · Bedrock",
-    opencode:"OpenCode · Bedrock"
+    opencode:"OpenCode · Bedrock",gemini:"Gemini / Antigravity · Vertex AI"
   };
   for(const [label,values] of groups) {
     const group=document.createElement("optgroup");group.label=label;
@@ -31,6 +32,7 @@
   const explain=()=>{
     identity.textContent=provider.value==="chatgpt" ? "Personal · your ChatGPT account and plan." :
       provider.value==="anthropic" ? "Personal · your Anthropic API key." :
+      provider.value==="gemini" ? "Intel / Google Cloud · separate Vertex AI credentials." :
       "Intel / Bedrock · your organization’s key and model access.";
   };
   provider.addEventListener("change",explain);explain();

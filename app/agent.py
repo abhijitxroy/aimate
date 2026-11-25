@@ -160,6 +160,9 @@ def action_capabilities(config):
 
 
 def ai_client(config):
+    if config.get("ai", {}).get("provider") == "gemini":
+        from app.gemini_vertex import Client
+        return Client(config)
     if config.get("ai", {}).get("provider") == "opencode":
         from app.opencode_bedrock import Client
         return Client(config)
@@ -199,6 +202,9 @@ def ai_client(config):
 
 def ai_error(exc):
     """Useful diagnostics without returning provider bodies or credential-bearing exceptions."""
+    from app.gemini_vertex import VertexError
+    if isinstance(exc, VertexError):
+        return exc.public_message
     if isinstance(exc, ValueError):
         return str(exc)
     status = getattr(exc, "status_code", None)
@@ -297,6 +303,9 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
     for message in messages:
         if isinstance(message["content"], list):
             message["content"] = [b for b in message["content"] if b.get("type") != "responses"]
+            if config.get("ai", {}).get("provider") != "gemini":
+                message["content"] = [{k:v for k,v in b.items() if not k.startswith("vertex_")}
+                                      for b in message["content"]]
     messages.append({"role": "user", "content": [{"type": "text", "text": question}, *(images or [])] if images else question})
     start = len(messages) - 1
     # Include action outcomes so a follow-up can continue after confirmation.

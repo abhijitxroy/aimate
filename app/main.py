@@ -423,6 +423,8 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
     register_bedrock_gpt(app, auth)
     from app.opencode_bedrock import register as register_opencode
     register_opencode(app, auth)
+    from app.gemini_vertex import register as register_gemini
+    register_gemini(app, auth)
 
     @app.get("/api/bedrock/models")
     async def bedrock_models(discover: bool = False, session=Depends(auth)):

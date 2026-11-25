@@ -1072,7 +1072,7 @@ class BrowserRegressionTests(unittest.TestCase):
     def test_ai_connection_layout_separates_personal_intel_and_keeps_controls_visible(self):
         self.page.locator("#headerSettings").click()
         provider=self.page.locator('[name="ai.provider"]')
-        self.expect(provider.locator("optgroup")).to_have_count(2)
+        self.expect(provider.locator("optgroup")).to_have_count(3)
         self.expect(provider.locator('option[value="chatgpt"]')).to_have_text("Personal ChatGPT")
         provider.select_option("chatgpt")
         self.expect(self.page.locator(".ai-connection-context")).to_have_text("Personal · your ChatGPT account and plan.")
@@ -1101,6 +1101,55 @@ class BrowserRegressionTests(unittest.TestCase):
         provider.select_option("chatgpt")
         self.expect(self.page.locator("#connectChatGPT")).to_be_visible()
         provider.select_option("bedrock-openai")
+        self.expect(self.page.locator('#apiCredentials input[name="ai.api_key"]')).to_be_visible()
+
+    def test_gemini_secure_json_import_preserves_models_and_masks_saved_credentials(self):
+        from test_gemini_vertex import GeminiTests
+        GeminiTests.setUpClass()
+        self.page.locator("#headerSettings").click()
+        self.page.locator('[name="ai.provider"]').select_option("gemini")
+        self.expect(self.page.locator("#geminiModel")).to_contain_text("Gemini 4 Hydrogen")
+        secret=self.page.locator('[name="ai.gcp_credentials"]')
+        self.expect(secret).to_have_attribute("type","password")
+        self.expect(self.page.locator("#apiCredentials")).to_be_hidden()
+        self.expect(self.page.locator("#settings-ai .model-selection")).to_be_hidden()
+        self.page.locator("#geminiCredentialFile").set_input_files({
+            "name":"synthetic-service-account.json","mimeType":"application/json",
+            "buffer":json.dumps(GeminiTests.info).encode()})
+        self.expect(self.page.locator("#geminiHint")).to_contain_text("JSON loaded")
+        self.page.locator("#geminiModel").select_option("gemini-4-carbon")
+        self.page.locator("#geminiAnalysisModel").select_option("gemini-4-neon")
+        self.page.locator("#saveConnection").click()
+        self.expect(secret).to_have_value("")
+        response=self.context.request.get(self.url+"/api/state")
+        state=response.json()["config"]["ai"]
+        self.assertTrue(state["gcp_credentials_configured"])
+        self.assertNotIn("gcp_credentials",state)
+        self.assertNotIn("PRIVATE KEY",response.text())
+        self.assertEqual(state["model"],"gemini-4-carbon")
+        self.assertEqual(state["analysis_model"],"gemini-4-neon")
+        self.assertEqual(state["gcp_location"],"global")
+        self.page.locator('[data-close="settingsDialog"]').click()
+        self.page.locator("#headerSettings").click()
+        self.expect(secret).to_have_attribute("placeholder","Saved · leave blank to keep")
+        self.expect(self.page.locator("#geminiModel")).to_have_value("gemini-4-carbon")
+        self.page.locator("#geminiCredentialFile").set_input_files({
+            "name":"too-large.json","mimeType":"application/json","buffer":b" " * 20001})
+        self.expect(self.page.locator("#geminiHint")).to_contain_text("20 KB")
+        self.page.locator("#geminiCredentialFile").set_input_files({
+            "name":"invalid.json","mimeType":"application/json","buffer":b'{"type":"other"}'})
+        self.expect(self.page.locator("#geminiHint")).to_contain_text("complete Google")
+        self.page.locator('[name="ai.provider"]').select_option("bedrock-openai")
+        self.expect(self.page.locator("#settings-ai .model-selection")).to_be_visible()
+
+    def test_gemini_ui_can_be_disabled_while_other_connections_remain_usable(self):
+        self.page.add_init_script("window.AiMateFeatures={geminiVertex:false}")
+        self.page.reload()
+        self.expect(self.page.locator("#workspace")).to_be_visible()
+        self.page.locator("#headerSettings").click()
+        self.expect(self.page.locator('option[value="gemini"]')).to_be_disabled()
+        self.page.locator('[name="ai.provider"]').select_option("bedrock-openai")
+        self.expect(self.page.locator("#geminiSettings")).to_be_hidden()
         self.expect(self.page.locator('#apiCredentials input[name="ai.api_key"]')).to_be_visible()
 
     def test_feedback_review_reply_confirmed_task_and_disabled_ui(self):

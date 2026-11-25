@@ -13,7 +13,6 @@ The optional presentation module is `ai_connection_ui.js` and its stylesheet.
 Set `window.AiMateFeatures.aiConnectionLayout=false` before startup to restore
 the original layout without changing stored settings or connection behavior.
 
-Gemini / Antigravity uses separate Google Cloud credentials. It remains pending
-until the portal's non-secret generated setup identifies its authentication,
-project, location, endpoint and model. The Windows installer alone supplies no
-connection configuration.
+**Intel / Google Cloud** uses separate Gemini / Antigravity credentials.
+See [Gemini setup](gemini-antigravity.md). The Windows installer alone supplies
+no connection configuration.

@@ -2,6 +2,8 @@
 
 OpenCode with the shared Bedrock key: [setup and model routes](docs/opencode.md).
 
+Gemini / Antigravity via Google Cloud: [secure Vertex AI setup](docs/gemini-antigravity.md).
+
 [App checklist and validation gaps](docs/todo-audit-2026-11-24.md) — 28 of the original 42 items complete; 14 remain open.
 [Platform roadmap](TODO.md) — desktop, VS Code and optional backends.
 

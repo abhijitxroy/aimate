@@ -267,14 +267,14 @@
   },
   {
     "id": "backlog-ai-connection-layout",
-    "title": "P1 · Planned — Clean AI connection layout and Personal/Intel labels\n\nCompact account/model controls and clearly distinguish Personal ChatGPT from Intel-provided Bedrock connections. Preserve saved credentials and authentication behavior.",
-    "completed": false,
+    "title": "P1 · Done — Clean AI connection layout and Personal/Intel labels\n\nPersonal ChatGPT and Intel / Bedrock are clearly grouped; account controls align on desktop/mobile, plan hints collapse, verified account status is green. Optional layout preserves authentication. All 59 local browser tests and seven exact-commit workflows passed.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45603658274",
+    "completed": true,
     "type": "enhancement",
     "priority": "P1"
   },
   {
     "id": "backlog-gemini-antigravity",
-    "title": "P1 · Planned — Gemini / Antigravity Google Cloud connection\n\nTokengen confirms separate seven-day Google Cloud credentials; the Windows CLI installer is supplied. Await non-secret generated authentication/project/location/endpoint/model setup before implementing or claiming connectivity. No credential generation, installation or live Gemini call performed.",
+    "title": "P1 · WIP — Gemini / Antigravity Google Cloud connection\n\nVertex AI service-account JSON adapter, masked JSON import, Standard/Analysis presets, scoped function tools, vision, signature continuity, token metering and safe errors implemented. Full local/CI validation pending. Live Google access awaits a replacement credential entered securely in AiMate; the private key pasted in chat was not saved or used.",
     "completed": false,
     "type": "feature",
     "priority": "P1"

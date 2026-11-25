@@ -21,13 +21,21 @@ OPERATIONS = {
 }
 SECRET_KEYS = {"token", "api_key", "password", "authorization", "access_token", "secret",
                "client_secret", "private_key", "aws_secret_access_key", "refresh_token", "id_token",
-               "aws_access_key", "aws_secret_key", "aws_session_token"}
+               "aws_access_key", "aws_secret_key", "aws_session_token", "gcp_credentials"}
 
 
 def scrub(value, config):
     secrets = [v for section in config.values() if isinstance(section, dict)
                for k, v in section.items() if k in SECRET_KEYS and isinstance(v, str) and v]
     secrets.extend(config.get("_vault_secrets", []))
+    for section in config.values():
+        if isinstance(section, dict) and section.get("gcp_credentials"):
+            try:
+                key = json.loads(section["gcp_credentials"]).get("private_key")
+                if isinstance(key, str) and key:
+                    secrets.extend((key, json.dumps(key)[1:-1]))
+            except (ValueError, TypeError, AttributeError):
+                pass
 
     def clean(item):
         if isinstance(item, dict):

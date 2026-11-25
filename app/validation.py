@@ -84,7 +84,7 @@ def validate_config(raw, old):
     out = {"allow_writes": bool(raw.get("allow_writes"))}
     allowed_fields = {
         "ai": {"provider", "model", "analysis_model", "region", "api_key", "bedrock_auth", "bedrock_endpoint", "bedrock_mode",
-               "aws_access_key", "aws_secret_key", "aws_session_token"},
+               "aws_access_key", "aws_secret_key", "aws_session_token", "gcp_credentials", "gcp_project", "gcp_location"},
         "github": {"url", "repos", "token"},
         "jira": {"url", "projects", "auth", "username", "api_version", "token", "mode", "access"},
         "jenkins": {"url", "jobs", "username", "token", "mode", "access"},
@@ -94,7 +94,7 @@ def validate_config(raw, old):
         if not isinstance(section, dict):
             raise ValueError("Each connection must be an object")
         out[name] = {k: v for k, v in section.items() if k in fields}
-        for credential in ("token", "api_key", "aws_access_key", "aws_secret_key", "aws_session_token"):
+        for credential in ("token", "api_key", "aws_access_key", "aws_secret_key", "aws_session_token", "gcp_credentials"):
             value = out[name].get(credential)
             if isinstance(value, str) and value.strip():
                 masked = value.strip()
@@ -102,11 +102,22 @@ def validate_config(raw, old):
                     raise ValueError("Enter the actual credential, or leave the field blank to keep the saved value. Masked values cannot be saved.")
         secret = "api_key" if name == "ai" else "token"
         if not out[name].get(secret):
-            changed_provider = name == "ai" and section.get("provider") != old.get(name, {}).get("provider")
-            if name == "ai" and {section.get("provider"), old.get(name, {}).get("provider")} <= {"bedrock", "bedrock-openai", "opencode"}:
+            prior_provider = old.get(name, {}).get("api_key_provider") or old.get(name, {}).get("provider")
+            changed_provider = name == "ai" and section.get("provider") != prior_provider
+            if name == "ai" and {section.get("provider"), prior_provider} <= {"bedrock", "bedrock-openai", "opencode"}:
+                changed_provider = False
+            if name == "ai" and section.get("provider") == "gemini":
                 changed_provider = False
             out[name][secret] = "" if section.get("clear_token") or changed_provider else old.get(name, {}).get(secret, "")
         if name == "ai":
+            # Google JSON is separate; switching to Gemini must not consume a Bedrock key.
+            if section.get("provider") == "gemini":
+                out[name]["api_key"] = old.get(name, {}).get("api_key", "")
+                out[name]["api_key_provider"] = old.get(name, {}).get("api_key_provider") or old.get(name, {}).get("provider", "")
+            elif out[name].get("api_key"):
+                out[name]["api_key_provider"] = section.get("provider", "anthropic")
+            if not out[name].get("gcp_credentials"):
+                out[name]["gcp_credentials"] = "" if section.get("clear_gcp") else old.get(name, {}).get("gcp_credentials", "")
             for key in ("aws_access_key", "aws_secret_key", "aws_session_token"):
                 if not out[name].get(key):
                     out[name][key] = "" if section.get("clear_aws") else old.get(name, {}).get(key, "")
@@ -117,8 +128,8 @@ def validate_config(raw, old):
             out[name]["url"] = valid_base(out[name]["url"])
         if name != "ai" and out[name].get("token") and not out[name].get("url"):
             raise ValueError(f"Add the {name} URL")
-    if out["ai"].get("provider", "anthropic") not in {"anthropic", "bedrock", "chatgpt", "bedrock-openai", "opencode"}:
-        raise ValueError("Choose ChatGPT, Anthropic, Claude/GPT via Bedrock or OpenCode")
+    if out["ai"].get("provider", "anthropic") not in {"anthropic", "bedrock", "chatgpt", "bedrock-openai", "opencode", "gemini"}:
+        raise ValueError("Choose a supported AI provider.")
     ai = out["ai"]
     if ai.get("bedrock_mode", "advanced") not in {"simple", "advanced"}:
         raise ValueError("Choose Simple or Advanced Bedrock setup")
@@ -130,6 +141,9 @@ def validate_config(raw, old):
         validate(ai)
     if ai.get("provider") == "opencode":
         from app.opencode_bedrock import validate
+        validate(ai)
+    if ai.get("provider") == "gemini":
+        from app.gemini_vertex import validate
         validate(ai)
     if ai.get("bedrock_auth", "bearer") not in {"bearer", "iam"}:
         raise ValueError("Choose a Bedrock API key or AWS credentials")

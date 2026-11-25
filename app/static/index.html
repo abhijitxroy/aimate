@@ -32,6 +32,7 @@
   <script src="/static/rich_composer.js" defer></script>
   <script src="/static/app.js" defer></script>
   <script src="/static/ai_connection_ui.js" defer></script>
+  <script src="/static/gemini_ui.js" defer></script>
   <script src="/static/usage_ui.js" defer></script>
   <script src="/static/diagnostics_ui.js" defer></script>
   <script src="/static/github_guidance_ui.js" defer></script>
@@ -259,7 +260,14 @@
             <label>Setup<select name="ai.bedrock_mode"><option value="simple">Simple · token access</option><option value="advanced">Advanced · model &amp; AWS settings</option></select></label>
             <p id="bedrockSimpleHint" class="hint">Claude Haiku 5.5 · us-east-2 · Bedrock API key. Just add your token.</p>
           </div>
-        <div class="fields two"><label>Provider<select name="ai.provider"><option value="chatgpt">ChatGPT account</option><option value="anthropic">Anthropic API</option><option value="bedrock">AWS Bedrock Runtime · Claude</option><option value="bedrock-openai">GPT via Bedrock</option><option value="opencode">OpenCode · Bedrock</option></select></label><label id="apiModelLabel">Exact model / inference profile ID<input name="ai.model" placeholder="Model ID available to your account"></label><label id="chatgptModelLabel" hidden>Available model<select id="chatgptModel"><option value="">Connect your account first</option></select></label></div>
+        <div class="fields two"><label>Provider<select name="ai.provider"><option value="chatgpt">ChatGPT account</option><option value="anthropic">Anthropic API</option><option value="bedrock">AWS Bedrock Runtime · Claude</option><option value="bedrock-openai">GPT via Bedrock</option><option value="opencode">OpenCode · Bedrock</option><option value="gemini">Gemini / Antigravity · Google Cloud</option></select></label><label id="apiModelLabel">Exact model / inference profile ID<input name="ai.model" placeholder="Model ID available to your account"></label><label id="chatgptModelLabel" hidden>Available model<select id="chatgptModel"><option value="">Connect your account first</option></select></label></div>
+        <div id="geminiSettings" hidden>
+          <div class="fields two"><label>Standard model<select id="geminiModel"></select></label><label>Analysis model<select id="geminiAnalysisModel"></select></label></div>
+          <label>Service-account JSON<input name="ai.gcp_credentials" type="password" autocomplete="off" spellcheck="false" maxlength="20000" placeholder="Paste the replacement service-account JSON"></label>
+          <div class="test-row"><button id="importGeminiCredentials" type="button">Import credential JSON</button><input id="geminiCredentialFile" type="file" accept=".json,application/json" hidden></div>
+          <p id="geminiHint" class="hint" role="status"></p>
+          <details><summary>Advanced</summary><div class="fields two"><label>Google Cloud project<input name="ai.gcp_project" placeholder="From your credential JSON"></label><label>Location<input name="ai.gcp_location" value="global" placeholder="global"></label></div><label class="check"><input name="ai.clear_gcp" type="checkbox">Remove saved Google credentials</label></details>
+        </div>
         <div id="opencodeModels" hidden>
           <div class="fields two"><label>Standard model<select id="opencodeModel"></select></label><label>Analysis model<select id="opencodeAnalysis"></select></label></div>
           <p class="hint">GPT, Claude, Kimi and GLM · us-east-2 · your saved Bedrock key.</p>

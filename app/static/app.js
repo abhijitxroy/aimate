@@ -31,7 +31,7 @@ let archiveView = false;
 let expandedGroups = new Set();
 try { expandedGroups = new Set(JSON.parse(localStorage.getItem("aimate.groups") || "[]")); } catch {}
 const dirtyConnections = new Set();
-const aiSecretFields = ["api_key", "aws_access_key", "aws_secret_key", "aws_session_token"];
+const aiSecretFields = ["api_key", "aws_access_key", "aws_secret_key", "aws_session_token", "gcp_credentials"];
 function renderAppearance() {
   document.querySelectorAll("[data-theme-choice]").forEach(button => {
     button.setAttribute("aria-pressed", button.dataset.themeChoice === document.documentElement.dataset.theme);
@@ -191,7 +191,7 @@ $("#historySearchInput").oninput = () => {
 
 function aiReady() {
   return Boolean(config.ai?.model && (config.ai.provider === "chatgpt"
-    ? chatgpt.plan_enabled : config.ai.provider === "bedrock"
+    ? chatgpt.plan_enabled : config.ai.provider === "gemini" ? config.ai.gcp_credentials_configured : config.ai.provider === "bedrock"
       ? config.ai.region && (config.ai.bedrock_auth === "iam" || config.ai.api_key_configured)
       : config.ai.api_key_configured));
 }
@@ -201,6 +201,7 @@ function shortModelName(model) {
   model=model.split("/").pop();
   const claude = model.match(/claude-(haiku|sonnet|opus|fable)-(\d+)(?:[-.](\d{1,2})(?!\d))?/i);
   if (claude) return `${claude[1][0].toUpperCase() + claude[1].slice(1)} ${claude[2]}${claude[3] ? "." + claude[3] : ""}`;
+  if(model.startsWith("gemini-")) return model.split("-").map(word=>word[0].toUpperCase()+word.slice(1)).join(" ");
   const gpt=model.match(/gpt-(\d+)(?:[.-](\d+))?-(sol|terra|luna|astra)/i);
   if (gpt) return `GPT-${gpt[1]}${gpt[2] ? "."+gpt[2] : ""} ${gpt[3][0].toUpperCase()+gpt[3].slice(1)}`;
   const accountModel = chatgpt.models?.find?.(item => item.slug === model);
@@ -394,7 +395,7 @@ function renderSourceBar() {
     if (["jira", "jenkins"].includes(key) && !config[key]?.token_configured) continue;
     bar.append(sourceBadge(label, key));
   }
-  bar.append(sourceBadge(pagesPreview ? "ChatGPT" : demo ? "Scripted demo" : config.ai?.provider === "chatgpt" ? "ChatGPT" : config.ai?.provider === "opencode" ? "OpenCode · Bedrock" : config.ai?.provider === "bedrock-openai" ? "GPT · Bedrock" : config.ai?.provider === "bedrock" ? "Claude · Bedrock" : "Claude", "ai"));
+  bar.append(sourceBadge(pagesPreview ? "ChatGPT" : demo ? "Scripted demo" : config.ai?.provider === "chatgpt" ? "ChatGPT" : config.ai?.provider === "gemini" ? "Gemini · Vertex" : config.ai?.provider === "opencode" ? "OpenCode · Bedrock" : config.ai?.provider === "bedrock-openai" ? "GPT · Bedrock" : config.ai?.provider === "bedrock" ? "Claude · Bedrock" : "Claude", "ai"));
 }
 
 async function syncConnections() {
@@ -1152,6 +1153,7 @@ async function updateProvider() {
   $("#apiCredentials").hidden = selected;
   $("#removeAIKey").hidden = selected;
   updateBedrock();
+  window.AiMateGeminiUI?.refresh();
   $("#testAIButton").textContent = selected ? "Save & check model access" : "Save & test AI · billable";
   if (!selected) return;
   const accounts = $("#chatgptAccount");

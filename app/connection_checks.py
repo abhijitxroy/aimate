@@ -39,6 +39,9 @@ async def check_connection(service, config, services, client_factory, chatgpt):
         client = None
         try:
             ai = config.get("ai", {})
+            if ai.get("provider") == "gemini":
+                report["details"] = ["Provider: Google Cloud Vertex AI", "Project: " + str(ai.get("gcp_project", "")),
+                                     "Location: " + str(ai.get("gcp_location", "global"))]
             if ai.get("provider") in {"bedrock", "bedrock-openai", "opencode"}:
                 report["details"] = ["Region: " + str(ai.get("region", "")),
                                      "Endpoint: Bedrock " + str(ai.get("bedrock_endpoint", "runtime")),
