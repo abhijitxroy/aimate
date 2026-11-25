@@ -201,8 +201,8 @@
   },
   {
     "id": "audit-e3cb16cd4ed8e5d7808fcf7d",
-    "title": "P3 · Composer · WIP — B/U/I, colour, indentation, tables, panels, etc.\n\nValidation status: IN PROGRESS\nThe authoring toolbar is implemented, but not every individual toolbar operation has a dedicated browser check. Complete that coverage; underline/colour currently accept literal text rather than nested formatting.\nPrevious automated evidence (not full live validation):\nCollapsed formatting toolbar supports B/I/U, colour, headings, paragraphs, lists, indentation, code, rules, wrap, tables and callout panels with preview. Portable text and safe rendering survive edit/export/reload; local and Linux/Windows/browser CI passed.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45522299918",
-    "completed": false
+    "title": "P3 · Composer · Done — B/U/I, colour, indentation, tables, panels, etc.\n\nVisible basic formatting, advanced More controls, automatic live preview, keyboard shortcuts and expanding multiline editor with insertion visibility passed all four test workflows; disabling the formatter preserves core chat.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45537093732",
+    "completed": true
   },
   {
     "id": "audit-0913c4c7266e5c1236b1e71e",

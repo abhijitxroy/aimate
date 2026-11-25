@@ -1,0 +1,25 @@
+name: Quality checks
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install focused Python lint checks
+        run: python -m pip install "ruff>=0.14,<0.15"
+      - name: Check syntax, undefined names and invalid control flow
+        run: ruff check --select E9,F63,F7,F82 app tools tests
+      - name: Check JavaScript and generated Pages consistency
+        run: python tools/quality_checks.py

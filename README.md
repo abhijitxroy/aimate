@@ -1,12 +1,13 @@
 # AiMate
 
-[App checklist and validation gaps](docs/todo-audit-2026-11-24.md) — 27 of the original 42 items remain complete; 15 reopened.
+[App checklist and validation gaps](docs/todo-audit-2026-11-24.md) — 28 of the original 42 items complete; 14 remain open.
 [Platform roadmap](TODO.md) — desktop, VS Code and optional backends.
 
 [![Unit](https://github.com/abhijitxroy/aimate/actions/workflows/unit.yml/badge.svg)](https://github.com/abhijitxroy/aimate/actions/workflows/unit.yml)
 [![Integration](https://github.com/abhijitxroy/aimate/actions/workflows/integration.yml/badge.svg)](https://github.com/abhijitxroy/aimate/actions/workflows/integration.yml)
 [![Regression](https://github.com/abhijitxroy/aimate/actions/workflows/regression.yml/badge.svg)](https://github.com/abhijitxroy/aimate/actions/workflows/regression.yml)
 [![Flaky checks](https://github.com/abhijitxroy/aimate/actions/workflows/flaky.yml/badge.svg)](https://github.com/abhijitxroy/aimate/actions/workflows/flaky.yml)
+[![Quality](https://github.com/abhijitxroy/aimate/actions/workflows/quality.yml/badge.svg)](https://github.com/abhijitxroy/aimate/actions/workflows/quality.yml)
 
 A standalone, local workspace for asking questions across your GitHub
 repositories, Jira projects and Jenkins jobs. Built from scratch with FastAPI,
