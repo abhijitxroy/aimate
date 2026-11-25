@@ -89,6 +89,7 @@ class BrowserRegressionTests(unittest.TestCase):
             await refreshState();
         }""")
         section=self.page.locator("#recentSection")
+        self.assertTrue(section.evaluate("(node) => node.previousElementSibling.matches('hr.conversation-section-divider') && node.parentElement.id === 'conversations'"))
         heading=section.locator(":scope > summary")
         more=section.get_by_role("button",name="Show five more recent chats",exact=True)
         less=section.get_by_role("button",name="Show only three recent chats",exact=True)

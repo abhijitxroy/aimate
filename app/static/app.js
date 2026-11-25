@@ -585,7 +585,7 @@ function renderConversationTree(nav, activeGroup) {
     for(const thread of recentSelection.items) list.append(conversationRow(thread));
     recents.pageControl(list,"recents",recentSelection,refresh);
     if(!recentSelection.items.length) list.append(element("p","group-empty","No recent chats"));
-    section.append(list);nav.append(section);
+    section.append(list);nav.append(element("hr","conversation-section-divider"),section);
   }
   if (!separateRecents && !conversationList.some(t => Boolean(t.archived) === archiveView)) nav.append(element("p", "group-empty", archiveView ? "No archived chats" : "No conversations yet"));
 }

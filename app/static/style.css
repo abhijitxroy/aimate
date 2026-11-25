@@ -31,7 +31,8 @@ label { display: flex; flex-direction: column; gap: 8px; font-size: 12px; }
 .recent-page-controls .recent-chats-toggle { display: inline-flex; align-items: center; gap: 4px; width: auto; margin: 0; padding: 4px 7px; border-radius: 6px; white-space: nowrap; }
 .recent-page-controls .recent-chats-toggle svg { flex-shrink: 0; }
 .recent-page-controls .recent-chats-toggle:disabled { opacity: .35; cursor: default; }
-.recents-section > summary { display: flex; align-items: center; gap: 5px; cursor: pointer; list-style: none; }
+.conversation-section-divider { width: 100%; margin: 12px 0 8px; border: 0; border-top: 1px solid var(--line); }
+.recents-section > summary { display: flex; align-items: center; gap: 5px; cursor: pointer; list-style: none; margin-top: 0; }
 .recents-section > summary::-webkit-details-marker { display: none; }
 .recents-chevron { flex-shrink: 0; transform: rotate(-90deg); }
 .recents-section[open] .recents-chevron { transform: none; }
