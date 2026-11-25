@@ -408,6 +408,9 @@ Each sidebar chat list starts with five recent chats; **Show more / Show less**
 reveals or hides older chats. Pinned chats and the current chat stay visible.
 Recency uses the latest saved message, falling back to creation time. This only
 changes the list view; search, history and saved data remain available.
+Messages show a small faded local time beside the token badge; hover reveals the
+full date/time with seconds and time zone. Reload uses the saved turn timestamp.
+Disable the optional module with `window.AiMateFeatures.messageTime=false`.
 The optional `recent_chats.js` module can be disabled with
 `window.AiMateFeatures.recentChats=false`; missing/disabled modules show all chats.
 A folder organizes chats; a workspace has separate chats, data and connection

@@ -463,6 +463,9 @@ fieldset > label { margin-bottom: 12px; }
 .conversation-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
 .conversation-pin { flex-shrink: 0; font-size: 10px; color: var(--muted); }
 .model-info { margin: 0; width: fit-content; max-width: 100%; font-size: 9px; color: var(--muted); }
+.message-meta { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 5px; margin: 0; padding: 0; }
+.message-time { font-size: 9px; line-height: 20px; color: var(--muted); opacity: .5; white-space: nowrap; cursor: default; }
+.message-time:hover { opacity: .85; }
 .model-info > summary { display: inline-flex; align-items: center; gap: 3px; padding: 0 4px; min-height: 20px; line-height: 18px; white-space: nowrap; border: 1px solid #a8c9ed20; border-radius: 5px; background: #18345355; cursor: pointer; list-style: none; transition: background .15s, border-color .15s; }
 .model-info > summary::-webkit-details-marker { display: none; }
 .model-info > summary:hover, .model-info[open] > summary { background: #24476570; border-color: #a8c9ed40; }

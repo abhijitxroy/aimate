@@ -215,7 +215,8 @@ function updateModelInfo(message, used) {
   if (used.notice) details.push(used.notice);
   if (!message.modelInfo) {
     message.modelInfo = element("details", "model-info");
-    message.root.append(message.modelInfo);
+    if (window.AiMateMessageTime) window.AiMateMessageTime.placeModel(message,message.modelInfo);
+    else message.root.append(message.modelInfo);
   }
   const summary = element("summary");
   summary.title = details.join("\n");
@@ -598,7 +599,7 @@ $("#removeGroup").onclick = async () => {
   catch (error) { $("#groupError").textContent = error.message; }
 };
 
-function addMessage(role, text = "", turnId = null) {
+function addMessage(role, text = "", turnId = null, created = Date.now()/1000) {
   $("#welcome").hidden = true;
   const root = element("article", `message ${role}`);
   if (turnId !== null) root.dataset.turnId = turnId;
@@ -607,7 +608,7 @@ function addMessage(role, text = "", turnId = null) {
   const body = element("div", "body");
   if (role === "assistant") renderAnswer(body, text);
   else renderPrompt(body, text);
-  const message = {root, body, text, turnId, conversationId: cid, reads: 0};
+  const message = {root, body, text, turnId, created, conversationId: cid, reads: 0};
   if (role === "user") {
     const edit = element("button", "message-action", "Edit");
     edit.type = "button";
@@ -641,6 +642,7 @@ function addMessage(role, text = "", turnId = null) {
     heading.append(feedback);
   }
   root.append(heading, body);
+  window.AiMateMessageTime?.update(message);
   $("#messages").append(root);
   scrollMessages();
   return message;
@@ -870,7 +872,7 @@ async function loadConversation(id, title, version) {
       const savedFiles = (turn.usage?.attachments || []).map(file =>
         ({...file, ...(turn.attachment_previews || []).find(preview => preview.name === file.name)}));
       const userText=typeof user.content==="string" ? user.content : user.content.filter(block=>block.type==="text").map(block=>block.text).join("\n");
-      const message = addMessage("user", savedFiles.length ? turn.usage.display_question : userText, turn.id);
+      const message = addMessage("user", savedFiles.length ? turn.usage.display_question : userText, turn.id, turn.created);
       message.editText = userText;
       if (savedFiles.length) renderAttachmentCards(message.body, savedFiles, false);
     }
@@ -879,7 +881,7 @@ async function loadConversation(id, title, version) {
       if (msg.role !== "assistant" || !Array.isArray(msg.content)) continue;
       const text = msg.content.filter(b => b.type === "text").map(b => b.text).join("\n\n");
       if (text) {
-        if (!bot) bot = addMessage("assistant", text, turn.id);
+        if (!bot) bot = addMessage("assistant", text, turn.id, turn.created);
         else { bot.text += "\n\n" + text; renderAnswer(bot.body, bot.text); }
       }
     }
@@ -1015,8 +1017,13 @@ async function ask(question) {
       }
     }
     const saved = await api(`/api/conversations/${run.cid}`);
-    userMessage.turnId = saved.turns.at(-1)?.id || null;
+    const savedTurn=saved.turns.at(-1);
+    userMessage.turnId = savedTurn?.id || null;
     bot.turnId = userMessage.turnId;
+    if (savedTurn?.created) {
+      window.AiMateMessageTime?.update(userMessage,savedTurn.created);
+      window.AiMateMessageTime?.update(bot,savedTurn.created);
+    }
     await refreshState();
   } catch (error) {
     activity(error.name === "AbortError" ? "Stopped. An incomplete answer is not saved." : bot ? "Request failed. See the details above." : error.message);

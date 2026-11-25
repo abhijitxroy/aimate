@@ -80,6 +80,31 @@ class BrowserRegressionTests(unittest.TestCase):
     def tearDown(self):
         self.context.close()
 
+    def test_message_time_follows_tokens_uses_saved_timestamp_and_survives_reload(self):
+        self.page.locator("#newChat").click()
+        self.page.locator("#question").fill("Timestamp display check")
+        self.page.locator("#send").click()
+        self.expect(self.page.locator("#send")).to_be_enabled(timeout=15000)
+        ident=self.page.evaluate("cid")
+        turn=self.context.request.get(self.url+"/api/conversations/"+ident).json()["turns"][-1]
+        expected=self.page.evaluate("seconds => new Date(seconds*1000).toISOString()",turn["created"])
+        clock=self.page.locator(".message.assistant .message-time").last
+        self.expect(clock).to_have_attribute("datetime",expected)
+        self.expect(clock).to_have_attribute("title",re.compile(r".*\d.*"))
+        self.expect(clock).to_have_css("font-size","9px")
+        self.expect(self.page.locator(".message.assistant .model-info + .message-time")).to_be_visible()
+        self.page.reload()
+        self.expect(clock).to_have_attribute("datetime",expected)
+        self.expect(self.page.locator(".message.user .message-time").last).to_have_attribute("datetime",expected)
+        self.page.evaluate("""() => {
+            window.AiMateFeatures={messageTime:false};
+            const msg=addMessage('assistant','Disabled timestamp fixture');
+            updateModelInfo(msg,{mode:'auto',model:'fixture',usage:{input_tokens:1,output_tokens:1}});
+            msg.root.id='disabled-clock-fixture';
+        }""")
+        self.expect(self.page.locator("#disabled-clock-fixture .message-time")).to_have_count(0)
+        self.expect(self.page.locator("#disabled-clock-fixture .model-info")).to_be_visible()
+
     def test_recent_chats_show_more_less_keeps_open_chat_and_saved_history(self):
         gid=self.page.evaluate("""async () => {
             const folder=await api('/api/groups',{method:'POST',body:JSON.stringify({name:'Recent chats fixture'})});
