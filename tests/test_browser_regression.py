@@ -79,6 +79,22 @@ class BrowserRegressionTests(unittest.TestCase):
     def tearDown(self):
         self.context.close()
 
+    def test_monogram_colour_picker_persists_and_theme_reset(self):
+        self.page.evaluate("openConversationIcon(conversationList.find(t => t.title === 'Old continuity reference'))")
+        self.page.locator("#monogramIconMode").click()
+        self.page.locator("#conversationIconValue").fill("CI")
+        self.page.locator("#monogramColour").evaluate("(el) => { el.value='#ff7850'; el.dispatchEvent(new Event('input')); }")
+        self.page.get_by_role("button", name="Save icon", exact=True).click()
+        badge=self.page.get_by_role("button",name="Old continuity reference",exact=True).locator(".conversation-monogram")
+        self.expect(badge).to_have_css("color","rgb(255, 120, 80)")
+        self.page.reload()
+        self.expect(badge).to_have_css("color","rgb(255, 120, 80)")
+        self.page.evaluate("openConversationIcon(conversationList.find(t => t.title === 'Old continuity reference'))")
+        self.expect(self.page.locator("#monogramColour")).to_have_value("#ff7850")
+        self.page.locator("#monogramThemeColour").check()
+        self.page.get_by_role("button", name="Save icon", exact=True).click()
+        self.expect(badge).not_to_have_css("color","rgb(255, 120, 80)")
+
     def test_usage_budget_and_bill_comparison_persist(self):
         self.page.locator("#sidebarTools").evaluate("(el) => { el.open = true; }")
         self.page.locator("#openUsage").click()

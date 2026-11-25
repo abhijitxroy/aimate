@@ -325,6 +325,10 @@ function conversationButton(thread, className = "") {
   const emoji = thread.icon || conversationEmoji(thread.title);
   const icon = element("span", "conversation-emoji" + (/^[A-Za-z0-9]{1,3}$/.test(emoji) ? " conversation-monogram" : ""), emoji);
   icon.setAttribute("aria-hidden", "true");
+  if (/^[A-Za-z0-9]{1,3}$/.test(emoji) && /^#[0-9a-f]{6}$/i.test(thread.icon_color || "")) {
+    icon.style.color = thread.icon_color;
+    icon.style.borderColor = thread.icon_color;
+  }
   const label = !/^[A-Za-z0-9]{1,3}$/.test(emoji) && thread.title.trimStart().startsWith(emoji)
     ? thread.title.trimStart().slice(emoji.length).trimStart() : thread.title;
   button.append(icon, element("span", "conversation-label", label));
@@ -1712,18 +1716,22 @@ function setIconMode(monogram) {
   $("#emojiIconMode").setAttribute("aria-pressed", !monogram);
   $("#monogramIconMode").setAttribute("aria-pressed", monogram);
   $("#emojiIconPanel").hidden = monogram;
+  $("#monogramColourPanel").hidden = !monogram;
   $("#conversationIconLabel").textContent = monogram ? "Initials" : "Emoji";
   $("#conversationIconValue").maxLength = monogram ? 3 : 16;
   $("#conversationIconValue").placeholder = monogram ? "AR, CI, DEV…" : "Paste an emoji, or choose above";
   $("#conversationIconHint").textContent = monogram ? "1–3 letters or numbers. Leave blank for the topic icon." : "Leave blank to use the topic icon.";
 }
 $("#emojiSearch").oninput = renderEmojiChoices;
+$("#monogramColour").oninput = () => { $("#monogramThemeColour").checked = false; };
 $("#emojiCategory").onchange = renderEmojiChoices;
 $("#emojiIconMode").onclick = () => { $("#conversationIconValue").value = ""; setIconMode(false); };
 $("#monogramIconMode").onclick = () => { $("#conversationIconValue").value = ""; setIconMode(true); $("#conversationIconValue").focus(); };
 function openConversationIcon(thread) {
   conversationIconId = thread.id;
   $("#conversationIconValue").value = thread.icon || "";
+  $("#monogramColour").value = /^#[0-9a-f]{6}$/i.test(thread.icon_color || "") ? thread.icon_color : "#79baff";
+  $("#monogramThemeColour").checked = !thread.icon_color;
   $("#conversationIconError").textContent = "";
   $("#emojiSearch").value = "";
   $("#emojiCategory").value = "";
@@ -1742,7 +1750,7 @@ $("#conversationIconForm").onsubmit = async event => {
   }
   try {
     await api(`/api/conversations/${conversationIconId}`, {method:"PATCH",
-      body:JSON.stringify({icon:icon || null})});
+      body:JSON.stringify({icon:icon || null, icon_color: icon && $("#monogramIconMode").getAttribute("aria-pressed") === "true" && !$("#monogramThemeColour").checked ? $("#monogramColour").value : null})});
     $("#conversationIconDialog").close();
     await refreshState();
   } catch (error) { $("#conversationIconError").textContent = error.message; }

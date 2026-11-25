@@ -191,8 +191,8 @@
   },
   {
     "id": "audit-3a691f7d991e8d3df4a90393",
-    "title": "P3 · Tasks · Planned — To-do type column\n\nCurrent task fields: ID, title, completed, created, updated. No type/category column.",
-    "completed": false
+    "title": "P3 · Tasks · Done — To-do type column\n\nPersistent task categories, compact type column, filtering and editing preserve multiline text and legacy tasks; validation, restart and browser regressions passed CI.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45520596126",
+    "completed": true
   },
   {
     "id": "audit-b84efb70055d7ca73bed78f5",

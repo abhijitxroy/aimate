@@ -368,7 +368,7 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
                 "chatgpt": {**chatgpt.status(), "available": not demo and not public_url},
                 "groups": store.rows("SELECT * FROM conversation_groups ORDER BY created"),
                 "conversations": [{"id":ident,"title":"Private chat","private":True,"created":time.time(),"pinned":0,"archived":0} for ident in session["private_chats"]] +
-                    store.rows("SELECT c.*,l.group_id,i.icon,COALESCE(f.pinned,0) AS pinned,COALESCE(a.archived,0) AS archived FROM conversations c LEFT JOIN conversation_locations l ON l.conversation=c.id LEFT JOIN conversation_icons i ON i.conversation=c.id LEFT JOIN conversation_flags f ON f.conversation=c.id LEFT JOIN conversation_archives a ON a.conversation=c.id ORDER BY pinned DESC,c.created DESC")}
+                    store.rows("SELECT c.*,l.group_id,i.icon,s.color AS icon_color,COALESCE(f.pinned,0) AS pinned,COALESCE(a.archived,0) AS archived FROM conversations c LEFT JOIN conversation_locations l ON l.conversation=c.id LEFT JOIN conversation_icons i ON i.conversation=c.id LEFT JOIN conversation_icon_styles s ON s.conversation=c.id LEFT JOIN conversation_flags f ON f.conversation=c.id LEFT JOIN conversation_archives a ON a.conversation=c.id ORDER BY pinned DESC,c.created DESC")}
 
     def require_local_chatgpt():
         if demo or public_url:
@@ -760,7 +760,7 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
     async def rename_conversation(cid: str, request: Request, session=Depends(auth)):
         store.require_conversation(cid)
         body = await request.json()
-        if not isinstance(body, dict) or not body or set(body) - {"title", "group_id", "pinned", "archived", "icon"}:
+        if not isinstance(body, dict) or not body or set(body) - {"title", "group_id", "pinned", "archived", "icon", "icon_color"}:
             raise ValueError("Provide conversation settings to update.")
         title = body.get("title")
         if "title" in body and (not isinstance(title, str) or not title.strip() or len(title.strip()) > 100):
@@ -778,8 +778,16 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
                 not (re.fullmatch(r"[A-Za-z0-9]{1,3}", icon) or
                      any(ord(char) >= 0x1f000 or 0x2600 <= ord(char) <= 0x27bf for char in icon))):
             raise ValueError("Choose an emoji, a 1–3 letter/number monogram, or Automatic.")
+        color = body.get("icon_color")
+        if color is not None and (not isinstance(color, str) or not re.fullmatch(r"#[0-9a-fA-F]{6}", color)):
+            raise ValueError("Choose a six-digit hex colour, or the theme default.")
         async with config_lock:
             store.require_conversation(cid)
+            if "icon_color" in body or ("icon" in body and icon is None):
+                if color is None:
+                    store.execute("DELETE FROM conversation_icon_styles WHERE conversation=?", (cid,))
+                else:
+                    store.execute("INSERT OR REPLACE INTO conversation_icon_styles VALUES (?,?)", (cid, color.lower()))
             if "icon" in body:
                 if icon is None:
                     store.execute("DELETE FROM conversation_icons WHERE conversation=?", (cid,))
@@ -818,6 +826,7 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
                 store.db.execute("DELETE FROM conversation_flags WHERE conversation=?", (cid,))
                 store.db.execute("DELETE FROM conversation_archives WHERE conversation=?", (cid,))
                 store.db.execute("DELETE FROM conversation_icons WHERE conversation=?", (cid,))
+                store.db.execute("DELETE FROM conversation_icon_styles WHERE conversation=?", (cid,))
                 store.db.execute("DELETE FROM conversation_references WHERE conversation=? OR source=?", (cid, cid))
                 store.db.execute("DELETE FROM memory_index WHERE conversation=?", (cid,))
                 store.db.execute("DELETE FROM review_sessions WHERE conversation=?", (cid,))

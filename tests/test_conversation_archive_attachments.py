@@ -93,6 +93,29 @@ class ConversationTests(unittest.TestCase):
         self.assertEqual(self.client.patch(endpoint, headers=self.headers, json={"icon": None}).status_code, 200)
         self.assertIsNone(self.client.get("/api/state").json()["conversations"][0]["icon"])
 
+    def test_monogram_colour_survives_restart_rejects_css_and_resets(self):
+        endpoint = f"/api/conversations/{self.cid}"
+        self.assertEqual(self.client.patch(endpoint, headers=self.headers,
+                         json={"icon": "CI", "icon_color": "#FF7850"}).status_code, 200)
+        reopened = Store(self.directory.name)
+        self.assertEqual(reopened.rows("SELECT color FROM conversation_icon_styles")[0]["color"], "#ff7850")
+        reopened.db.close()
+        for bad in ("red", "#fff", "url(https://example.com)", 12):
+            response = self.client.patch(endpoint, headers=self.headers,
+                                         json={"title": "Changed", "icon_color": bad})
+            self.assertEqual(response.status_code, 400)
+        row = self.client.get("/api/state").json()["conversations"][0]
+        self.assertEqual((row["title"], row["icon_color"]), ("Investigation", "#ff7850"))
+        self.assertEqual(self.client.patch(endpoint, headers=self.headers,
+                         json={"icon_color": None}).status_code, 200)
+        self.assertIsNone(self.client.get("/api/state").json()["conversations"][0]["icon_color"])
+        self.client.patch(endpoint, headers=self.headers, json={"icon_color": "#123456"})
+        self.client.patch(endpoint, headers=self.headers, json={"icon": None})
+        self.assertEqual(self.store.rows("SELECT * FROM conversation_icon_styles"), [])
+        self.client.patch(endpoint, headers=self.headers, json={"icon": "AR", "icon_color": "#123456"})
+        self.client.delete(endpoint, headers=self.headers)
+        self.assertEqual(self.store.rows("SELECT * FROM conversation_icon_styles"), [])
+
     def test_saved_history_search_includes_archived_unicode_and_visible_messages(self):
         self.store.save_turn(self.cid, [
             {"role": "user", "content": "Investigate ONEAPICI-8437"},
