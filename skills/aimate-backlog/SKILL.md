@@ -7,6 +7,7 @@ description: Review and continue AiMate To-do work, choose actionable priorities
 
 At the start of AiMate development work, check the live To-do list when accessible,
 `docs/new-todos-2026-11-25.json`, `docs/audited-todos.json`, and `TODO.md`.
+Also read `docs/new-requests-2026-11-26.json` for later requests and status remarks.
 Use the live list for user-added tasks; source records provide audit evidence
 and the platform roadmap. Preserve user edits and IDs when reconciling them.
 
@@ -26,6 +27,10 @@ they do not replace the live validation listed in the task.
 
 Update the live task and matching source record after completion with a short
 result and evidence link. Keep incomplete scope open with a concrete next step.
+Merge only actual duplicate requests into their canonical task, preserving exact
+old records in encrypted merge history and keeping the canonical status and ID.
+Add a status remark explaining completion evidence or the remaining work; do not
+erase a completed task's history when a new requirement adds further scope.
 Never mark the whole backlog complete because one batch passed. Save verified
 updates into the OneDrive migration kit; do not claim cloud sync or a fresh
 encrypted backup unless verified.

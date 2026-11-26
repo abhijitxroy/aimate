@@ -232,7 +232,7 @@
   },
   {
     "id": "backlog-repository-confirmation-ui",
-    "title": "P1 · Done — Dismiss confirmed repository prompts and preserve message order\n\nConfirmed repository panels and stale recovery prompts disappear; saved reply/proposal order and sidebar overflow are fixed. Optional message rail supports safe previews, jump, Favorites, keyboard and outside-click dismissal. All 51 browser checks and all seven CI workflows passed.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45592801999",
+    "title": "P1 · Done — Dismiss confirmed repository prompts and preserve message order\n\nConfirmed repository panels and stale recovery prompts disappear; saved reply/proposal order and sidebar overflow are fixed. Optional message rail supports safe previews, jump, Favorites, keyboard and outside-click dismissal. All 51 browser checks and all seven CI workflows passed.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45592801999\n\nRemark: Rechecked 26 November at b1fcd27: saved-proposal order and obsolete-card regressions passed. Installed INST-26561 chat had its completed settings panel hidden, no Confirm button, and alternating user/reply ordering. No remote change executed during this check.",
     "completed": true,
     "type": "bug",
     "priority": "P1"
@@ -316,7 +316,7 @@
   },
   {
     "id": "search-quality-04",
-    "title": "P0 · Planned — SQ-04: Knowledge-repository connection and selected indexing\n\nParent: backlog-c271f2bb931810eef633f7c7. Plan: docs/search-quality-plan.md.\nConnect the approved Nexus repository by validated access. Ingest selected Markdown and metadata at pinned commits, preserving status, aliases/tags, scope, dates and evidence links. No credentials or automatic all-repository imports.",
+    "title": "P0 · WIP — SQ-04: Knowledge-repository connection and selected indexing\n\nParent: backlog-c271f2bb931810eef633f7c7. Plan: docs/search-quality-plan.md.\nConnect the approved Nexus repository by validated access. Ingest selected Markdown and metadata at pinned commits, preserving status, aliases/tags, scope, dates and evidence links. No credentials or automatic all-repository imports.\n\nRemark: Selected encrypted local Nexus indexing delivered and live-verified at cf5a278; see selected-knowledge-index. Remote repository ingestion and structured case promotion remain open.",
     "completed": false,
     "type": "feature",
     "priority": "P0"
@@ -526,8 +526,8 @@
   },
   {
     "id": "supplied-input-lean-scope",
-    "title": "P1 · WIP — Lean supplied-input-only reviews and consistent assessments\n\nRestrict explicit no-external-read requests to supplied input and attachments, with a compact system prompt, no source configuration/brief injection and no service/write tools or speculative read batching. Label current-message evidence without pretending it independently verifies external facts. Awaiting all seven workflows and measured live comparison.",
-    "completed": false,
+    "title": "P1 · Done — Lean supplied-input-only reviews and consistent assessments\n\nAll seven workflows passed at bd5ec85. Native/Responses restricted-tool tests, speculative-batch rejection, input-citation checks, disabled mode and browser evidence-label checks passed. Three matched synthetic live requests completed without external reads or failed tools. Input tokens changed: debug 31753 to 4830, arithmetic 6431 to 1139, review 32096 to 4493. Debug/review used one successful assessment each; input evidence is explicitly not independent external verification. No universal quality/speed/parity claim. Temporary test chats cleared; reported usage retained. Source, installed app and migration kit updated.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45836546071",
+    "completed": true,
     "type": "enhancement",
     "priority": "P1"
   }

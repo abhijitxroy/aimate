@@ -1,11 +1,65 @@
 [
-  {"id":"favorites-safe-unpin","title":"P0 · WIP — Lock Favorites against accidental unpin\n\nRemark: Default lock and explicit unpin acknowledgement implemented; local/browser and all seven CI workflows must pass before completion. Chat-deletion retention is a separate task.","completed":false,"type":"feature","priority":"P0"},
-  {"id":"chat-recycle-favorite-retention","title":"P0 · Planned — Named delete warning, 24-hour recycle bin and preserved Favorites\n\nRemark: Current delete permanently removes original turns and pins. Implement reversible chat/project deletion, exact-name warnings, 24-hour recovery/expiry, and an explicit choice to keep or remove favorite snapshots. Preserve formatting; orphaned snapshots show unavailable source links. Requires storage/restore and expiry tests before delivery.","completed":false,"type":"feature","priority":"P0"},
-  {"id":"message-regenerate-model","title":"P1 · Planned — Retry or regenerate a reply with another model\n\nRemark: Preserve original question, attachments and chat location. Keep prior reply available, record selected model/usage and never replay executed writes. Verify interrupted replies, parallel streams and reload.","completed":false,"type":"feature","priority":"P1"},
-  {"id":"embedded-verification-browser","title":"P1 · Planned — Built-in live verification browser\n\nRemark: Prepare a scoped browser view for UI smoke checks and user-controlled credential entry. Credentials must not become model-visible. External pages can refuse embedding; use a secure companion browser when required. No embedded browser delivered yet.","completed":false,"type":"feature","priority":"P1"},
-  {"id":"admin-chat-limits","title":"P1 · Planned — Administrator-configurable chat limits\n\nRemark: Existing simultaneous-answer limit is three and request budgets are bounded. Add explicit settings for concurrent replies and per-chat history/message limits with safe bounds, migration and clear validation errors; do not silently discard history.","completed":false,"type":"feature","priority":"P1"},
-  {"id":"conversation-answer-preference","title":"P1 · WIP — Simple gist first and remembered short-answer preference\n\nRemark: skills/aimate-answer-style/SKILL.md records the requirement. Implement conversation-scoped runtime preference until user changes it, preserving the original query and keeping references from overriding it. Persistence/reopen and provider tests remain.","completed":false,"type":"enhancement","priority":"P1"},
-  {"id":"artifactory-connection","title":"P1 · Planned — Artifactory connection and scoped reads\n\nRemark: Implement a separate optional connector with secure token input, URL validation, green/partial/red checks, bounded artifact metadata/search and source citations. Do not download or execute binaries implicitly; live server access needs user settings.","completed":false,"type":"feature","priority":"P1"},
-  {"id":"nexus-aimate-sync","title":"P1 · Planned — Synchronize verified AiMate changes into Nexus\n\nRemark: User authorized updating the existing Nexus AiMate application copy. Inspect its current feature branch and workflow requirements; copy only verified app source without .data, tokens, credentials or unrelated domain documents. Record exact source/destination commits and checks.","completed":false,"type":"task","priority":"P1"},
-  {"id":"selected-knowledge-index","title":"P0 · WIP — Encrypted selected commit-pinned Nexus knowledge index\n\nRemark: Eight backend and one real-browser fixture checks pass; encrypted storage, explicit files, pinned provenance, paging, source revocation and disabled/private/role guards covered. All seven GitHub workflows and installed local import/search validation required. Broader remote ingestion and structured cases remain separate.","completed":false,"type":"feature","priority":"P0"}
+  {
+    "id": "favorites-safe-unpin",
+    "title": "P0 · Done — Lock Favorites against accidental unpin\n\nRemark: Default lock, fresh-message pin labels and explicit API unpin acknowledgement verified by backend/browser regressions and all seven workflows at b1fcd27. Installed live Favorites contained four disabled Unpin buttons; Unlock enabled all four, then Lock disabled them. No user pins removed. Chat deletion/recovery remains separate.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45844203798",
+    "completed": true,
+    "type": "feature",
+    "priority": "P0"
+  },
+  {
+    "id": "chat-recycle-favorite-retention",
+    "title": "P0 · Planned — Named delete warning, 24-hour recycle bin and preserved Favorites\n\nRemark: Current delete permanently removes original turns and pins. Implement reversible chat/project deletion, exact-name warnings, 24-hour recovery/expiry, and an explicit choice to keep or remove favorite snapshots. Preserve formatting; orphaned snapshots show unavailable source links. Requires storage/restore and expiry tests before delivery.",
+    "completed": false,
+    "type": "feature",
+    "priority": "P0"
+  },
+  {
+    "id": "message-regenerate-model",
+    "title": "P1 · Planned — Retry or regenerate a reply with another model\n\nRemark: Preserve original question, attachments and chat location. Keep prior reply available, record selected model/usage and never replay executed writes. Verify interrupted replies, parallel streams and reload.",
+    "completed": false,
+    "type": "feature",
+    "priority": "P1"
+  },
+  {
+    "id": "embedded-verification-browser",
+    "title": "P1 · Planned — Built-in live verification browser\n\nRemark: Prepare a scoped browser view for UI smoke checks and user-controlled credential entry. Credentials must not become model-visible. External pages can refuse embedding; use a secure companion browser when required. No embedded browser delivered yet.",
+    "completed": false,
+    "type": "feature",
+    "priority": "P1"
+  },
+  {
+    "id": "admin-chat-limits",
+    "title": "P1 · Planned — Administrator-configurable chat limits\n\nRemark: Existing simultaneous-answer limit is three and request budgets are bounded. Add explicit settings for concurrent replies and per-chat history/message limits with safe bounds, migration and clear validation errors; do not silently discard history.",
+    "completed": false,
+    "type": "feature",
+    "priority": "P1"
+  },
+  {
+    "id": "conversation-answer-preference",
+    "title": "P1 · Done — Simple gist first and remembered short-answer preference\n\nRemark: Conversation-scoped brief policy persists in encrypted turn metadata and reopens without affecting other chats. Native/Responses, quoted-code/attachment isolation, reset and disabled mode passed. All seven workflows at b1fcd27 passed. Three installed live Standard-model requests saved brief, brief, normal; zero external reads and no errors. Disposable test chats removed. Model adherence is tested, not guaranteed for every response.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45844203798",
+    "completed": true,
+    "type": "enhancement",
+    "priority": "P1"
+  },
+  {
+    "id": "artifactory-connection",
+    "title": "P1 · Planned — Artifactory connection and scoped reads\n\nRemark: Implement a separate optional connector with secure token input, URL validation, green/partial/red checks, bounded artifact metadata/search and source citations. Do not download or execute binaries implicitly; live server access needs user settings.",
+    "completed": false,
+    "type": "feature",
+    "priority": "P1"
+  },
+  {
+    "id": "nexus-aimate-sync",
+    "title": "P1 · Blocked — Nexus AiMate copy: CI needs an approved runner\n\nRemark: Verified AiMate b1fcd27 copied to applications/aimate on existing feature/aimate-workspace, pushed as d6dc4fc. Root index updated and seven workflows separated. No credentials/private records copied; Nexus knowledge-domain documents preserved. Syntax, Pages build and 16 focused imported-backend tests passed locally. All seven Nexus workflows failed during checkout: organization IP allowlist rejects GitHub-hosted runner IPs (HTTP 403), before tests. Await approved self-hosted runner label; no policy weakening, merge or deployment. Full imported app recheck passed locally: 57 unit, 348 integration and 87 browser tests (492 total). Nexus CI remains blocked by organization IP restrictions, not a test failure.\nCI: https://github.com/intel-sandbox/oneapi-ci-nexus/actions/runs/45846640110",
+    "completed": false,
+    "type": "task",
+    "priority": "P1"
+  },
+  {
+    "id": "selected-knowledge-index",
+    "title": "P0 · Done — Encrypted selected commit-pinned Nexus knowledge index\n\nRemark: All seven workflows passed at cf5a278. Eight backend checks plus browser import/paged preview cover encryption, pinned provenance, corruption handling, restart, role/private/disabled/CSRF and revoked sources. Installed owner index contains three explicitly selected Nexus runbooks at f0739f6. Full paging and GPU/password-expiry searches verified. No repo content changed; remote ingestion, structured cases and Odin parity remain open.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45841886400",
+    "completed": true,
+    "type": "feature",
+    "priority": "P0"
+  }
 ]

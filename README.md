@@ -10,7 +10,9 @@ Admin / Developer: [measured performance and before/after baselines](docs/perfor
 
 [Local AI fallback with Ollama](docs/local-ai.md) — optional, no cloud credentials.
 
-[App checklist and validation gaps](docs/todo-audit-2026-11-24.md) — 31 of the audited 44 items complete; 13 remain open.
+[App checklist and validation gaps](docs/todo-audit-2026-11-24.md) — 32 of the audited 44 items complete; 12 remain open.
+[Latest request reconciliation](docs/requests-2026-11-26.md) — priorities, duplicates and status remarks.
+[Current knowledge/cache reuse](docs/current-knowledge-reuse.md).
 [Platform roadmap](TODO.md) — desktop, VS Code and optional backends.
 
 [![Unit](https://github.com/abhijitxroy/aimate/actions/workflows/unit.yml/badge.svg)](https://github.com/abhijitxroy/aimate/actions/workflows/unit.yml)
