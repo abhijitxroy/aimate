@@ -64,8 +64,8 @@
   },
   {
     "id": "investigation-budget-checkpoint",
-    "title": "P0 · WIP — SQ-08 child: explicit incomplete-answer checkpoints\n\nParent: search-quality-08. Persist paired transcripts and honest status on lookup/output limits or empty final answers; never execute pending final-round calls or proposals. Restore follow-up context without replaying writes; temporary sessions remain memory-only. Clear misleading full-coverage percentages. Acceptance: native and Responses paths, restart/continuation, disabled flag, revoked access and browser reload. Remark: implementation and verification in progress; not the full factual evidence gate.",
-    "completed": false,
+    "title": "P0 · Done — SQ-08 child: explicit incomplete-answer checkpoints\n\nParent: search-quality-08. Native/Responses lookup limits, native output limits and empty final answers save paired incomplete checkpoints; last-round pending tools/proposals are not run. Normal continuation uses saved evidence; private checkpoints stay in memory and revoked access prevents saving. Invalid Responses calls/arguments no longer crash error reporting.\nRemark: Five backend tests and real browser reload/continuation checks passed; all seven workflows passed at 883d26d. Installed server restarted and verified UI bytes served. This does not complete the factual evidence gate, transport-error recovery, automatic multi-batch work or Odin parity.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45864868087",
+    "completed": true,
     "type": "bug",
     "priority": "P0"
   },
