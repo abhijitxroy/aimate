@@ -43,10 +43,10 @@
   },
   {
     "id": "artifactory-connection",
-    "title": "P1 · Planned — Artifactory connection and scoped reads\n\nRemark: Implement a separate optional connector with secure token input, URL validation, green/partial/red checks, bounded artifact metadata/search and source citations. Do not download or execute binaries implicitly; live server access needs user settings.",
+    "title": "P0 · Planned — Artifactory connection and scoped reads\n\nRemark: Implement a separate optional connector with secure token input, URL validation, green/partial/red checks, bounded artifact metadata/search and source citations. Do not download or execute binaries implicitly; live server access needs user settings.\n\nPriority update: required for packaging eligibility evidence. Add scoped AQL search with complete pagination, exact artifact identities, bounded report/log reads, credential and TLS handling, report content hashes and freshness. Missing or truncated search results must stay inconclusive. Acceptance: malformed reports, denied access, partial listings, wrong hosts, schema/version changes and disabled-module tests; live server validation remains separate.",
     "completed": false,
     "type": "feature",
-    "priority": "P1"
+    "priority": "P0"
   },
   {
     "id": "nexus-aimate-sync",
@@ -59,6 +59,20 @@
     "id": "selected-knowledge-index",
     "title": "P0 · Done — Encrypted selected commit-pinned Nexus knowledge index\n\nRemark: All seven workflows passed at cf5a278. Eight backend checks plus browser import/paged preview cover encryption, pinned provenance, corruption handling, restart, role/private/disabled/CSRF and revoked sources. Installed owner index contains three explicitly selected Nexus runbooks at f0739f6. Full paging and GPU/password-expiry searches verified. No repo content changed; remote ingestion, structured cases and Odin parity remain open.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45841886400",
     "completed": true,
+    "type": "feature",
+    "priority": "P0"
+  },
+  {
+    "id": "investigation-budget-checkpoint",
+    "title": "P0 · WIP — SQ-08 child: explicit incomplete-answer checkpoints\n\nParent: search-quality-08. Persist paired transcripts and honest status on lookup/output limits or empty final answers; never execute pending final-round calls or proposals. Restore follow-up context without replaying writes; temporary sessions remain memory-only. Clear misleading full-coverage percentages. Acceptance: native and Responses paths, restart/continuation, disabled flag, revoked access and browser reload. Remark: implementation and verification in progress; not the full factual evidence gate.",
+    "completed": false,
+    "type": "bug",
+    "priority": "P0"
+  },
+  {
+    "id": "packaging-dms-reconciliation",
+    "title": "P0 · Planned — Deterministic packaging/DMS evidence reconciliation\n\nParents: search-quality-07 and search-quality-08. Normalize cutoff timezone and freeze inclusive-start/exclusive-end build population. Compare all package-creation builds against mirror records; deduplicate by full job path/build/target. Inspect packaging stages, report result and fingerprint, DMS version/execution/startup evidence and exact Jira created/reused links. Separate infrastructure failures, non-eligible cases, startup failures, other uncovered eligible cases and inconclusive evidence. Output mutually exclusive counts plus missing-field checklist and direct build citations. Dependencies: scoped data/Artifactory access; contract and synthetic fixtures can proceed. Acceptance: complete pagination, out-of-mirror builds, duplicate/retried targets, same-number jobs, missing reports/logs, dedup reuse, stale Jira sync and arithmetic reconciliation. Remark: new business-specific task; avoid inferring eligibility or cause from existence/date proximity.",
+    "completed": false,
     "type": "feature",
     "priority": "P0"
   }

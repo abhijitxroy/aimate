@@ -98,6 +98,17 @@ class BrowserRegressionTests(unittest.TestCase):
         self.page.locator('[name="ai.provider"]').select_option("local")
         self.expect(self.page.locator("#localAISettings")).to_be_visible()
 
+    def test_incomplete_answer_checkpoint_is_visible_and_survives_reload(self):
+        self.page.locator("#question").fill("Output limit fixture")
+        self.page.locator("#send").click()
+        self.expect(self.page.locator("#activity")).to_have_text("Investigation incomplete · checkpoint saved")
+        self.expect(self.page.locator("#messages")).to_contain_text("This investigation is incomplete.")
+        self.page.reload()
+        self.expect(self.page.locator("#messages")).to_contain_text("This investigation is incomplete.")
+        self.page.locator("#question").fill("Continue")
+        self.page.locator("#send").click()
+        self.expect(self.page.locator("#activity")).to_have_text("Answer complete")
+
     def local_fixture(self):
         self.page.route("**/api/local-ai/status",lambda route:route.fulfill(status=200,content_type="application/json",
             body=json.dumps({"available":True,"models":["qwen3:4b"],"message":"Ollama reachable."})))

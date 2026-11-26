@@ -302,7 +302,7 @@
   },
   {
     "id": "search-quality-02",
-    "title": "P0 · Planned — SQ-02: Matched reference benchmark and verified expected facts\n\nParent: backlog-c271f2bb931810eef633f7c7. Plan: docs/search-quality-plan.md.\nUse the same questions, needed context, access and source versions. Score independently verified facts, coverage, citations and unsupported claims; record time/tokens/cost separately. Exact reference question/context and full answers still needed.",
+    "title": "P0 · Planned — SQ-02: Matched reference benchmark and verified expected facts\n\nParent: backlog-c271f2bb931810eef633f7c7. Plan: docs/search-quality-plan.md.\nUse the same questions, needed context, access and source versions. Score independently verified facts, coverage, citations and unsupported claims; record time/tokens/cost separately. Reference inputs received; independently verified expected facts remain required.\n\n26 November Odin implementation comparison: Reference prompt and full exported answer are now available locally. Establish one matched packaging/DMS reconciliation benchmark: timezone-aware cutoff; all package-creation builds, including those outside the mirror; actual stage/report classification; created/reused/uncovered outcomes. Independently verify expected facts from frozen evidence before scoring. Keep private reference data out of the public repository. Acceptance: independently checked expected outcomes, same source snapshot/access, zero critical unsupported conclusions. Remark: benchmark inputs received; ground truth and matched AiMate run remain open.",
     "completed": false,
     "type": "task",
     "priority": "P0"
@@ -323,10 +323,10 @@
   },
   {
     "id": "search-quality-05",
-    "title": "P0 · Planned — SQ-05: Structured reusable failures, observations and outcomes\n\nParent: backlog-c271f2bb931810eef633f7c7. Plan: docs/search-quality-plan.md.\nStore symptoms/signatures, conditions, environment/version, evidence, diagnosis, resolution, actual outcome, reviewer/status and visibility. Keep private/candidate/shared separate; support corrections and retirement with provenance.",
+    "title": "P1 · Planned — SQ-05: Structured reusable failures, observations and outcomes\n\nParent: backlog-c271f2bb931810eef633f7c7. Plan: docs/search-quality-plan.md.\nStore symptoms/signatures, conditions, environment/version, evidence, diagnosis, resolution, actual outcome, reviewer/status and visibility. Keep private/candidate/shared separate; support corrections and retirement with provenance.\n\n26 November Odin implementation comparison: Promote reviewed Nexus failure cases with symptom/signature, product/release/OS, source versions, applicability, evidence, diagnosis, resolution, confirmed outcome, status and correction/retirement links. Preserve private/candidate/shared visibility; no automatic secret import or unreviewed repository writes. Retrieve exact identifiers before generic similarity, then validate against current evidence. Acceptance: recurring failures and misleading lookalikes, stale cases and retirement, source citations and isolation tests. Remark: three selected runbooks are indexed; structured incident learning is still open.",
     "completed": false,
     "type": "feature",
-    "priority": "P0"
+    "priority": "P1"
   },
   {
     "id": "search-quality-06",
@@ -337,24 +337,24 @@
   },
   {
     "id": "search-quality-07",
-    "title": "P0 · Planned — SQ-07: Approved read-only project-data connector\n\nParent: backlog-c271f2bb931810eef633f7c7. Plan: docs/search-quality-plan.md.\nAdd an optional scoped data API/database adapter with freshness, row/time limits and dataset/denominator citations. Source endpoint/schema/access needs setup. Personal chat/config/vault records are not a domain-data mirror.",
+    "title": "P0 · Planned — SQ-07: Approved read-only project-data connector\n\nParent: backlog-c271f2bb931810eef633f7c7. Plan: docs/search-quality-plan.md.\nAdd an optional scoped data API/database adapter with freshness, row/time limits and dataset/denominator citations. Source endpoint/schema/access needs setup. Personal chat/config/vault records are not a domain-data mirror.\n\n26 November Odin implementation comparison: Odin has a CI/Jira domain mirror and read-only SQL queries; AiMate personal records cannot replace this. Implement an optional approved read-only data adapter with explicit dataset scope, canonical build/target identities, collection time, sync watermark, pagination, limits and aggregation. Reconcile mirror entries against live builds to identify missing populations. Do not query protected configuration/vault tables or expose database credentials. Dependency: approved endpoint/schema/access. Acceptance: deterministic counts, scoped denial tests, freshness/denominator citations and comparison against independent inventory. Remark: blocked for live connectivity until an approved data source is configured; contract/fixtures can proceed.",
     "completed": false,
     "type": "feature",
     "priority": "P0"
   },
   {
     "id": "search-quality-08",
-    "title": "P0 · Planned — SQ-08: Thorough investigation and final evidence gate\n\nParent: backlog-c271f2bb931810eef633f7c7. Plan: docs/search-quality-plan.md.\nPlan, inspect current sources, test past-case applicability, resolve contradictions and complete file/log coverage before a verdict. Persist checkpoints and state unresolved gaps if access/budget prevents finishing. Progress summaries must not expose hidden reasoning.",
+    "title": "P0 · Planned — SQ-08: Thorough investigation and final evidence gate\n\nParent: backlog-c271f2bb931810eef633f7c7. Plan: docs/search-quality-plan.md.\nPlan, inspect current sources, test past-case applicability, resolve contradictions and complete file/log coverage before a verdict. Persist checkpoints and state unresolved gaps if access/budget prevents finishing. Progress summaries must not expose hidden reasoning.\n\n26 November Odin implementation comparison: Enforce evidence-led investigation: normalize timezone, freeze population, enumerate all pages, inspect actual stage results/report contents and applicable code, validate DMS execution and build-specific Jira links, resolve contradictions. Never equate Jenkins FAILURE with packaging failure, report existence with eligibility, or sampled SSL errors with every case. Confirmed/inferred/inconclusive are distinct; absence from a truncated search is unknown. Persist paired checkpoints at request limits and label unfinished output honestly. Acceptance: critical unsupported claims rejected, counts reconcile, interruptions resume without executing pending tools or replaying writes. Remark: first implementation batch is explicit budget/output-limit checkpoints; broader factual evidence gate remains open.",
     "completed": false,
     "type": "feature",
     "priority": "P0"
   },
   {
     "id": "search-quality-09",
-    "title": "P0 · Planned — SQ-09: Cache tiers, freshness, invalidation and retention\n\nParent: backlog-c271f2bb931810eef633f7c7. Plan: docs/search-quality-plan.md.\nScope caches to credentials/workspace/source versions. Separate immutable content, mutable facts, retrieval indexes, past cases and provider prefix caching. Bound storage and mark freshness; test revoked/changed access and stale/conflicting data.",
+    "title": "P1 · Planned — SQ-09: Cache tiers, freshness, invalidation and retention\n\nParent: backlog-c271f2bb931810eef633f7c7. Plan: docs/search-quality-plan.md.\nScope caches to credentials/workspace/source versions. Separate immutable content, mutable facts, retrieval indexes, past cases and provider prefix caching. Bound storage and mark freshness; test revoked/changed access and stale/conflicting data.\n\n26 November Odin implementation comparison: Odin caches finished-build logs/reports, slow metadata and changing PR/head state separately, and uses provider prompt caching. Extend AiMate cache tiers behind a module: immutable commit/build artifacts, mutable state with TTL, credential/workspace/source-version keys, byte/entry budgets, revocation checks and explicit freshness. Failed/partial reads must not become complete cached evidence; running builds remain mutable. Acceptance: hit/miss metrics, expiry/eviction tests, token-change isolation, deleted/changed sources and refresh bypass. Remark: current implementation only has narrow immutable GitHub persistence and per-turn reuse; broader tiers not delivered.",
     "completed": false,
     "type": "enhancement",
-    "priority": "P0"
+    "priority": "P1"
   },
   {
     "id": "search-quality-10",
@@ -365,14 +365,14 @@
   },
   {
     "id": "search-quality-11",
-    "title": "P0 · Planned — SQ-11: Compact modular answer presentation\n\nParent: backlog-c271f2bb931810eef633f7c7. Plan: docs/search-quality-plan.md.\nShort verdict plus a small useful findings/action table; expandable evidence, gaps, reasons and technical detail. Readable code/JSON/YAML, accessible colour and real measured charts/metrics. Do not show every raw step by default.",
+    "title": "P1 · Planned — SQ-11: Compact modular answer presentation\n\nParent: backlog-c271f2bb931810eef633f7c7. Plan: docs/search-quality-plan.md.\nShort verdict plus a small useful findings/action table; expandable evidence, gaps, reasons and technical detail. Readable code/JSON/YAML, accessible colour and real measured charts/metrics. Do not show every raw step by default.\n\n26 November Odin implementation comparison: Keep a short plain-English gist and a compact category table, with expandable build-level evidence, exclusions and unresolved cases. Preserve direct source links and meaningful accessible colour; avoid raw tool clutter and hidden reasoning. Acceptance: readable large investigations with consistent confirmed/inferred labels; no percentages presented as independently verified accuracy. Remark: presentation foundation exists; complete investigation output awaits the evidence engine.",
     "completed": false,
     "type": "enhancement",
-    "priority": "P0"
+    "priority": "P1"
   },
   {
     "id": "search-quality-12",
-    "title": "P0 · Planned — SQ-12: Quality and performance measurements before/after\n\nParent: backlog-c271f2bb931810eef633f7c7. Plan: docs/search-quality-plan.md.\nMatched samples of factual accuracy, coverage, supported citations, latency, calls, tokens and cost. No critical factual regressions per agreed case; separate quality from speed. Do not invent percentage improvement.",
+    "title": "P0 · Planned — SQ-12: Quality and performance measurements before/after\n\nParent: backlog-c271f2bb931810eef633f7c7. Plan: docs/search-quality-plan.md.\nMatched samples of factual accuracy, coverage, supported citations, latency, calls, tokens and cost. No critical factual regressions per agreed case; separate quality from speed. Do not invent percentage improvement.\n\n26 November Odin implementation comparison: Use the matched reconciliation benchmark to measure critical factual errors, fact coverage, citation support and correctly disclosed unknowns. Record model/access/source versions, elapsed time, calls, input/output/cache tokens and estimated cost separately. Do not claim Odin parity from UI, model choice or fixture pass. Acceptance: same evidence, independently checked expected facts, zero critical factual regressions; report quality first and performance second. Remark: no measured Odin/AiMate quality comparison yet.",
     "completed": false,
     "type": "enhancement",
     "priority": "P0"

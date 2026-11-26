@@ -1,7 +1,7 @@
 # AiMate — next work on the new laptop
 
 Current recheck on **26 November 2026**: the live To-do list contains
-**84 completed and 44 open** tasks. The original audited app list has 32 completed
+**84 completed and 46 open** tasks. The original audited app list has 32 completed
 and 12 open records; the live total also includes later requests and legacy
 user-added entries. Incomplete live validation remains open.
 Six legacy duplicates were merged with encrypted history retained; nine new tasks were added.
@@ -14,6 +14,10 @@ The [new request backlog](docs/new-backlog-2026-11-25.md) records the 22 additio
 requests and three CI follow-ups individually.
 
 The highest-priority workstream is [search quality and knowledge reuse](docs/search-quality-plan.md), tracked as SQ-01 through SQ-18.
+The [Odin comparison implementation order](docs/odin-improvement-priorities.md)
+expands the existing tasks with acceptance checks and adds two distinct
+checkpoint/reconciliation children. Investigation reliability comes before
+cache speed and presentation.
 
 The platform roadmap below is separate: desktop/VS Code packaging, alternative
 backends, shared-server infrastructure and further API typing/telemetry remain

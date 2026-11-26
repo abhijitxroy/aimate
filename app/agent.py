@@ -21,6 +21,7 @@ from app.repository_search import TOOLS as SEARCH_TOOLS, read as search_reposito
 from app.answer_quality import TOOL as QUALITY_TOOL, Assessment, kind as quality_kind, instruction as quality_instruction, enabled as quality_enabled
 from app.local_evidence import TOOL as LOCAL_TOOL, LocalEvidence, enabled as local_evidence_enabled, KEY as LOCAL_ROOTS
 from app.knowledge_index import TOOLS as KNOWLEDGE_TOOLS, Index as KnowledgeIndex, enabled as knowledge_enabled
+from app.investigation_completion import reason as completion_reason, checkpoint as completion_checkpoint
 
 SYSTEM = """You are AiMate, a project assistant for GitHub, Jira and Jenkins, created by Abhijit Roy.
 When asked your name, answer: "My name is AiMate, and my creator is Abhijit Roy."
@@ -393,6 +394,8 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
     usage = {"input_tokens": 0, "output_tokens": 0}
     by_model = {}
     completed = False
+    completion = None
+    final_quality = None
     try:
         async def classify():
             if access_check:
@@ -436,10 +439,26 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
             if protected_text:
                 yield {"event": "text", "delta": scrub(protected_text, config)}
             blocks = [block.model_dump(exclude_none=True) for block in msg.content]
-            messages.append({"role": "assistant", "content": scrub(blocks, config)})
+            blocks = [b for b in blocks if b.get("type") != "text" or b.get("text", "").strip()]
+            if blocks:
+                messages.append({"role": "assistant", "content": scrub(blocks, config)})
             add_usage(usage, by_model, msg.model if getattr(msg, "model", None) else selection["model"],
                       anthropic_usage(msg.usage))
             calls = [block for block in blocks if block["type"] == "tool_use"]
+            pause = completion_reason(round_no, calls, getattr(msg, "stop_reason", None),
+                                      any(b.get("type") == "text" and b.get("text", "").strip() for b in blocks))
+            if pause:
+                # Do not run truncated or over-budget calls, including proposals.
+                if calls:
+                    messages.append({"role": "user", "content": [
+                        {"type": "tool_result", "tool_use_id": call["id"], "is_error": True,
+                         "content": "Not executed: investigation paused at a request limit."} for call in calls]})
+                completion, final_quality = completion_checkpoint(pause, quality)
+                note = completion["notice"]
+                messages.append({"role": "assistant", "content": note})
+                yield {"event": "text", "delta": ("\n\n" if answer else "") + note}
+                completed = True
+                break
             if not calls:
                 if not answer.strip():
                     yield {"event": "text", "delta": "The model returned no answer. Try a narrower question."}
@@ -516,14 +535,18 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
                            "guidance":scrub(github_guidance(config,args,message),config)}
             messages.append({"role": "user", "content": results})
         if completed:
+            if access_check:
+                access_check()
             # Persist the readable prompt and answer; do not replay image bytes on every follow-up.
             messages[start] = {"role": "user", "content": question}
             store.save_turn(cid, scrub(messages[start:], config),
                             {"model": selection["model"], "mode": model_mode, "route": selection["route"],
                              "usage": usage, "by_model": by_model, "notice": selection.get("notice"),
-                             "quality": quality.metadata(), "answer_preference": preference})
+                             "quality": final_quality if completion else quality.metadata(), "answer_preference": preference,
+                             **({"completion": completion, "notice": completion["notice"]} if completion else {})})
         yield {"event": "done", "usage": usage, "model": selection["model"], "mode": model_mode, "by_model": by_model,
-               "quality": quality.metadata()}
+               "quality": final_quality if completion else quality.metadata(),
+               **({"completion": completion} if completion else {})}
     finally:
         try:
             await client.close()
@@ -688,6 +711,23 @@ async def _run_chatgpt_turn(store, cid, question, connection, services_factory, 
         if text:
             blocks.append({"type": "text", "text": text.strip()})
         saved.append({"role": "assistant", "content": blocks})
+        pause = completion_reason(round_no, calls, final_text=bool(text.strip()))
+        if pause:
+            if calls:
+                saved.append({"role": "user", "content": [
+                    {"type": "tool_result", "tool_use_id": call["call_id"], "is_error": True,
+                     "content": "Not executed: investigation paused at a request limit."} for call in calls]})
+            completion, final_quality = completion_checkpoint(pause, quality)
+            saved.append({"role": "assistant", "content": completion["notice"]})
+            yield {"event": "text", "delta": "\n\n" + completion["notice"]}
+            if access_check:
+                access_check()
+            store.save_turn(cid, scrub(saved, config), {"model": model, "mode": model_mode, "route": selection["route"],
+                            "usage": usage, "by_model": by_model, "notice": completion["notice"],
+                            "quality": final_quality, "answer_preference": preference, "completion": completion})
+            yield {"event": "done", "usage": usage, "model": model, "mode": model_mode,
+                   "by_model": by_model, "quality": final_quality, "completion": completion}
+            return
         if not calls:
             store.save_turn(cid, scrub(saved, config), {"model": model, "mode": model_mode, "route": selection["route"],
                                         "usage": usage, "by_model": by_model, "notice": selection.get("notice"),
@@ -701,12 +741,14 @@ async def _run_chatgpt_turn(store, cid, question, connection, services_factory, 
             if access_check:
                 access_check()
             name = call["name"]
+            args = {}
             try:
                 if call.get("namespace") not in {None, "project"} or name not in {t["name"] for t in tools}:
                     raise ValueError("Unavailable tool")
-                args = json.loads(call["arguments"])
-                if not isinstance(args, dict):
+                parsed_args = json.loads(call["arguments"])
+                if not isinstance(parsed_args, dict):
                     raise ValueError("Tool arguments must be an object")
+                args = parsed_args
                 yield {"event": "tool", "name": name, "input": scrub(args, config)}
                 if name == "api_read":
                     result = prefetched[call_index] if prefetched is not None else await read_evidence(services, args, evidence)

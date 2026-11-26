@@ -29,8 +29,9 @@ class Block:
 
 
 class Stream:
-    def __init__(self, model, text="Analysis model answered.", slow=False, cache=False):
+    def __init__(self, model, text="Analysis model answered.", slow=False, cache=False, stop=None):
         self.model, self.text, self.slow, self.cache = model, text, slow, cache
+        self.stop = stop
 
     async def __aenter__(self):
         return self
@@ -51,7 +52,7 @@ class Stream:
         if self.cache:
             usage.cache_read_input_tokens=400
             usage.cache_creation_input_tokens=100
-        return SimpleNamespace(content=[Block(self.text)], model=self.model,
+        return SimpleNamespace(content=[Block(self.text)], model=self.model, stop_reason=self.stop,
                                usage=usage)
 
 
@@ -65,6 +66,8 @@ class AI:
 
     def stream(self, **kwargs):
         question=str(kwargs["messages"][-1]["content"])
+        if question == "Output limit fixture":
+            return Stream(kwargs["model"], "Synthetic partial answer.", stop="max_tokens")
         if question.startswith("Parallel "):
             return Stream(kwargs["model"],"Reply: "+question,slow=True)
         if "Which ticket" in str(kwargs["messages"][-1]["content"]):

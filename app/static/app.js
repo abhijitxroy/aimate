@@ -1095,8 +1095,9 @@ async function ask(question) {
         }
         if (event.event === "done") {
           renderAnswer(bot.body, bot.text);
-          if (bot.modelDetails) updateModelInfo(bot, {...bot.modelDetails, usage:event.usage, quality:event.quality});
-          activity("Answer complete");
+          if (bot.modelDetails) updateModelInfo(bot, {...bot.modelDetails, usage:event.usage, quality:event.quality,
+            ...(event.completion ? {completion:event.completion, notice:event.completion.notice} : {})});
+          activity(event.completion?.status === "incomplete" ? "Investigation incomplete · checkpoint saved" : "Answer complete");
         }
         if(cid===run.cid) scrollMessages();
       }
