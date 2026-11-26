@@ -12,6 +12,7 @@ UNIT_CLASSES = {
     "test_github_guidance.GuidanceTests", "test_ci_suites.SuiteTests",
     "test_build_smoke.SmokeTests",
     "test_local_control.ControlTests",
+    "test_retrieval_rank.RankTests",
 }
 UNIT_METHODS = {
     "test_model_routing.RoutingTests." + name for name in (

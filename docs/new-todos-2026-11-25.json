@@ -512,9 +512,16 @@
   },
   {
     "id": "local-ai-settings-only",
-    "title": "P1 · WIP — Local AI enable and stop only in Connections\n\nRemove askbar local switches. Default off; explicit enable in Connections only. Stop and disable all local chats owned by this page and unload their models. Offline notices must preserve drafts and link to settings without activating local inference. Awaiting all seven workflows and installed live UI validation.",
-    "completed": false,
+    "title": "P1 · Done — Local AI enable and stop only in Connections\n\nAll seven workflows passed at c321872: unit, Windows/Linux integration, browser regression, reliability, quality, security and build. Local enable/disable controls are only in Connections and default Off on every page load. Selecting, checking or saving the local provider never enables inference. Offline notices preserve drafts and link to settings without switching. Browser tests verified two parallel local requests stopped, one model unload, cloud controls retained, reload stays Off and delayed Enable cannot reactivate after Stop. Installed page had zero local askbar controls and Connections returned Local AI off. Model memory released. Source, installed app and migration kit updated.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45819166139",
+    "completed": true,
     "type": "enhancement",
     "priority": "P1"
+  },
+  {
+    "id": "search-quality-ranked-recall",
+    "title": "P0 · WIP — Exact-identifier ranking for saved chats and Diary\n\nSQ-06 implementation batch: deterministic identifier/title/full-text ranking, old exact candidates before generic matches, match-centred excerpts, project/private/account isolation and disable switch. No new provider or database schema. Nexus/case indexing and matched live answer-quality benchmarking remain separate. Awaiting all seven workflows and installed recall verification.",
+    "completed": false,
+    "type": "enhancement",
+    "priority": "P0"
   }
 ]

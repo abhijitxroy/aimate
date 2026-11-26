@@ -96,6 +96,7 @@ def relevant(store, cid, question):
     if not question or store.config().get("_private") or IDENTITY.fullmatch(question.strip()):
         return ""
     normalized = re.sub(r"\bpr(\d+)\b", r"PR \1", question, flags=re.I)
+    from app import retrieval_rank
     words = [word for word in dict.fromkeys(re.findall(r"\w+", normalized.casefold()))
              if (len(word) > 2 or word in {"pr", "ci"}) and word not in STOP][:10]
     group = store.conversation_group(cid)
@@ -112,13 +113,14 @@ def relevant(store, cid, question):
         if not any(data.values()):
             continue
         haystack = json.dumps(data, ensure_ascii=False).casefold()
-        score = sum(word in haystack for word in words)
+        score = retrieval_rank.score(question, haystack, row["title"]) if retrieval_rank.enabled() else sum(word in haystack for word in words)
         own = row["conversation"] == cid
         if not score and not own and not (FOLLOWUP.search(question) and group is not None):
             continue
         # Prefer directly matching identifiers before generic recent references.
-        entities = sorted(reversed(data["entities"]), key=lambda value: -sum(w in value.casefold() for w in words))[:12]
-        sources = sorted(reversed(data["sources"]), key=lambda value: -sum(w in value.casefold() for w in words))[:6]
+        rank = lambda value: -retrieval_rank.score(question, value) if retrieval_rank.enabled() else -sum(w in value.casefold() for w in words)
+        entities = sorted(reversed(data["entities"]), key=rank)[:12]
+        sources = sorted(reversed(data["sources"]), key=rank)[:6]
         selected.append((score + int(own) * 2, {"conversation": row["conversation"], "title": row["title"],
             "recorded": row["updated"], "original_goal": data.get("initial_question", ""),
             "questions": data["questions"][-2:],
@@ -126,7 +128,11 @@ def relevant(store, cid, question):
     selected.sort(key=lambda pair: pair[0], reverse=True)
     records = [value for _, value in selected[:2]]
     # Retrieve relevant older text even when it is outside the active history window.
-    if words:
+    if retrieval_rank.enabled():
+        hits = [{**hit, "conversation": hit["conversation_id"]} for hit in retrieval_rank.chats(
+            store, cid, question, limit=3, scope_sql="m.conversation=? OR " + scope_sql,
+            scope_args=(cid, *groups), include_own=True)]
+    elif words:
         match = " OR ".join('"' + word.replace('"', "") + '"*' for word in words)
         hits = store.rows(
             "SELECT m.conversation,m.turn,t.created AS recorded,snippet(memory_index,0,'','',' … ',45) AS excerpt "
@@ -138,12 +144,16 @@ def relevant(store, cid, question):
     else:
         hits = []
     notes = []
-    for row in store.rows("SELECT * FROM knowledge ORDER BY updated DESC"):
+    note_rows = [row for row in store.rows("SELECT * FROM knowledge ORDER BY updated DESC")
+                 if row["group_id"] is None or row["group_id"] in groups]
+    if retrieval_rank.enabled():
+        note_rows = retrieval_rank.records(question, note_rows, limit=3, text_limit=1000)
+    for row in note_rows:
         if row["group_id"] is not None and row["group_id"] not in groups:
             continue
-        if any(word in (row["key"] + " " + row["value"]).casefold() for word in words):
+        if retrieval_rank.enabled() or any(word in (row["key"] + " " + row["value"]).casefold() for word in words):
             notes.append({"id": row["id"], "key": row["key"], "value": row["value"][:1000],
-                          "truncated": len(row["value"]) > 1000, "recorded": row["updated"]})
+                          "truncated": row.get("truncated", len(row["value"]) > 1000), "recorded": row["updated"]})
         if len(notes) == 3:
             break
     if not records and not hits and not notes:
