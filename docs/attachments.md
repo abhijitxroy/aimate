@@ -1,6 +1,12 @@
 # Attachments
 
-Documents accept up to 4 MB each; images accept up to 12 MB before browser
+Pasting more than 4,000 characters into the askbar creates a **Pasted text.txt**
+card, preserving the complete text and the current question. This works inside
+the styled editor's lines as well as the plain editor. Short pastes stay in the
+askbar. File-size or import errors appear above it; no part is silently dropped.
+
+Documents accept up to 20 MB each (4 MB with `AIMATE_LARGE_UPLOADS_ENABLED=0`);
+images accept up to 12 MB before browser
 compression and 4 MB after compression. Six attachments including at most four
 images/scanned pages fit a message. Documents can contain up to one million text
 characters each and three million together. Pasted text over 4,000 characters

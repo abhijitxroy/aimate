@@ -779,6 +779,57 @@ class BrowserRegressionTests(unittest.TestCase):
             self.assertLessEqual(self.page.evaluate("document.documentElement.scrollWidth"),width)
             self.expect(self.page.locator("#send")).to_be_in_viewport()
 
+    def test_large_paste_inside_rich_editor_line_preserves_every_character(self):
+        text="# Synthetic package review\n\n"+"- Preserve this evidence exactly.\n"*180
+        field=self.page.locator("#question")
+        field.fill("Review this attachment")
+        self.page.evaluate("""text=>{
+            const data=new DataTransfer();data.setData('text/plain',text);
+            document.querySelector('#question .cm-line').dispatchEvent(new ClipboardEvent('paste',
+                {clipboardData:data,bubbles:true,cancelable:true}));
+        }""",text)
+        self.expect(self.page.locator("#attachmentCards")).to_contain_text("Pasted text.txt")
+        self.expect(field).to_have_js_property("value","Review this attachment")
+        self.assertEqual(self.page.evaluate("pendingAttachments[0].text"),text)
+        self.assertEqual(self.page.locator("#attachmentCards .attachment-card").count(),1)
+        # A short paste in the same inner line is inserted once, never converted
+        # or reinserted by the document-level handler.
+        field.fill("")
+        self.page.evaluate("""()=>{
+            const data=new DataTransfer();data.setData('text/plain','Short safe paste');
+            data.setData('text/html','<img src=x onerror="window.pasteUnsafe=true">');
+            document.querySelector('#question .cm-line').dispatchEvent(new ClipboardEvent('paste',
+                {clipboardData:data,bubbles:true,cancelable:true}));
+        }""")
+        self.expect(field).to_have_js_property("value","Short safe paste")
+        self.assertEqual(self.page.locator("#attachmentCards .attachment-card").count(),1)
+        self.assertFalse(self.page.evaluate("Boolean(window.pasteUnsafe)"))
+
+    def test_nested_rich_editor_paste_shows_limit_without_losing_existing_draft(self):
+        field=self.page.locator("#question");field.fill("Keep my draft")
+        self.page.evaluate("""()=>{
+            document.querySelector('#attachText').dataset.documentBytes='5000';
+            const data=new DataTransfer();data.setData('text/plain','Over limit evidence.\\n'.repeat(300));
+            document.querySelector('#question .cm-line').dispatchEvent(new ClipboardEvent('paste',
+                {clipboardData:data,bubbles:true,cancelable:true}));
+        }""")
+        self.expect(self.page.locator("#activity")).to_contain_text("Use a document up to")
+        self.expect(self.page.locator("#attachmentCards")).to_be_hidden()
+        self.expect(field).to_have_js_property("value","Keep my draft")
+
+    def test_file_paste_inside_rich_editor_line_creates_one_attachment(self):
+        field=self.page.locator("#question");field.fill("Keep this question")
+        self.page.evaluate("""()=>{
+            const data=new DataTransfer();
+            data.items.add(new File(['Nested clipboard file\\nKeep every line.'],'clipboard.txt',{type:'text/plain'}));
+            document.querySelector('#question .cm-line').dispatchEvent(new ClipboardEvent('paste',
+                {clipboardData:data,bubbles:true,cancelable:true}));
+        }""")
+        self.expect(self.page.locator("#attachmentCards")).to_contain_text("clipboard.txt")
+        self.assertEqual(self.page.locator("#attachmentCards .attachment-card").count(),1)
+        self.assertEqual(self.page.evaluate("pendingAttachments[0].text"),"Nested clipboard file\nKeep every line.")
+        self.expect(field).to_have_js_property("value","Keep this question")
+
     def test_disabling_inline_editor_retains_plain_formatting_and_core_chat(self):
         self.page.add_init_script("window.AiMateFeatures={richComposer:false}")
         self.page.reload()

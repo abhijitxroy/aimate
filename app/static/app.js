@@ -1674,13 +1674,14 @@ document.addEventListener("keydown", event => {
 });
 document.addEventListener("paste", event => {
   if ($("#workspace").hidden || document.querySelector("dialog[open]")) return;
-  if (event.target !== $("#question") && !chatInputAvailable(event.target)) return;
+  const field=$("#question"), inQuestion=event.target===field || field.contains(event.target);
+  if (!inQuestion && !chatInputAvailable(event.target)) return;
   const files = [...(event.clipboardData?.files || [])];
   if (files.length) {
     event.preventDefault(); void addTextFiles(files); return;
   }
   const text = event.clipboardData?.getData("text/plain");
-  if (text && (event.target !== $("#question") || text.length>4000)) { event.preventDefault(); insertQuestion(text); }
+  if (text && (!inQuestion || text.length>4000)) { event.preventDefault(); insertQuestion(text); }
 });
 document.addEventListener("dragover", event => {
   if (!$("#workspace").hidden && !document.querySelector("dialog[open]") && event.dataTransfer?.types.includes("Files")) event.preventDefault();

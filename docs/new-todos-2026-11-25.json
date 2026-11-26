@@ -197,7 +197,7 @@
   },
   {
     "id": "backlog-local-ai-fallback",
-    "title": "P1 · Done — Local offline AI fallback and cached context\n\nInstalled Ollama and digest-verified Qwen3 4B. A real local streamed reply and a private live-AiMate reply passed. Explicit Local/Cloud choice, opt-in fallback, scoped tools, stale-context labels, local-only/CSRF guards, cloud-model rejection and preserved usage on rejected replies passed all seven GitHub workflows. Local inference has no cloud API charge; service reads still need their network.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45645378304",
+    "title": "P1 · Done — Local offline AI fallback and cached context\n\nOllama with verified Qwen3 4B delivered real local and private live-AiMate replies. Connections now include Local LLM - offline. Missing cloud credentials, browser offline and supported cloud errors offer an explicit popup; missing local models disable Continue with a clear reason. Cancel, including during a slow recheck, preserves the draft and cloud settings. Local-only guards, scoped tools and zero API-rate usage remain intact. All seven exact-commit GitHub workflows passed.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45659768368",
     "completed": true,
     "type": "feature",
     "priority": "P1"
@@ -283,6 +283,13 @@
     "id": "backlog-preview-state-refresh",
     "title": "P1 · Done — Preserve Preview preference across UI refreshes\n\nTemporary Private chats support session-close cleanup and a maximum one-day lifetime, with early sign-out/restart expiry documented. Preview retains its setting across refreshes. 50 unit, 267 integration and 63 browser checks passed; all seven exact-commit GitHub workflows passed.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45631807791",
     "completed": true,
+    "type": "bug",
+    "priority": "P1"
+  },
+  {
+    "id": "backlog-nested-editor-paste",
+    "title": "P1 · WIP — Restore large text/file paste inside the styled askbar\n\nHandle clipboard events from nested editor lines. Preserve full pasted text as a document card and existing drafts; prevent duplicate short inserts and show import/size errors. Browser and exact-commit workflow validation pending.",
+    "completed": false,
     "type": "bug",
     "priority": "P1"
   }
