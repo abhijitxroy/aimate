@@ -6,6 +6,35 @@ const path=require("node:path");
 const context=vm.createContext({window:{}});
 vm.runInContext(fs.readFileSync(path.join(__dirname,"../app/static/composer_formats.js"),"utf8"),context);
 const inspect=context.window.AiMateComposerFormats.inspect;
+const {change:foreground}=require("../app/static/foreground_format.js");
+
+function applyForeground(source,word,colour) {
+  const start=source.indexOf(word),edit=foreground(source,start,start+word.length,colour);
+  return source.slice(0,edit.from)+edit.value+source.slice(edit.to);
+}
+test("foreground replaces or resets nested colours without multiplying tags",()=>{
+  const source="[colour:#79baff][colour:#eb0f46][colour:#eb0f46][colour:#eb0f46]text[/colour][/colour][/colour][/colour]";
+  assert.equal(applyForeground(source,"text","#eb0f46"),"text");
+  assert.equal(applyForeground(source,"text","#123456"),"[colour:#123456]text[/colour]");
+  let value="text";
+  for(let i=0;i<8;i++) {
+    value=applyForeground(value,"text","#eb0f46");
+    assert.equal(value,i%2===0 ? "[colour:#eb0f46]text[/colour]" : "text");
+  }
+});
+test("foreground preserves unselected colour and other Markdown formats",()=>{
+  assert.equal(applyForeground("[colour:#79baff]Hello world[/colour]","world","#eb0f46"),
+    "[colour:#79baff]Hello [/colour][colour:#eb0f46]world[/colour]");
+  assert.equal(applyForeground("[colour:#79baff]**Hello**[/colour]","Hello","#eb0f46"),
+    "[colour:#eb0f46]**Hello**[/colour]");
+  assert.equal(applyForeground("***++[colour:#79baff]Hello[/colour]++***","Hello","#eb0f46"),
+    "***++[colour:#eb0f46]Hello[/colour]++***");
+});
+test("foreground across adjacent coloured runs uses one wrapper and validates CSS",()=>{
+  const source="[colour:#79baff]One[/colour] [colour:#eb0f46]Two[/colour]";
+  assert.equal(foreground(source,0,source.length,"#123456").value,"[colour:#123456]One Two[/colour]");
+  assert.throws(()=>foreground("Hello",0,5,"red"),/six-digit/);
+});
 
 test("combined formats follow the selected text and clear outside it",()=>{
   const source="***++[colour:#ff7aaf]Hello[/colour]++*** plain";

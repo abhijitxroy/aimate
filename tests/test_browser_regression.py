@@ -873,6 +873,31 @@ class BrowserRegressionTests(unittest.TestCase):
         self.expect(field).to_have_js_property("value","---\n")
         self.expect(rule).to_have_count(0)
 
+    def test_foreground_replaces_or_resets_colour_and_repairs_existing_nested_tags(self):
+        field=self.page.locator("#question")
+        button=self.page.get_by_role("button",name="Foreground",exact=True)
+        field.fill("Hello")
+        field.evaluate("e=>{e.setSelectionRange(0,5);e.dispatchEvent(new Event('select'))}")
+        button.click()
+        self.expect(field).to_have_js_property("value","[colour:#79baff]Hello[/colour]")
+        button.click()
+        self.expect(field).to_have_js_property("value","Hello")
+        self.expect(button).to_have_attribute("aria-pressed","false")
+        button.click()
+        self.page.get_by_label("Foreground colour",exact=True).evaluate(
+            "e=>{e.value='#eb0f46';e.dispatchEvent(new Event('input',{bubbles:true}))}")
+        button.click()
+        self.expect(field).to_have_js_property("value","[colour:#eb0f46]Hello[/colour]")
+        self.expect(field.locator("[data-rich-colour]")).to_have_css("color","rgb(235, 15, 70)")
+        button.click()
+        self.expect(field).to_have_js_property("value","Hello")
+        nested="[colour:#79baff][colour:#eb0f46][colour:#eb0f46][colour:#eb0f46]text[/colour][/colour][/colour][/colour]"
+        field.fill(nested)
+        field.evaluate("e=>{const p=e.value.indexOf('text');e.setSelectionRange(p,p+4);e.dispatchEvent(new Event('select'))}")
+        button.click()
+        self.expect(field).to_have_js_property("value","text")
+        self.expect(field.locator("[data-rich-colour]")).to_have_count(0)
+
     def test_inline_editor_formats_without_preview_and_keeps_strict_csp(self):
         self.page.add_init_script("""window.richPolicyViolations=[];
             document.addEventListener('securitypolicyviolation',e=>richPolicyViolations.push(e.violatedDirective));""")
@@ -1057,14 +1082,14 @@ class BrowserRegressionTests(unittest.TestCase):
         self.page.on("request",lambda request: submitted.append(request.url) if request.method=="POST" and request.url.endswith("/api/chat") else None)
         field=self.page.locator("#question")
         self.expect(self.page.locator("#composerAdvanced")).not_to_be_visible()
-        for title in ("Bold","Italic","Underline","Apply text colour","Bullet list","Numbered list","Code block"):
+        for title in ("Bold","Italic","Underline","Foreground","Bullet list","Numbered list","Code block"):
             self.expect(self.page.get_by_role("button",name=title,exact=True)).to_be_visible()
         self.page.get_by_role("button",name="More formatting",exact=True).click()
         cases=[
             ("Bold","**Example**","strong"),
             ("Italic","*Example*","em"),
             ("Underline","++Example++",".prompt-underline"),
-            ("Apply text colour","[colour:#79baff]Example[/colour]","[data-prompt-colour]"),
+            ("Foreground","[colour:#79baff]Example[/colour]","[data-prompt-colour]"),
             ("Heading","## Example","h2"),
             ("Paragraph","\n\nExample\n\n",None),
             ("Bullet list","- Example","ul"),
@@ -1120,7 +1145,7 @@ class BrowserRegressionTests(unittest.TestCase):
             self.page.get_by_role("button",name=name,exact=True).click()
         self.page.locator('#composerToolbar input[type="color"]').evaluate(
             "(el) => {el.value='#ff7aaf';el.dispatchEvent(new Event('input'));}")
-        self.page.get_by_role("button",name="Apply text colour",exact=True).click()
+        self.page.get_by_role("button",name="Foreground",exact=True).click()
         self.expect(field).to_have_js_property("value","***++[colour:#ff7aaf]Hello[/colour]++***")
         preview=self.page.locator("#composerPreview")
         self.expect(preview).to_have_text("Hello")
@@ -1144,7 +1169,7 @@ class BrowserRegressionTests(unittest.TestCase):
         field.fill("Hello")
         field.evaluate("(el) => {el.setSelectionRange(0,el.value.length);el.dispatchEvent(new Event('select'));}")
         neutral=bold.evaluate("(el) => getComputedStyle(el).backgroundColor")
-        for name in ("Bold","Italic","Underline","Apply text colour"):
+        for name in ("Bold","Italic","Underline","Foreground"):
             button=self.page.get_by_role("button",name=name,exact=True)
             button.click()
             self.expect(button).to_have_attribute("aria-pressed","true")

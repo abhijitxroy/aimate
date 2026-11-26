@@ -19,6 +19,11 @@ Set `window.AiMateFeatures.pasteCleanup=false` to disable this optional cleanup.
 
 Blue buttons indicate the format at the current caret/selection. Moving into plain text clears the relevant highlight. Preview, Wrap and More show their actual on/open state. Bold, italic and underline can be toggled off without removing other inline formats. Insert-only actions such as paragraph breaks and outdent do not pretend to be persistent modes.
 
+**Foreground** applies the chosen text colour. Choosing a different colour
+replaces the existing one; choosing the same colour again resets the selection
+to default text colour. Repeated clicks do not nest tags. Existing nested colour
+wrappers are flattened when updated, keeping other text and formatting intact.
+
 Raw HTML, arbitrary CSS and embedded remote images remain disabled. Colour values accept only six-digit hex codes. Advanced options start collapsed; none of the formatting buttons submits a request. The editor retains Markdown source alongside its rendered preview.
 
 The feature lives in `app/static/composer_ui.js`, with a pure selection inspector in `app/static/composer_formats.js`. Set `window.AiMateFeatures.composerFormatting = false` before loading it to disable formatting authoring while retaining the normal askbar, attachments and saved-message rendering. Without the optional inspector, ordinary format insertion still works; selection indicators and inline toggling fall back to basic authoring.

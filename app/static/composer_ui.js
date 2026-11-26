@@ -28,7 +28,7 @@
   let selection = [0, 0];
   const formats=window.AiMateComposerFormats;
   const formatKeys={"Bold":"bold","Italic":"italic","Underline":"underline",
-    "Apply text colour":"colour","Heading":"heading","Bullet list":"bullet",
+    "Foreground":"colour","Heading":"heading","Bullet list":"bullet",
     "Numbered list":"numbered","Indent":"indent","Code block":"code",
     "Horizontal rule":"rule","Insert table":"table","Quote":"quote",
     "Information panel":"note","Warning panel":"warning"};
@@ -124,9 +124,13 @@
   const italic=button("I", () => toggleInline("italic","*"), "Italic"); italic.className="format-italic";
   const underline=button("U", () => toggleInline("underline","++"), "Underline"); underline.className="format-underline";
   const colour = document.createElement("input");
-  colour.type = "color"; colour.value = "#79baff"; colour.setAttribute("aria-label","Text colour");
+  colour.type = "color"; colour.value = "#79baff"; colour.setAttribute("aria-label","Foreground colour");
   toolbar.append(colour);
-  button("Colour", () => wrap("[colour:" + colour.value + "]", "[/colour]"), "Apply text colour");
+  button("Foreground", () => {
+    if(!window.AiMateForeground) {wrap("[colour:"+colour.value+"]","[/colour]");return;}
+    const edit=window.AiMateForeground.change(field.value,...selection,colour.value);
+    replace(edit.value,edit.from,edit.to,edit.start,edit.end);
+  }, "Foreground");
   button("H", () => lines("## "), "Heading",true);
   button("¶", () => wrap("\n\n", "\n\n"), "Paragraph",true);
   button("•", () => lines("- "), "Bullet list");

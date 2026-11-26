@@ -467,5 +467,12 @@
     "completed": false,
     "type": "enhancement",
     "priority": "P1"
+  },
+  {
+    "id": "askbar-foreground-toggle",
+    "title": "P1 · WIP — Foreground replaces/resets colour without nested tags\n\nRename Colour to Foreground. Reapplying the same colour resets to default; a different colour replaces it. Repair existing nesting and preserve other formatting/unselected text.",
+    "completed": false,
+    "type": "bug",
+    "priority": "P1"
   }
 ]
