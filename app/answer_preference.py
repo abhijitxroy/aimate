@@ -5,8 +5,14 @@ import re
 
 
 def prepare(store, cid, question):
-    rows = store.rows("SELECT u.metadata FROM turn_usage u JOIN turns t ON t.id=u.turn WHERE t.conversation=? ORDER BY t.id DESC LIMIT 1", (cid,))
-    previous = json.loads(rows[0]["metadata"]).get("answer_preference", "normal") if rows else "normal"
+    from app.private_chat import PrivateChat
+    if isinstance(store, PrivateChat):
+        store.check()
+        metadata = store.turns[-1].get("usage") or {} if store.turns else {}
+    else:
+        rows = store.rows("SELECT u.metadata FROM turn_usage u JOIN turns t ON t.id=u.turn WHERE t.conversation=? ORDER BY t.id DESC LIMIT 1", (cid,))
+        metadata = json.loads(rows[0]["metadata"]) if rows else {}
+    previous = metadata.get("answer_preference", "normal")
     if previous not in {"brief", "normal"}:
         previous = "normal"
     if os.environ.get("AIMATE_ANSWER_PREFERENCE_ENABLED") == "0":

@@ -12,6 +12,34 @@ from test_app import FakeAI, Store, fixture_config
 
 
 class PreferenceTests(unittest.TestCase):
+    def test_temporary_chat_keeps_preference_in_memory_and_never_owner_metadata(self):
+        from app.private_chat import PrivateChat
+        with tempfile.TemporaryDirectory() as directory:
+            store = Store(directory)
+            store.save_config(fixture_config())
+            private = PrivateChat(store, "private-preference-fixture")
+            seen = []
+            class Answer(FakeAI):
+                def __init__(self, config):
+                    super().__init__(config)
+                    self.stage = 2
+                def stream(self, **kwargs):
+                    seen.append(kwargs["system"])
+                    return super().stream(**kwargs)
+            async def run(question):
+                return [event async for event in run_turn(private, private.ident, question,
+                    client_factory=Answer, services_factory=lambda _: None, model_mode="standard")]
+            asyncio.run(run("Keep your answers short. What is two plus two?"))
+            asyncio.run(run("Check again"))
+            self.assertTrue(all("one or two plain sentences" in value for value in seen))
+            self.assertEqual(private.turns[-1]["usage"]["answer_preference"], "brief")
+            self.assertEqual(store.rows("SELECT count(*) AS n FROM turn_usage")[0]["n"], 0)
+            private.close()
+            self.assertEqual(private.turns, [])
+            with self.assertRaises(ValueError):
+                prepare(private, private.ident, "Check again")
+            store.db.close()
+
     def test_saved_preference_reopens_stays_scoped_and_resets_only_on_direct_request(self):
         with tempfile.TemporaryDirectory() as directory:
             store = Store(directory)

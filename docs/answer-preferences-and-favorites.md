@@ -5,6 +5,8 @@ in that conversation. **“Explain in detail”** returns to normal detail.
 The setting is stored in existing encrypted turn metadata after a completed
 reply and survives reopening. A failed or cancelled reply does not save a new
 preference. It does not change another chat or user account.
+Temporary chats keep the preference only in their session memory; closing or
+expiring them clears it together with the transcript.
 
 AiMate starts with a simple gist, then relevant detail when useful. A model may
 still fail to follow formatting guidance; this is a tested instruction and
