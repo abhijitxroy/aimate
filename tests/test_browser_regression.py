@@ -119,6 +119,10 @@ class BrowserRegressionTests(unittest.TestCase):
 
     def test_user_auto_policy_quality_economy_and_reload(self):
         self.page.locator("#newChat").click()
+        # Earlier provider-settings tests can leave Gemini or Bedrock selected.
+        # Assert against actual configured slots, not the fixture's initial IDs.
+        current_ai = self.page.request.get(self.url + "/api/state").json()["config"]["ai"]
+        self.assertTrue(current_ai.get("analysis_model"))
         picker = self.page.locator("#modelMode")
         picker.select_option("auto-quality")
         self.expect(picker).to_contain_text("Auto · Quality")
@@ -126,7 +130,7 @@ class BrowserRegressionTests(unittest.TestCase):
         self.page.locator("#send").click()
         self.expect(self.page.locator("#activity")).to_have_text("Answer complete")
         self.page.locator(".model-info").first.locator("summary").click()
-        self.expect(self.page.locator(".model-details").first).to_contain_text("analysis-fixture")
+        self.expect(self.page.locator(".model-details").first).to_contain_text(current_ai["analysis_model"])
         self.page.reload()
         self.expect(self.page.locator("#modelMode")).to_have_value("auto-quality")
         self.page.locator("#modelMode").select_option("auto-economy")
@@ -134,7 +138,7 @@ class BrowserRegressionTests(unittest.TestCase):
         self.page.locator("#send").click()
         self.expect(self.page.locator("#activity")).to_have_text("Answer complete")
         self.page.locator(".model-info").last.locator("summary").click()
-        self.expect(self.page.locator(".model-details").last).to_contain_text("standard-fixture")
+        self.expect(self.page.locator(".model-details").last).to_contain_text(current_ai["model"])
 
     def local_fixture(self):
         self.page.route("**/api/local-ai/status",lambda route:route.fulfill(status=200,content_type="application/json",
