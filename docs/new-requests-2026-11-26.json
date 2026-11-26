@@ -78,8 +78,8 @@
   },
   {
     "id": "empty-final-answer-recovery",
-    "title": "P0 · WIP — Recover final findings after an empty model answer\n\nObserved: a real analysis run gathered sources and emitted progress, then ended with no final text after an assessment validation error. Add one bounded tool-free synthesis request from existing, source-labelled evidence excerpts; exclude hidden reasoning and secrets. Never restart searches, execute pending actions or invent full coverage. Preserve an incomplete checkpoint if recovery fails or returns empty text; partial findings must stay labelled partial. Acceptance: native/Responses paths, failed/empty recovery, disabled module, private/revoked access and browser reload. Remark: implementing and validating recovery; live-source correctness and broad evidence gate remain separate.",
-    "completed": false,
+    "title": "P0 · Done — Recover final findings after an empty model answer\n\nOne bounded tool-free synthesis request uses source-labelled evidence excerpts; no restarted searches, pending actions or hidden reasoning. Empty/failed recovery retains the incomplete checkpoint; recovered findings are labelled partial without fabricated scores. Plain-text saved assistant replies now render and export after reload.\nRemark: Six recovery tests plus checkpoint/model regression checks and real browser reload passed. All seven workflows passed at 6fec54c. A live Sonnet test returned final findings from the failed turn evidence with no new service queries or chat-history changes; usage recorded and result protected locally. Installed app restarted and verified UI served. Runtime root cause/ownership and universal provider parity remain unverified.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45868566640",
+    "completed": true,
     "type": "bug",
     "priority": "P0"
   },
