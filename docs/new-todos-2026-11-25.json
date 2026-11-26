@@ -491,8 +491,8 @@
   },
   {
     "id": "local-cpu-runtime-guard",
-    "title": "P1 · WIP — Bound local CPU use and replace indefinite Thinking status\n\nAdaptive 8K–32K contexts, four threads, 1024 output tokens, one-minute idle retention and shared two-minute model deadline. Cancel streams on timeout; preserve saved data and hide reasoning. Validate real qwen3 smoke test.",
-    "completed": false,
+    "title": "P1 · Done — Bound local CPU use and replace indefinite Thinking status\n\nAll seven workflows passed at 7c24006. CPU defaults: four threads, adaptive 8K–32K context, max 1024 output tokens, one-minute idle retention and a shared two-minute model-call deadline. Native/stream, fragmented thinking tags, timeout cancellation/closed response and no incomplete saved turn tests passed. UI reports local processing and visible answering. Real qwen3 short smoke test returned Ready in 15.2 seconds with 3.9 GB loaded memory at 8K context. This is not a benchmark of the original larger question. The lighter non-thinking replacement remains separately open because its registry download timed out and the temporary download helper was blocked by tool policy.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45794928114",
+    "completed": true,
     "type": "bug",
     "priority": "P1"
   },
@@ -501,6 +501,13 @@
     "title": "P1 · WIP — Lighter non-thinking offline model (download awaiting network)\n\nqwen2.5:3b download timed out against registry.ollama.ai. A tool policy blocked a temporary loopback download helper. Download on an approved reachable network, then verify real answers and scoped tool use before changing the default. No model replacement completed.",
     "completed": false,
     "type": "enhancement",
+    "priority": "P1"
+  },
+  {
+    "id": "local-stop-unload",
+    "title": "P1 · WIP — Stop local generation and unload its model\n\nServer-side request cancellation and explicit memory release. Awaiting all seven workflows and installed live validation.",
+    "completed": false,
+    "type": "bug",
     "priority": "P1"
   }
 ]

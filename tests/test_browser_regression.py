@@ -93,6 +93,28 @@ class BrowserRegressionTests(unittest.TestCase):
     def tearDown(self):
         self.context.close()
 
+    def test_local_stop_unload_is_explicit_and_cloud_controls_stay_usable(self):
+        self.page.route("**/api/local-ai/status",lambda route:route.fulfill(status=200,content_type="application/json",
+            body=json.dumps({"available":True,"models":["qwen3:4b"],"message":"Ollama reachable."})))
+        stopped=[]
+        def stop(route):
+            stopped.append(route.request.post_data_json)
+            route.fulfill(status=200,content_type="application/json",
+                          body=json.dumps({"message":"Stopped. Local model unloaded."}))
+        self.page.route("**/api/local-ai/stop",stop)
+        self.expect(self.page.locator("#stopLocalAI")).to_be_hidden()
+        self.page.locator("#localAIToggle").click()
+        self.expect(self.page.locator("#stopLocalAI")).to_be_visible()
+        self.page.locator("#stopLocalAI").click()
+        self.expect(self.page.locator("#localStopStatus")).to_have_text("Stopped. Local model unloaded.")
+        self.assertEqual(stopped,[{"model":"qwen3:4b","unload":True}])
+        self.page.locator("#localAIToggle").click()
+        self.expect(self.page.locator("#stopLocalAI")).to_be_hidden()
+        self.expect(self.page.locator("#send")).to_be_enabled()
+        self.page.evaluate("()=>window.AiMateLocalAI.setControls(false)")
+        self.page.locator("#localAIToggle").click()
+        self.expect(self.page.locator("#stopLocalAI")).to_be_hidden()
+
     def test_local_ai_choice_and_cloud_failure_offer_are_explicit_and_optional(self):
         self.page.route("**/api/local-ai/status",lambda route:route.fulfill(status=200,content_type="application/json",
             body=json.dumps({"available":True,"models":["qwen3:4b"],"message":"Ollama reachable."})))

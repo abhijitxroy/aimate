@@ -9,6 +9,7 @@ function syncChatControls() {
   $("#newChat").title=chatRuns.size() ? `${chatRuns.size()} chats answering · start another` : "New conversation";
   busy = Boolean(run); controller = run?.controller || null;
   $("#send").disabled = busy || Boolean(window.AiMateImportProgress?.busy()); $("#modelMode").disabled = busy; $("#stop").hidden = !busy;
+  window.AiMateLocalAI?.refreshStop(run);
   $("#analysisStyle").disabled=busy;
   $("#localAIToggle").disabled=busy;
   document.querySelectorAll("[data-edit-message]").forEach(button => { button.disabled = busy; });
@@ -424,6 +425,7 @@ async function refreshState() {
   window.AiMateTemporaryChats?.setEnabled(state.temporary_chats!==false);
   window.AiMatePerformance?.setEnabled(state.performance!==false);
   window.AiMateLocalAI?.setEnabled(state.local_ai===true);
+  window.AiMateLocalAI?.setControls(state.local_control===true);
   $("#openFavorites").hidden=window.AiMateFeatures?.messageFavorites===false;
   if(state.feedback_review===false) {window.AiMateFeatures={...window.AiMateFeatures,feedbackReview:false};}
   $("#openMyFeedback").hidden=window.AiMateFeatures?.feedbackReview===false;
@@ -1030,7 +1032,8 @@ async function ask(question) {
     bot = addMessage("assistant");
     run={cid,controller:runController,nodes:[...$("#messages").children],private:privateChat,
       temporary:privateChat ? window.AiMateTemporaryChats?.options()?.lifetime : undefined,
-      title:$("#chatTitle").textContent,activity:"Reading your question…"};
+      title:$("#chatTitle").textContent,activity:"Reading your question…",
+      local:window.AiMateLocalAI?.active() || false,localModel:window.AiMateLocalAI?.model(),requestId:crypto.randomUUID()};
     chatRuns.start(run.cid,run);
     syncChatControls();
     $("#question").value = "";
@@ -1038,7 +1041,7 @@ async function ask(question) {
     activity("Reading your question…");
     const response = await api("/api/chat", {
       method: "POST", body: JSON.stringify({conversation: run.cid, question: submittedQuestion, model_mode: $("#modelMode").value,template_mode:$("#analysisStyle").value,
-        local_ai:window.AiMateLocalAI?.active() || false,local_model:window.AiMateLocalAI?.model(),
+        local_ai:run.local,local_model:run.localModel,request_id:run.requestId,
         attachments:attachments.filter(file=>file.kind !== "image").map(({name,size})=>({name,size})),
         documents:attachments.filter(file=>file.kind !== "image").map(file=>({name:file.name,size:file.size,text:file.text,kind:file.kind || "text",notice:file.notice || ""})),
         images:attachments.filter(file=>file.kind === "image").map(({name,data})=>({name,data})),
@@ -1700,7 +1703,11 @@ document.addEventListener("drop", event => {
 $("#question").onkeydown = event => {
   if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); ask($("#question").value); }
 };
-$("#stop").onclick = () => controller?.abort();
+$("#stop").onclick = () => {
+  const run=chatRuns.get(cid);
+  if(run?.local && window.AiMateLocalAI?.controlSupported()) void window.AiMateLocalAI.stop(run,false);
+  else controller?.abort();
+};
 $("#newChat").onclick = async () => {
   if (navigationBlocked()) return;
   navigationVersion++;

@@ -6,3 +6,5 @@
 #settings-ai.local-connection .ai-connection-context,
 #settings-ai.local-connection #test-ai { display: none; }
 #settings-ai.local-connection #localAISettings { border-top: 0; padding-top: 0; margin-top: 0; }
+#stopLocalAI, #unloadLocalAI { color: var(--text); border-color: var(--line); }
+#localStopStatus { margin: 4px 0 0; font-size: 11px; }

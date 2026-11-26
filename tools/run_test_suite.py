@@ -11,6 +11,7 @@ UNIT_CLASSES = {
     "test_validation.ValidationTests", "test_app.QueryTests",
     "test_github_guidance.GuidanceTests", "test_ci_suites.SuiteTests",
     "test_build_smoke.SmokeTests",
+    "test_local_control.ControlTests",
 }
 UNIT_METHODS = {
     "test_model_routing.RoutingTests." + name for name in (

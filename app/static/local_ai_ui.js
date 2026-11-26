@@ -1,10 +1,32 @@
 /* Per-request local choice; cloud settings are never overwritten or auto-switched. */
 window.AiMateLocalAI=(()=>{
   let selected=false,model="qwen3:4b",available=false,capable=false,pending=null,checkVersion=0;
+  let controls=false,stopping=false;
   const enabled=()=>window.AiMateFeatures?.localAI!==false;
   const supported=()=>enabled() && capable;
   const provider=()=>$("#settingsForm").elements["ai.provider"];
   const connectionSelected=()=>supported() && provider().value==="local";
+  const controlSupported=()=>supported() && controls;
+  function refreshStop(run=chatRuns.get(cid)) {
+    const button=$("#stopLocalAI");if(!button)return;
+    button.hidden=!controlSupported() || !(run?.local || selected);
+    button.disabled=stopping || Boolean(run && !run.local);
+    $("#unloadLocalAI").hidden=!controlSupported();
+    $("#unloadLocalAI").disabled=stopping;
+  }
+  async function stop(run,unload) {
+    if(stopping || !controlSupported())return;
+    stopping=true;refreshStop(run);
+    const status=$("#localStopStatus");status.hidden=false;status.textContent=unload ? "Stopping & unloading…" : "Stopping local request…";
+    try {
+      const result=await api("/api/local-ai/stop",{method:"POST",body:JSON.stringify({
+        ...(run?.local ? {conversation:run.cid,request_id:run.requestId} : {}),
+        model:run?.localModel || model,unload})});
+      status.textContent=result.message;status.className="hint success";
+      $("#localAIMessage").textContent=result.message;
+    } catch(error) {status.textContent=error.message;status.className="hint warning";}
+    finally {if(run?.local)run.controller.abort();stopping=false;refreshStop();}
+  }
   function refreshConnection() {
     const local=connectionSelected();
     $("#localAISettings").hidden=!local;
@@ -39,6 +61,7 @@ window.AiMateLocalAI=(()=>{
     $("#localAIToggle").textContent=selected ? "Local" : "Cloud";
     $("#localAIToggle").title=selected ? `Local model · ${model}. Cloud AI is off; connectors still need network/VPN.` : "Use cloud AI. Click to choose a local model instead.";
     refreshConnection();
+    refreshStop();
   }
   async function check() {
     if(!supported()) return false;
@@ -104,6 +127,8 @@ window.AiMateLocalAI=(()=>{
     const group=document.createElement("optgroup");group.label="This laptop";
     group.append(new Option("Local LLM · offline","local"));provider().append(group);
     $("#checkLocalAI").onclick=check;
+    $("#stopLocalAI").onclick=()=>void stop(chatRuns.get(cid),true);
+    $("#unloadLocalAI").onclick=()=>void stop(chatRuns.get(cid),true);
     $("#useLocalAI").onclick=async()=>{
       if(await activate()) $("#settingsStatus").textContent="Local AI selected for this session. Cloud settings kept.";
     };
@@ -139,6 +164,7 @@ window.AiMateLocalAI=(()=>{
   });
   document.addEventListener("aimate:state",render);
   return Object.freeze({active:()=>selected && supported(),model:()=>model,offer,request,check,activate,
-    supported,connectionSelected,refreshConnection,restorePicker,
+    supported,connectionSelected,refreshConnection,restorePicker,refreshStop,stop,controlSupported,
+    setControls(value){controls=value===true;refreshStop();},
     setEnabled(value){capable=value!==false;if(!capable)selected=false;render();}});
 })();

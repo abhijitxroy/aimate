@@ -227,6 +227,8 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
     from app.local_ai import register as register_local_ai
     live_local_ai = not (production or demo or public_url or public_showcase)
     register_local_ai(app,auth,live_local_ai)
+    from app.local_control import register as register_local_control
+    local_controls = register_local_control(app, auth, live_local_ai)
 
     @app.exception_handler(ValueError)
     async def bad_input(request, exc):
@@ -407,6 +409,7 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
                 "feedback_review": os.environ.get("AIMATE_FEEDBACK_REVIEW_ENABLED") != "0",
                 "performance": os.environ.get("AIMATE_PERFORMANCE_ENABLED") != "0",
                 "local_ai": live_local_ai and os.environ.get("AIMATE_LOCAL_AI_ENABLED") != "0",
+                "local_control": bool(local_controls) and live_local_ai,
                 "connection_checks": store.connection_checks(),
                 "connection_defaults": {"jenkins": {"username": getpass.getuser() if not public_url and not demo else "",
                                                       "url": "" if public_showcase else os.environ.get("JENKINS_URL", "")}},
@@ -1023,6 +1026,7 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
         workspace_id=session.get("grant") or "owner"
         if active_streams.get(workspace_id,0)>=3:
             raise HTTPException(429,"Three chats are answering in this workspace. Wait for one to finish.")
+        local_handle = local_controls.reserve(session["token"], cid, local_model, body.get("request_id")) if local_model and local_controls else None
         await lock.acquire()
         active_streams[workspace_id]=active_streams.get(workspace_id,0)+1
         from app.access_lease import lease
@@ -1033,7 +1037,7 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
                 original_check()
                 chat_store.check()
 
-        async def events():
+        async def turn_events():
             turn_config = store.config()
             from app.vault import redactions
             turn_config["_vault_secrets"] = redactions(store)
@@ -1095,12 +1099,23 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
                 yield "data: " + json.dumps({"event": "error", "message": scrub(message, store.config()),
                     "local_fallback":not local_model and can_offer(exc,request,live_local_ai)}) + "\n\n"
             finally:
+                if "turn" in locals() and hasattr(turn, "aclose"):
+                    await turn.aclose()
+        async def events():
+            iterator = turn_events()
+            try:
+                if local_handle:
+                    local_controls.begin(local_handle)
+                async for event in iterator:
+                    yield event
+            finally:
                 try:
-                    if "turn" in locals() and hasattr(turn, "aclose"):
-                        await turn.aclose()
+                    await iterator.aclose()
                 finally:
                     lock.release()
                     active_streams[workspace_id]=max(0,active_streams.get(workspace_id,1)-1)
+                    if local_handle:
+                        local_controls.finish(local_handle)
         return StreamingResponse(events(), media_type="text/event-stream", headers={"X-Accel-Buffering": "no"})
 
     from app.vault_lock import unlocked as vault_unlocked
