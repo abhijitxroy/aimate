@@ -371,6 +371,11 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
         services.enable_reuse()
     evidence = {}
     available_tools = tools_for(config)
+    from app.supplied_scope import prepare as supplied_scope
+    supplied = supplied_scope(store, question, template_mode, config, quality, available_tools)
+    if supplied:
+        system, available_tools = supplied
+        context_reference = ""
     from app.usage_meter import MeteredClient
     client = MeteredClient(await asyncio.to_thread(client_factory, config), store, config, "Chat / routing")
     answer = ""
@@ -430,7 +435,7 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
                 completed = True
                 break
             results = []
-            prefetched = await prefetch_reads(calls, services, evidence)
+            prefetched = None if supplied else await prefetch_reads(calls, services, evidence)
             for call_index, call in enumerate(calls):
                 if access_check:
                     access_check()
@@ -592,6 +597,11 @@ async def _run_chatgpt_turn(store, cid, question, connection, services_factory, 
     if not config.get("_private"):
         instructions += scrub(investigation_context(store, cid, question), config)
     tools = tools_for(config)
+    from app.supplied_scope import prepare as supplied_scope
+    supplied = supplied_scope(store, question, template_mode, config, quality, tools)
+    if supplied:
+        instructions, tools = supplied
+        context_reference = ""
     namespace = {"type": "namespace", "name": "project", "description": "Scoped engineering project tools",
                  "tools": [{"type": "function", "name": t["name"], "description": t["description"],
                             "parameters": t["input_schema"], "strict": False} for t in tools]}
@@ -667,7 +677,7 @@ async def _run_chatgpt_turn(store, cid, question, connection, services_factory, 
                    "quality": quality.metadata()}
             return
         results = []
-        prefetched = await prefetch_reads(calls, services, evidence, responses=True)
+        prefetched = None if supplied else await prefetch_reads(calls, services, evidence, responses=True)
         for call_index, call in enumerate(calls):
             if access_check:
                 access_check()

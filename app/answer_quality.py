@@ -148,6 +148,7 @@ class Assessment:
         work = (self.value or {}).get("work_items", [])
         return {"version": 1, "kind": self.kind, "assessed": self.value is not None,
                 "accuracy": "not_measured", "source_count": len(self.sources),
+                "input_evidence": getattr(self, "input_source", None),
                 "failed_reads": self.failed_reads, **(self.value or {}),
                 "accuracy_percent": round(100 * sum(item["supported"] for item in checks) / len(checks)) if checks else None,
                 "completion_percent": round(100 * sum(item["completed"] for item in work) / len(work)) if work else None}

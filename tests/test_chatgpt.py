@@ -243,6 +243,24 @@ class ChatGPTTests(unittest.TestCase):
                 asyncio.run(fail())
             self.assertEqual(self.store.history(other), [])
 
+    def test_supplied_input_only_responses_prompt_keeps_read_tools_out_and_labels_input(self):
+        self.connect()
+        config = fixture_config()
+        config["ai"] = {"provider": "chatgpt", "model": "test-model"}
+        self.store.save_config(config)
+        cid = self.store.new_conversation()
+        async def run():
+            return [e async for e in run_turn(self.store, cid,
+                "Review this supplied snippet without external reads: x / 0.",
+                services_factory=lambda _: None, chatgpt=self.connection, model_mode="standard")]
+        events = asyncio.run(run())
+        payload = json.loads(next(r.content for r in self.requests if r.url.path == "/v1/responses"))
+        self.assertEqual({tool["name"] for tool in payload["tools"][0]["tools"]},
+                         {"read_attachment", "assess_answer"})
+        self.assertNotIn("Configured sources:", payload["instructions"])
+        self.assertNotIn("github.example", payload["instructions"])
+        self.assertEqual(events[-1]["quality"]["input_evidence"], "input:current-message")
+
     def test_read_mode_explains_missing_settings_without_exposing_write_tool_or_tokens(self):
         self.connect()
         config = fixture_config()

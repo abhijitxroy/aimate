@@ -330,7 +330,7 @@
   },
   {
     "id": "search-quality-06",
-    "title": "P0 · Planned — SQ-06: Relevant retrieval, ranking and optional reranking\n\nParent: backlog-c271f2bb931810eef633f7c7. Plan: docs/search-quality-plan.md.\nCombine exact identifiers, metadata/aliases and full-text ranking. Check missed matches and irrelevant matches. Evaluate embeddings/reranking only when justified; do not send private content to a new provider implicitly.",
+    "title": "P0 · WIP — SQ-06: Relevant retrieval, ranking and optional reranking\n\nParent: backlog-c271f2bb931810eef633f7c7. Plan: docs/search-quality-plan.md.\nCombine exact identifiers, metadata/aliases and full-text ranking. Check missed matches and irrelevant matches. Evaluate embeddings/reranking only when justified; do not send private content to a new provider implicitly.\n\nExact-identifier saved recall child verified at 126f068; Nexus/case indexing and broader semantic retrieval remain open.",
     "completed": false,
     "type": "enhancement",
     "priority": "P0"
@@ -358,7 +358,7 @@
   },
   {
     "id": "search-quality-10",
-    "title": "P0 · Planned — SQ-10: Verified Standard/Analysis routing for real investigations\n\nParent: backlog-c271f2bb931810eef633f7c7. Plan: docs/search-quality-plan.md.\nConfigure and verify the authorized Analysis model; preserve manual control and honest fallback. Verify deeper tasks route correctly and display actual model plus reported token/cache use.",
+    "title": "P0 · WIP — SQ-10: Verified Standard/Analysis routing for real investigations\n\nParent: backlog-c271f2bb931810eef633f7c7. Plan: docs/search-quality-plan.md.\nConfigure and verify the authorized Analysis model; preserve manual control and honest fallback. Verify deeper tasks route correctly and display actual model plus reported token/cache use.\n\nHaiku/Sonnet access, real synthetic Auto routing and manual Analysis verified. Representative source investigations and answer-quality benchmark remain open.",
     "completed": false,
     "type": "enhancement",
     "priority": "P0"
@@ -519,9 +519,16 @@
   },
   {
     "id": "search-quality-ranked-recall",
-    "title": "P0 · WIP — Exact-identifier ranking for saved chats and Diary\n\nSQ-06 implementation batch: deterministic identifier/title/full-text ranking, old exact candidates before generic matches, match-centred excerpts, project/private/account isolation and disable switch. No new provider or database schema. Nexus/case indexing and matched live answer-quality benchmarking remain separate. Awaiting all seven workflows and installed recall verification.",
-    "completed": false,
+    "title": "P0 · Done — Exact-identifier ranking for saved chats and Diary\n\nAll seven workflows passed at 126f068, including Windows/Linux integration and secret scanning. Six identifier/recall tests plus project/restart regressions passed; old exact targets beat 85 generic cases, middle excerpts retain offsets, account/private/project isolation and disabled behavior pass. Installed encrypted-store recall returned eight saved chat excerpts with the stale-reference warning. No data/schema/provider changes. SQ-06 semantic/case retrieval and Odin answer-quality parity remain open.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45834063948",
+    "completed": true,
     "type": "enhancement",
     "priority": "P0"
+  },
+  {
+    "id": "supplied-input-lean-scope",
+    "title": "P1 · WIP — Lean supplied-input-only reviews and consistent assessments\n\nRestrict explicit no-external-read requests to supplied input and attachments, with a compact system prompt, no source configuration/brief injection and no service/write tools or speculative read batching. Label current-message evidence without pretending it independently verifies external facts. Awaiting all seven workflows and measured live comparison.",
+    "completed": false,
+    "type": "enhancement",
+    "priority": "P1"
   }
 ]

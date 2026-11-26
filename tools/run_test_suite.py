@@ -13,6 +13,7 @@ UNIT_CLASSES = {
     "test_build_smoke.SmokeTests",
     "test_local_control.ControlTests",
     "test_retrieval_rank.RankTests",
+    "test_supplied_scope.ScopeTests",
 }
 UNIT_METHODS = {
     "test_model_routing.RoutingTests." + name for name in (

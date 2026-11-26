@@ -1,8 +1,8 @@
 [
   {
     "id": "audit-45598b108d57b500ed062e06",
-    "title": "P0 · AI · WIP — Auto routing for debug/analysis, manual override; always-Haiku complaint\n\nValidation status: IN PROGRESS\nAutomated routing tests pass, but a real Auto-to-Analysis query and manual override against the currently configured account/models remain to be validated. A green connection check alone does not prove both models work.\nPrevious automated evidence (not full live validation):\nFixed classifier output budget (32 → 128 tokens). Live Bedrock Auto chose Opus and completed a debugging answer; routine lookup chose Haiku. Manual overrides and offline regressions passed.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45411134828",
-    "completed": false
+    "title": "P0 · AI · Done — Auto routing for debug/analysis, manual override; always-Haiku complaint\n\nCurrent Haiku Standard and Sonnet Analysis both answered access checks. Three real synthetic private requests completed: Auto debugging selected Sonnet, Auto arithmetic selected Haiku, and manual Analysis selected Sonnet. Model-reported usage was recorded; temporary test chats were cleared. All seven workflows passed at 126f068. This verifies routing/access, not comprehensive project-review quality or Odin parity.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45834063940",
+    "completed": true
   },
   {
     "id": "audit-05866576b3a7fce2e371fb8a",

@@ -436,6 +436,23 @@ class BrowserRegressionTests(unittest.TestCase):
         self.assertEqual(project.locator(":scope > .group-children").evaluate(
             "el => el.firstElementChild.dataset.group"),data["child"])
 
+    def test_supplied_input_quality_does_not_count_user_text_as_external_verification(self):
+        self.page.evaluate("""() => {
+            const msg=addMessage('assistant','Supplied snippet review.',984,Date.now()/1000);
+            msg.root.id='supplied-quality-fixture';
+            updateModelInfo(msg,{quality:{version:1,kind:'review',assessed:true,confidence:'medium',
+              coverage:'partial',basis:'Supplied input only.',gaps:['Runtime tests not run.'],
+              further_investigation:true,next_step:'Run a representative test.',
+              source_count:1,input_evidence:'input:current-message'}});
+        }""")
+        quality=self.page.locator("#supplied-quality-fixture .quality-info")
+        title=quality.locator("summary").get_attribute("title")
+        self.assertIn("Input evidence: Current user message",title)
+        self.assertIn("External sources read: 0",title)
+        self.assertIn("Accuracy: Not independently measured",title)
+        quality.locator("summary").click()
+        self.expect(quality.locator(".quality-details")).to_contain_text("not independent external verification")
+
     def test_answer_quality_is_tiny_contextual_safe_and_dismissible(self):
         self.page.evaluate("""() => {
             const msg=addMessage('assistant','Evidence-backed partial review.',987,Date.now()/1000);

@@ -43,7 +43,10 @@
       if(Array.isArray(quality.work_items)) for(const item of quality.work_items)
         rows.push(["Requested work",(item.completed ? "Done" : "Pending")+": "+item.task]);
     }
-    if(Number.isInteger(quality.source_count)) rows.push(["Sources read",String(quality.source_count)]);
+    const supplied=quality.input_evidence==="input:current-message";
+    if(supplied) rows.push(["Input evidence","Current user message · not independent external verification"]);
+    if(Number.isInteger(quality.source_count)) rows.push([supplied ? "External sources read" : "Sources read",
+      String(Math.max(0,quality.source_count-(supplied ? 1 : 0)))]);
     if(quality.failed_reads>0) rows.push(["Failed reads",String(quality.failed_reads)+" · see activity for details"]);
     summary.title=rows.map(([key,value])=>key+": "+value).join("\n");
     const panel=document.createElement("div");panel.className="model-details quality-details";
