@@ -4,6 +4,7 @@ import {markdown} from "@codemirror/lang-markdown";
 import {syntaxTree} from "@codemirror/language";
 import {defaultKeymap,history,historyKeymap,insertNewlineAndIndent,isolateHistory} from "@codemirror/commands";
 import {StyleModule} from "style-mod";
+import {insertHorizontalRule,decorateHorizontalRule} from "./horizontal-rule.js";
 
 // Preserve style-src 'self': trusted editor styles use CSSOM, not inline <style>.
 const originalMount=StyleModule.mount, styleRoots=new WeakMap();
@@ -29,6 +30,7 @@ function decorations(view) {
     if(suffix) ranges.push(Decoration.replace({}).range(to-suffix,to));
   }
   syntaxTree(view.state).iterate({enter(node) {
+    decorateHorizontalRule(view,node,ranges);
     if(["InlineCode","FencedCode","CodeBlock"].includes(node.name)) code.push([node.from,node.to]);
     if(node.name==="StrongEmphasis") inline(node.from,node.to,2,2,{class:"cm-inline-bold"},"strong");
     else if(node.name==="Emphasis") inline(node.from,node.to,1,1,{class:"cm-inline-italic"},"em");
@@ -64,7 +66,7 @@ export function attach(source) {
   });
   const extensions=[
     markdown({addKeymap:false}),history(),
-    keymap.of([{key:"Shift-Enter",run:insertNewlineAndIndent},
+    keymap.of([{key:"Shift-Enter",run:view=>insertHorizontalRule(view) || insertNewlineAndIndent(view)},
       ...defaultKeymap.filter(binding=>!["Enter","Mod-Enter","Mod-b","Mod-i","Mod-u"].includes(binding.key)),
       ...historyKeymap.filter(binding=>binding.key!=="Mod-u")]),
     wrapping.of(EditorView.lineWrapping),appearance,placeholder(source.placeholder),
@@ -112,6 +114,7 @@ export function attach(source) {
       ".cm-inline-italic":{fontStyle:"italic"},
       ".cm-inline-underline":{textDecoration:"underline"},
       ".cm-inline-code":{fontFamily:"Consolas,monospace",color:"var(--accent)"},
+      ".cm-horizontal-rule":{borderBottom:"1px solid var(--muted)",minHeight:"8px",margin:"6px 0"},
       ".cm-selectionBackground":{backgroundColor:"#79baff40 !important"}
     })
   ];

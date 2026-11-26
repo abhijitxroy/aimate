@@ -456,9 +456,16 @@
   },
   {
     "id": "local-prompt-auto-compaction",
-    "title": "P1 · WIP — Continue local chats beyond the old 24 KB prompt limit\n\nUse a bounded 64 KB local request allowance and automatic history/tool-result excerpts. Preserve the latest question, safety policy, schemas, paired calls/results and saved data; validate a real downloaded local model.",
-    "completed": false,
+    "title": "P1 · Done — Continue local chats beyond the old 24 KB prompt limit\n\nReplaced the old 24 KB app guard with a bounded 64 KB request budget and automatic excerpts of older history/tool evidence. Current request, policy, schemas and latest complete tool-call group stay intact; saved records are unchanged. Same-chat oversized-request HTTP regression, UTF-8, pairing, disabled mode and full suites passed. Real installed qwen3:4b returned Ready after compaction (493 prompt tokens). All seven workflows passed at c19aa8a.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45784376717",
+    "completed": true,
     "type": "bug",
+    "priority": "P1"
+  },
+  {
+    "id": "askbar-horizontal-rule-shortcut",
+    "title": "P1 · WIP — Askbar horizontal rule with three dashes and Shift+Enter\n\nDisplay a horizontal rule, continue below it and retain portable Markdown. Preserve literal code, Undo, disabled mode and ordinary newline behavior.",
+    "completed": false,
+    "type": "enhancement",
     "priority": "P1"
   }
 ]

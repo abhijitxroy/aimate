@@ -6,6 +6,12 @@ Formatting is stored as portable Markdown text, so copying/exporting/editing ret
 
 The editor grows with multiline text, including generated warnings, tables and code. It reveals the inserted text automatically; long messages scroll within a bounded editor so the send controls remain available. Clearing the editor returns it to its compact height.
 
+Type `---` on its own line and press **Shift+Enter** to create a visible
+horizontal rule and continue typing below it. Markdown keeps the original
+`---` for copying, exporting and sending. Code blocks keep literal dashes.
+Undo restores the typed line. Disable this shortcut and its inline decoration
+with `window.AiMateFeatures.horizontalRule=false`; normal Shift+Enter still works.
+
 Pasted prose removes empty bullets and repeated blank lines, and closes extra
 spacing between list items. Paragraph breaks stay readable. Fenced/indented code,
 JSON, uploaded files and large clipboard attachments keep their contents.

@@ -846,6 +846,33 @@ class BrowserRegressionTests(unittest.TestCase):
         self.page.get_by_role("button", name="Save icon", exact=True).click()
         self.expect(badge).not_to_have_css("color","rgb(255, 120, 80)")
 
+    def test_shift_enter_turns_three_dashes_into_an_inline_horizontal_rule(self):
+        field=self.page.locator("#question")
+        field.fill("First paragraph\n---")
+        field.press("Shift+Enter")
+        self.expect(field).to_have_js_property("value","First paragraph\n\n---\n\n")
+        rule=field.get_by_role("separator",name="Horizontal rule")
+        self.expect(rule).to_be_visible()
+        self.assertEqual(rule.evaluate("e=>getComputedStyle(e).borderBottomStyle"),"solid")
+        self.expect(self.page.locator("#questionSource")).to_have_value("First paragraph\n\n---\n\n")
+        field.press("Control+z")
+        self.expect(field).to_have_js_property("value","First paragraph\n---")
+        self.expect(rule).to_have_count(0)
+        field.press("Shift+Enter")
+        field.press_sequentially("Next paragraph")
+        self.expect(field).to_have_js_property("value","First paragraph\n\n---\n\nNext paragraph")
+        self.expect(rule).to_have_count(1)
+        self.expect(self.page.locator("#welcome")).to_be_visible() # No request was submitted.
+        field.fill("```text\n---")
+        field.press("Shift+Enter")
+        self.expect(rule).to_have_count(0)
+        self.assertTrue(field.evaluate("e=>e.value").startswith("```text\n---\n"))
+        self.page.evaluate("window.AiMateFeatures={...window.AiMateFeatures,horizontalRule:false}")
+        field.fill("---")
+        field.press("Shift+Enter")
+        self.expect(field).to_have_js_property("value","---\n")
+        self.expect(rule).to_have_count(0)
+
     def test_inline_editor_formats_without_preview_and_keeps_strict_csp(self):
         self.page.add_init_script("""window.richPolicyViolations=[];
             document.addEventListener('securitypolicyviolation',e=>richPolicyViolations.push(e.violatedDirective));""")
