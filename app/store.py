@@ -149,6 +149,7 @@ class Store:
 
     def public_config(self):
         config = self.config()
+        config.pop("_local_evidence_roots", None)
         for section in config.values():
             if isinstance(section, dict):
                 for key in list(section):

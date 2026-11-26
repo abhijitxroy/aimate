@@ -50,6 +50,19 @@ answerMarkdown.renderer.rules.link_open = (tokens, index, options, env, renderer
   tokens[index].attrSet("rel", "noopener noreferrer");
   return renderAnswerLink(tokens, index, options, env, renderer);
 };
+answerMarkdown.inline.ruler.before("emphasis","answer_tone",(state,silent)=>{
+  const depth=state.env.aimateFormatDepth || 0;
+  if(depth>=8) return false;
+  const match=state.src.slice(state.pos,state.pos+2000).match(/^\[tone:(success|warning|danger|info)\]([^\n]+?)\[\/tone\]/);
+  if(!match) return false;
+  if(!silent) {
+    const token=state.push("answer_tone","span",0);token.meta={tone:match[1]};token.children=[];
+    state.md.inline.parse(match[2],state.md,{...state.env,aimateFormatDepth:depth+1},token.children);
+  }
+  state.pos+=match[0].length;return true;
+});
+answerMarkdown.renderer.rules.answer_tone=(tokens,index,options,env,renderer)=>
+  `<span class="answer-tone-${tokens[index].meta.tone}">${renderer.renderInline(tokens[index].children,options,env)}</span>`;
 
 function renderAnswer(body, text) {
   // Only the parser's escaped output enters this HTML sink. Never enable html

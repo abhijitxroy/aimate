@@ -417,6 +417,57 @@ class BrowserRegressionTests(unittest.TestCase):
         self.assertNotIn("Further investigation",search.locator(".quality-details").inner_text())
         self.assertNotIn("Coverage",search.locator(".quality-details").inner_text())
 
+    def test_message_actions_are_below_borderless_replies_with_theme_aware_highlights(self):
+        self.page.evaluate("""() => {
+            const user=addMessage('user','Please review the evidence.',900);user.root.id='footer-user';
+            const reply=addMessage('assistant',
+              '### Next step\\n\\n[tone:success]**Recommended:** check the preserved evidence.[/tone]\\n\\n[tone:warning]Coverage gap: runtime tests were not run.[/tone]\\n\\n<img src=x onerror=alert(1)>',901);
+            reply.root.id='footer-assistant';
+        }""")
+        for role in ("user","assistant"):
+            root=self.page.locator("#footer-"+role)
+            self.expect(root.locator(".message-heading button")).to_have_count(0)
+            self.expect(root.locator(".message-actions button")).to_have_count(3)
+            positions=root.evaluate("""el=>({bodyBottom:el.querySelector('.body').getBoundingClientRect().bottom,
+                actionsTop:el.querySelector('.message-actions').getBoundingClientRect().top,
+                actionsRight:el.querySelector('.message-actions').getBoundingClientRect().right,
+                rootRight:el.getBoundingClientRect().right})""")
+            self.assertGreaterEqual(positions["actionsTop"],positions["bodyBottom"])
+            self.assertAlmostEqual(positions["actionsRight"],positions["rootRight"],delta=1)
+        root=self.page.locator("#footer-assistant")
+        self.expect(root.locator(".answer-tone-success")).to_contain_text("Recommended:")
+        self.expect(root.locator(".answer-tone-warning")).to_contain_text("Coverage gap")
+        self.expect(root.locator("img")).to_have_count(0)
+        for theme in ("navy","beige","black-blue","life","brown-gold"):
+            self.page.evaluate("theme=>window.AiMateAppearance.apply(theme)",theme)
+            values=root.locator(".body").evaluate("""el=>{const style=getComputedStyle(el);
+                return {border:style.borderTopWidth,background:style.backgroundColor,shadow:style.boxShadow,
+                    text:style.color,success:getComputedStyle(el.querySelector('.answer-tone-success')).color}}""")
+            self.assertEqual(values["border"],"0px")
+            self.assertEqual(values["background"],"rgba(0, 0, 0, 0)")
+            self.assertEqual(values["shadow"],"none")
+            self.assertNotEqual(values["text"],values["success"])
+
+    def test_local_evidence_owner_connect_validation_and_disconnect(self):
+        with tempfile.TemporaryDirectory() as folder:
+            self.page.locator("#headerSettings").click()
+            self.page.locator("#tab-changes").click()
+            self.page.locator("#openLocalEvidence").click()
+            self.expect(self.page.locator("#localEvidenceDialog")).to_be_visible()
+            self.page.locator("#localEvidenceName").fill("fixture-local")
+            self.page.locator("#localEvidencePath").fill(str(Path(folder)/"missing"))
+            self.page.get_by_role("button",name="Connect folder",exact=True).click()
+            self.expect(self.page.locator("#localEvidenceError")).to_contain_text("existing")
+            self.page.locator("#localEvidencePath").fill(folder)
+            self.page.get_by_role("button",name="Connect folder",exact=True).click()
+            self.expect(self.page.locator("#localEvidenceStatus")).to_contain_text("read-only")
+            self.expect(self.page.locator("#localEvidenceSources")).to_contain_text("fixture-local")
+            state=self.context.request.get(self.url+"/api/state").json()
+            self.assertNotIn("_local_evidence_roots",state["config"])
+            self.page.locator("#localEvidenceSources").get_by_role("button",name="Disconnect",exact=True).click()
+            self.expect(self.page.locator("#localEvidenceStatus")).to_contain_text("disconnected")
+            self.expect(self.page.locator("#localEvidenceSources")).to_contain_text("No local folders")
+
     def test_token_badge_includes_cache_reads_writes_and_restores_saved_breakdown(self):
         self.page.locator("#newChat").click()
         self.page.locator("#modelMode").select_option("standard")

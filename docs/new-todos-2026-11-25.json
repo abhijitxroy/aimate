@@ -309,8 +309,8 @@
   },
   {
     "id": "search-quality-03",
-    "title": "P0 · WIP — SQ-03: Dedicated scoped repository file/content search\n\nParent: backlog-c271f2bb931810eef633f7c7. Plan: docs/search-quality-plan.md.\nFirst implementation batch. Add commit-pinned file discovery and bounded content search with explicit pagination/gaps, permission checks and independent disable switch. Test native/Responses providers, private mode, incomplete trees and source errors.",
-    "completed": false,
+    "title": "P0 · Done — SQ-03: Dedicated scoped repository file/content search\n\nCommit-pinned discovery and literal content search passed native/Responses, scope, pagination, truncation and disabled-feature checks. Live saved-repository GETs found app/answer_quality.py at commit 12f98aa with line citations and no gaps. All seven implementation workflows passed. This does not establish benchmark parity or Nexus indexing.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45763472022",
+    "completed": true,
     "type": "feature",
     "priority": "P0"
   },
@@ -393,9 +393,44 @@
   },
   {
     "id": "search-quality-15",
-    "title": "P0 · WIP — SQ-15: Tiny contextual answer-quality labels\n\nParent: backlog-c271f2bb931810eef633f7c7. Plan: docs/search-quality-plan.md.\nBeside token usage for analysis, code reviews, architecture/design and technical notes. Hover/click shows qualitative confidence, coverage, gaps and further investigation. Simple replies stay clean; factual search shows minimal source confidence. No invented accuracy percentages. Persist metadata; validate disabled feature, both provider loops, safe rendering and dismissal.",
+    "title": "P0 · Done — SQ-15: Tiny contextual answer-quality labels\n\nContextual 9px quality labels, hover/click details, outside-click/Escape dismissal, safe rendering, disabled module and both provider loops passed checks. A real private Claude/Bedrock review displayed confidence, coverage, missing runtime tests and next action; test chat cleared afterward. Accuracy stays explicitly unmeasured. All seven implementation workflows passed.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45763472022",
+    "completed": true,
+    "type": "feature",
+    "priority": "P0"
+  },
+  {
+    "id": "search-quality-16",
+    "title": "P0 · WIP — Local evidence, read-only Git and deterministic inventory verification\n\nParent: backlog-c271f2bb931810eef633f7c7.\nConnect selected desktop folders; read/search reports, inspect status/diff/pinned files, verify SHA-256 manifests and count full preserved JSON inventories. Validate scope, credentials/link exclusion, revocation, private mode and both AI protocols.",
     "completed": false,
     "type": "feature",
     "priority": "P0"
+  },
+  {
+    "id": "search-quality-17",
+    "title": "P0 · Planned — Jira attachments and design-image inspection\n\nParent: backlog-c271f2bb931810eef633f7c7.\nFetch attachments through the configured Jira connection with validated issue scope, host/redirect/size checks. Feed supported images/PDFs to the configured vision model; record actual read coverage. Do not ask for manual export before trying permitted attachment retrieval.",
+    "completed": false,
+    "type": "feature",
+    "priority": "P0"
+  },
+  {
+    "id": "search-quality-18",
+    "title": "P0 · Planned — Retained inventory snapshots and reproducible reconciliation\n\nParent: backlog-c271f2bb931810eef633f7c7.\nFreeze complete permitted source populations with canonical identities, collection parameters, source versions, timestamps and hashes; persist securely. Compare preserved populations/results/Jira associations deterministically. Current-file row aggregation is implemented separately in SQ-16; historical identities and retained API snapshots remain open.",
+    "completed": false,
+    "type": "feature",
+    "priority": "P0"
+  },
+  {
+    "id": "message-footer-actions",
+    "title": "P1 · WIP — Message actions at bottom-right\n\nParent: backlog-c271f2bb931810eef633f7c7.\nMove user Edit/Copy/Pin and AiMate Copy/Feedback/Pin below the message. Preserve keyboard actions, metadata, streaming, edit and pin functionality.",
+    "completed": false,
+    "type": "feature",
+    "priority": "P1"
+  },
+  {
+    "id": "borderless-reply-highlights",
+    "title": "P1 · WIP — Borderless AiMate replies and meaningful theme-aware colour\n\nParent: backlog-c271f2bb931810eef633f7c7.\nRemove the outer assistant card border/background in all themes. Highlight recommendations/warnings/status sparingly using safe theme-aware inline formatting; retain tables/code/callouts and readable text.",
+    "completed": false,
+    "type": "feature",
+    "priority": "P1"
   }
 ]

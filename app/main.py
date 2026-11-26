@@ -397,6 +397,7 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
     def state(session=Depends(auth)):
         public_config = store.public_config()
         rights = capabilities(session.get("role", "admin"), public_config)
+        rights["local_evidence"] = not production and not demo and not public_showcase and not session.get("grant") and os.environ.get("AIMATE_LOCAL_EVIDENCE_ENABLED") != "0"
         public_config["allow_writes"] = rights["write"]
         return {"csrf": session["csrf"], "config": public_config, "demo": bool(demo), "access": rights,
                 "workspace": {"personal": bool(session.get("grant"))},
@@ -664,6 +665,9 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
 
     from app.usage_routes import register as register_usage
     register_usage(app, store, auth, config_lock)
+    from app.local_evidence import register as register_local_evidence
+    register_local_evidence(app, store, auth, config_lock,
+                            desktop=not production and not demo and not public_showcase)
 
     @app.post("/api/knowledge")
     async def add_knowledge(request: Request, session=Depends(auth)):
@@ -1049,6 +1053,7 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
                                     services_factory=services_factory, chatgpt=chatgpt, model_mode=model_mode,
                                     images=image_blocks, role=session.get("role", "admin"),template_mode=template_mode,
                                     vault_access=lambda: chat_store is store and valid_session(session["token"]) and vault_unlocked(session),
+                                    local_access=not production and not demo and not session.get("grant") and request.client.host in {"127.0.0.1","::1","testclient"},
                                     access_check=access_check)
                 async for event in turn:
                     access_check()

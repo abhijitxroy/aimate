@@ -300,6 +300,9 @@ header .eyebrow { margin-bottom: 7px; }
 .message { margin-bottom: 28px; }
 .message-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; gap: 12px; }
 .message-heading .who { margin-bottom: 0; margin-right: auto; }
+.message-actions { float: right; display: flex; justify-content: flex-end; align-items: center; gap: 3px; margin: 3px 0 0; }
+.message::after { content: ""; display: block; clear: both; }
+.message-actions .message-action { padding: 2px 7px; }
 .message-action { padding: 4px 10px; font-size: 11px; color: var(--muted); background: transparent; border-color: transparent; }
 .message-action:hover, .message-action:focus-visible { color: var(--accent); border-color: var(--line); }
 .message-editor textarea { width: 100%; resize: vertical; font: inherit; line-height: 1.6; }
@@ -330,6 +333,11 @@ header .eyebrow { margin-bottom: 7px; }
 .body th { background: #24456265; font-weight: 600; }
 .assistant > .message-heading .who { text-transform: none; font-size: 12px; letter-spacing: .2px; font-weight: 600; }
 .assistant .body { padding: 20px 24px; border: 1px solid #7aabd521; border-radius: 18px; background: linear-gradient(135deg, #19375265, #0f243842); box-shadow: 0 8px 28px #0000000e; }
+#messages .message.assistant > .body { padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
+.answer-tone-success { color: var(--success,#69e3b1); }
+.answer-tone-warning { color: var(--warning,#ffbd66); }
+.answer-tone-danger { color: var(--danger); }
+.answer-tone-info { color: var(--accent); }
 .answer-table { border: 1px solid var(--line); border-radius: 12px; overflow: auto; margin: 18px 0; }
 .answer-table table { display: table; width: 100%; margin: 0; border: 0; }
 .answer-table th, .answer-table td { border: 0; border-bottom: 1px solid var(--line); padding: 12px 16px; }

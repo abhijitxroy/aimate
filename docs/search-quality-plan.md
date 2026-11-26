@@ -65,8 +65,12 @@ They are not all complete merely because this plan exists.
 | SQ-13 | Capture useful learning and reviewed promotion | User-controlled candidate records; human review before sharing or repository writes; link corrected/retired cases |
 | SQ-14 | Verify isolation, migration and end-to-end behaviour | Relevant local tests and all seven workflows per code batch; real-source validation separately recorded |
 | SQ-15 | Add contextual tiny answer-quality labels | Beside token usage only when useful; confidence, coverage, missing evidence and further investigation on hover/click; no invented accuracy percentages |
+| SQ-16 | Read connected local evidence and Git; verify hashes and inventories | Desktop-owner scope; fixed read-only commands; complete paging and deterministic preserved-file aggregation |
+| SQ-17 | Fetch and inspect Jira attachments/design images | Validate issue/host/size, use configured model vision, preserve source identity and actual coverage |
+| SQ-18 | Retain and reconcile inventory snapshots | Frozen populations, canonical identities, collection scope and deterministic before/after comparisons |
 
-SQ-03 is the first implementation batch. SQ-04/05/06 follow. SQ-02 starts in
+SQ-03 and SQ-15 are implemented and verified at commit `12f98aa`.
+SQ-04/05/06 follow. The broader workstream remains open. SQ-02 starts in
 parallel as evaluation preparation, but parity remains unverified until its
 real comparison inputs are available. Each code batch must remain independently
 disableable and preserve existing data and core permissions.
@@ -105,3 +109,11 @@ accuracy, key-fact coverage and citation support. Measure speed/cost separately.
 No critical factual regression is allowed per agreed case. Do not claim a
 percentage improvement or universal parity from fixtures, a screenshot or
 model selection alone.
+
+## Verified batch — 26 November 2026
+
+- SQ-03: native/Responses search paths and real saved-repository GETs passed.
+- SQ-15: fixture persistence/restore rendering and a real private Claude review passed; the test chat was cleared.
+- All seven implementation workflows passed at `12f98aa`; browser evidence: https://github.com/abhijitxroy/aimate/actions/runs/45763472025.
+- Local checks: 50 unit, 312 integration (including 7 pre-existing unpublished export-package draft tests), 75 browser tests.
+- Benchmark parity, Nexus indexing, domain data, incident learning and independent accuracy measurement remain open.

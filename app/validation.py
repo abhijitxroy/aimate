@@ -82,6 +82,9 @@ def validate_config(raw, old):
     if not isinstance(raw, dict):
         raise ValueError("Settings must be an object")
     out = {"allow_writes": bool(raw.get("allow_writes"))}
+    # Local roots are changed only through the owner-only desktop endpoint.
+    if "_local_evidence_roots" in old:
+        out["_local_evidence_roots"] = old["_local_evidence_roots"]
     allowed_fields = {
         "ai": {"provider", "model", "analysis_model", "region", "api_key", "bedrock_auth", "bedrock_endpoint", "bedrock_mode",
                "aws_access_key", "aws_secret_key", "aws_session_token", "gcp_credentials", "gcp_project", "gcp_location"},

@@ -31,6 +31,7 @@
   <script src="./app/static/feedback_review_ui.js" defer></script>
   <script src="./app/static/message_time.js" defer></script>
   <script src="./app/static/answer_quality.js" defer></script>
+  <script src="./app/static/local_evidence_ui.js" defer></script>
   <script src="./app/static/message_navigation.js" defer></script>
   <script src="./app/static/todo_priority_ui.js" defer></script>
   <script src="./app/static/vendor/rich-editor.min.js" defer></script>
@@ -428,6 +429,17 @@
     <form id="performanceBaselineForm" class="performance-controls"><label>Baseline label<input id="performanceBaselineLabel" maxlength="80" placeholder="Before cache update" pattern="[A-Za-z0-9][A-Za-z0-9 ._-]{0,79}" required></label><button type="submit">Save measured baseline</button></form>
     <p id="performanceNotice" class="hint"></p><p class="hint">p95 change needs five completed requests in both samples. CPU is cumulative; memory varies by platform.</p>
     <p id="performanceError" class="error" role="alert"></p>
+  </dialog>
+  <dialog id="localEvidenceDialog">
+    <div class="dialog-head"><h2>Local evidence</h2><button class="close" data-close="localEvidenceDialog" aria-label="Close local evidence">×</button></div>
+    <p class="hint">Connect a repository or evidence folder. AiMate can read files, Git changes and verify hashes. Selected content goes to your chosen AI model when requested.</p>
+    <div id="localEvidenceSources" class="knowledge-cards"></div>
+    <form id="localEvidenceForm">
+      <label>Name<input id="localEvidenceName" maxlength="50" pattern="[A-Za-z0-9][A-Za-z0-9_-]*" required placeholder="dashboard"></label>
+      <label>Folder path<input id="localEvidencePath" maxlength="1024" required placeholder="C:\repo\my-project"></label>
+      <button class="primary" type="submit">Connect folder</button>
+    </form>
+    <p id="localEvidenceStatus" class="success" role="status"></p><p id="localEvidenceError" class="error" role="alert"></p>
   </dialog>
 </body>
 </html>

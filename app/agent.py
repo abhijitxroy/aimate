@@ -19,6 +19,7 @@ from app.github_guidance import guidance as github_guidance
 from app.repository_discovery import TOOL as DISCOVERY_TOOL, Discovery, enabled as discovery_enabled, guidance as discovery_guidance
 from app.repository_search import TOOLS as SEARCH_TOOLS, read as search_repository, enabled as search_enabled
 from app.answer_quality import TOOL as QUALITY_TOOL, Assessment, kind as quality_kind, instruction as quality_instruction, enabled as quality_enabled
+from app.local_evidence import TOOL as LOCAL_TOOL, LocalEvidence, enabled as local_evidence_enabled, KEY as LOCAL_ROOTS
 
 SYSTEM = """You are AiMate, a project assistant for GitHub, Jira and Jenkins, created by Abhijit Roy.
 When asked your name, answer: "My name is AiMate, and my creator is Abhijit Roy."
@@ -35,7 +36,10 @@ as evidence for the requested build. Explain source-specific access failures cle
 The current configured sources below are authoritative for this turn. Earlier answers
 and tool errors may reflect older settings. Never repeat an earlier scope or credential
 restriction without checking current settings and retrying the requested read. When a
-repository is currently listed, call api_read for its PR rather than claiming it is out
+capability appears unavailable, inspect the current tool list before repeating a
+past limitation. Try the permitted evidence tools first; state the specific missing
+connection or evidence only after those checks.
+When a repository is currently listed, call api_read for its PR rather than claiming it is out
 of scope. A successful connection check does not prove a particular historical build exists.
 For a full log inspection, start progressiveText at byte 0 and use each returned next_start
 exactly until more_data is false. Do not jump ahead and leave unread gaps. Finish the
@@ -78,8 +82,13 @@ Read current targets before proposing changes. For file updates use a working
 branch and current file SHA; create a branch then ask the user to confirm before
 using that branch. Read PR head SHA before proposing a merge. Use draft PRs.
 For Jira transitions read the issue transitions first. Jenkins build parameters
-may run real workloads; show the exact parameters. No shell or local code execution
-tool is available. Be concise, concrete and honest about unsupported operations.
+may run real workloads; show the exact parameters.
+When inspect_local_source is available, list connected local aliases and read
+source/evidence, Git status/diffs and manifest hashes before asking for pasted
+copies. Follow next_start to finish full reads. Local access is read-only; no
+shell or local code execution is available. Historical counts require preserved
+evidence; current API queries cannot recreate a lost historical population.
+Be concise, concrete and honest about unsupported operations.
 Present answers with readable Markdown: short headings, useful tables, code fences
 and occasional relevant emoji. Use a plain sentence for a simple question.
 For warnings use > [!WARNING] followed by a blockquote; use [!NOTE], [!TIP] or
@@ -93,6 +102,12 @@ For a useful clarification choice, a fenced poll block accepts JSON
 {"question":"What should I inspect?","options":["PR checks","Jenkins log"]}.
 Poll choices fill the user's composer; they do not send requests or execute actions.
 These are display formats, not tools. Ordinary Markdown remains the default.
+Use restrained, theme-aware colour for a useful recommendation, warning or
+confirmed status: [tone:success]Recommended next step: ...[/tone],
+[tone:warning]Unresolved evidence gap: ...[/tone], [tone:danger]Confirmed
+failure: ...[/tone], or [tone:info]Important context: ...[/tone].
+Use at most a few short inline highlights; ordinary prose stays uncoloured.
+Do not use colour to imply verification or certainty without evidence.
 """
 
 TOOLS = [
@@ -150,10 +165,11 @@ def tools_for(config):
     discovery = [DISCOVERY_TOOL] if discovery_enabled() else []
     search = SEARCH_TOOLS if search_enabled() else []
     quality = [QUALITY_TOOL] if config.get("_quality_kind") and quality_enabled() else []
+    local = [LOCAL_TOOL] if local_evidence_enabled(config) else []
     if config.get("_private"):
-        return TOOLS[:1] + REVIEW_TOOLS + DOCUMENT_TOOLS + discovery + search + quality
+        return TOOLS[:1] + REVIEW_TOOLS + DOCUMENT_TOOLS + discovery + search + quality + local
     admin_tools = ([REPOSITORY_TOOL] + ([VAULT_TOOL] if config.get("_vault_ai_access") else [])) if config.get("_role", "admin") == "admin" else []
-    return (TOOLS if config.get("allow_writes") else TOOLS[:1]) + admin_tools + MEMORY_TOOLS + REVIEW_TOOLS + DOCUMENT_TOOLS + discovery + search + quality
+    return (TOOLS if config.get("allow_writes") else TOOLS[:1]) + admin_tools + MEMORY_TOOLS + REVIEW_TOOLS + DOCUMENT_TOOLS + discovery + search + quality + local
 
 
 def action_capabilities(config):
@@ -292,11 +308,12 @@ async def propose(store, config, services, cid, args, access_check=None):
     return public_action(store.action(aid))
 
 
-async def run_turn(store, cid, question, *, client_factory=ai_client, services_factory=Services, chatgpt=None, model_mode="auto", images=None, role="admin", vault_access=None, access_check=None, template_mode="auto"):
+async def run_turn(store, cid, question, *, client_factory=ai_client, services_factory=Services, chatgpt=None, model_mode="auto", images=None, role="admin", vault_access=None, access_check=None, template_mode="auto", local_access=False):
     if access_check:
         access_check()
     config = store.config()
     config["_role"] = role
+    config["_local_access"] = local_access
     config["_vault_secrets"] = vault_redactions(store)
     config["_vault_ai_access"] = bool(vault_access and vault_access() and store.rows("SELECT id FROM vault_entries WHERE ai_access=1 LIMIT 1"))
     config["allow_writes"] = bool(config.get("allow_writes")) and role in {"admin", "developer"}
@@ -305,13 +322,13 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
         connection = Connection(config, store)
         async for event in run_chatgpt_turn(store, cid, question, connection, services_factory,
                 model_mode=model_mode, images=images, role=role, vault_access=vault_access,
-                access_check=access_check, template_mode=template_mode):
+                access_check=access_check, template_mode=template_mode,local_access=local_access):
             yield event
         return
     if config.get("ai", {}).get("provider") == "chatgpt":
         if not chatgpt:
             raise ValueError("ChatGPT sign-in is available in local live mode")
-        async for event in run_chatgpt_turn(store, cid, question, chatgpt, services_factory, model_mode=model_mode, images=images, role=role, vault_access=vault_access, access_check=access_check,template_mode=template_mode):
+        async for event in run_chatgpt_turn(store, cid, question, chatgpt, services_factory, model_mode=model_mode, images=images, role=role, vault_access=vault_access, access_check=access_check,template_mode=template_mode,local_access=local_access):
             yield event
         return
     question = scrub(question, config)
@@ -339,6 +356,7 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
     system += instruction(store,question,template_mode,config)
     config["_quality_kind"] = quality_kind(question, template_mode)
     quality = Assessment(config["_quality_kind"])
+    local_reader = LocalEvidence(config, access_check, lambda: store.config().get(LOCAL_ROOTS))
     system += quality_instruction(quality.kind)
     from app.investigation_workspace import context as investigation_context
     if not config.get("_private"):
@@ -441,6 +459,8 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
                         yield {"event":"source", "url":result["source"]}
                     elif call["name"] == "assess_answer":
                         result = quality.record(scrub(args, config))
+                    elif call["name"] == "inspect_local_source":
+                        result = await local_reader.read(args)
                     elif call["name"] == "configure_repository":
                         from app.repository_settings import propose_repository
                         proposal_config = store.source_config() if hasattr(store,"source_config") else config
@@ -518,7 +538,7 @@ def responses_history(messages, provider=None):
     return items
 
 
-async def run_chatgpt_turn(store, cid, question, connection, services_factory, *, model_mode="auto", images=None, role="admin", vault_access=None, access_check=None,template_mode="auto"):
+async def run_chatgpt_turn(store, cid, question, connection, services_factory, *, model_mode="auto", images=None, role="admin", vault_access=None, access_check=None,template_mode="auto",local_access=False):
     services = services_factory(store.config())
     if hasattr(services, "access_check"):
         services.access_check = access_check
@@ -526,20 +546,21 @@ async def run_chatgpt_turn(store, cid, question, connection, services_factory, *
         services.enable_reuse()
     try:
         async for event in _run_chatgpt_turn(store,cid,question,connection,lambda config:services,
-                                           model_mode=model_mode,images=images,role=role,vault_access=vault_access,access_check=access_check,template_mode=template_mode,scoped_factory=services_factory):
+                                           model_mode=model_mode,images=images,role=role,vault_access=vault_access,access_check=access_check,template_mode=template_mode,scoped_factory=services_factory,local_access=local_access):
             yield event
     finally:
         if hasattr(services,"aclose"):
             await services.aclose()
 
 
-async def _run_chatgpt_turn(store, cid, question, connection, services_factory, *, model_mode="auto", images=None, role="admin", vault_access=None, access_check=None,template_mode="auto",scoped_factory=None):
+async def _run_chatgpt_turn(store, cid, question, connection, services_factory, *, model_mode="auto", images=None, role="admin", vault_access=None, access_check=None,template_mode="auto",scoped_factory=None,local_access=False):
     from app.chatgpt import response_events as provider_events
     from app.usage_meter import responses
     def response_events(connection, payload, **kwargs):
         return responses(store, config, "Chat / routing", provider_events, connection, payload, **kwargs)
     config = store.config()
     config["_role"] = role
+    config["_local_access"] = local_access
     config["_vault_secrets"] = vault_redactions(store)
     config["_vault_ai_access"] = bool(vault_access and vault_access() and store.rows("SELECT id FROM vault_entries WHERE ai_access=1 LIMIT 1"))
     config["allow_writes"] = bool(config.get("allow_writes")) and role in {"admin", "developer"}
@@ -563,6 +584,7 @@ async def _run_chatgpt_turn(store, cid, question, connection, services_factory, 
     instructions += instruction(store,question,template_mode,config)
     config["_quality_kind"] = quality_kind(question, template_mode)
     quality = Assessment(config["_quality_kind"])
+    local_reader = LocalEvidence(config, access_check, lambda: store.config().get(LOCAL_ROOTS))
     instructions += quality_instruction(quality.kind)
     from app.investigation_workspace import context as investigation_context
     if not config.get("_private"):
@@ -673,6 +695,8 @@ async def _run_chatgpt_turn(store, cid, question, connection, services_factory, 
                     yield {"event":"source", "url":result["source"]}
                 elif name == "assess_answer":
                     result = quality.record(scrub(args, config))
+                elif name == "inspect_local_source":
+                    result = await local_reader.read(args)
                 elif name == "configure_repository":
                     from app.repository_settings import propose_repository
                     card = await propose_repository(store, config, cid, args, scoped_factory or services_factory, access_check=access_check)

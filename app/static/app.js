@@ -657,6 +657,8 @@ function addMessage(role, text = "", turnId = null, created = Date.now()/1000) {
   const root = element("article", `message ${role}`);
   if (turnId !== null) root.dataset.turnId = turnId;
   const heading = element("div", "message-heading");
+  const actions = element("div", "message-actions");
+  actions.setAttribute("aria-label", role === "user" ? "Your message actions" : "AiMate message actions");
   heading.append(element("div", "who", role === "user" ? "YOU" : demo && !pagesPreview ? "AiMate · Scripted demo" : "AiMate"));
   const body = element("div", "body");
   if (role === "assistant") renderAnswer(body, text);
@@ -669,7 +671,7 @@ function addMessage(role, text = "", turnId = null, created = Date.now()/1000) {
     edit.dataset.editMessage = "";
     edit.disabled = busy;
     edit.onclick = () => editMessage(message, edit);
-    heading.append(edit);
+    actions.append(edit);
   }
   const action = element("button", "message-action", "Copy");
   action.type = "button";
@@ -685,17 +687,17 @@ function addMessage(role, text = "", turnId = null, created = Date.now()/1000) {
     }
     setTimeout(() => { action.textContent = "Copy"; }, 1800);
   };
-  heading.append(action);
+  actions.append(action);
   if(role === "assistant") {
     const feedback=element("button","message-action","Feedback");feedback.type="button";
     feedback.onclick=()=> {
       if(privateChat || !message.turnId) {$("#activity").textContent="Feedback is available for saved, completed answers.";return;}
       feedbackMessage=message;feedbackRating="positive";$("#feedbackComment").value="";$("#feedbackError").textContent="";setFeedbackRating("positive");$("#feedbackDialog").showModal();
     };
-    heading.append(feedback);
+    actions.append(feedback);
   }
-  window.AiMateMessageFavorites?.install(message,role,heading);
-  root.append(heading, body);
+  window.AiMateMessageFavorites?.install(message,role,actions);
+  root.append(heading, body, actions);
   window.AiMateMessageTime?.update(message);
   $("#messages").append(root);
   scrollMessages();
