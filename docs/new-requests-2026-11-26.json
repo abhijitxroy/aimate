@@ -92,8 +92,8 @@
   },
   {
     "id": "user-auto-policy-selector",
-    "title": "P0 · WIP — User-selectable Auto policies\n\nParent: cross-provider-auto-routing. Add Balanced/Quality/Economy in the askbar, keep manual Standard/Analysis, show the model and persist browser choice. Quality/Economy use configured slots without a paid classifier; no provider/account changes. Missing Analysis blocks Quality; feature flag leaves original modes usable. Acceptance: API mode/metadata, missing/disabled policy and browser choice/reload/model checks. Remark: focused tests passed; awaiting all seven workflows and installed update. This is not the cross-provider pool.",
-    "completed": false,
+    "title": "P0 · Done — User-selectable Auto policies\n\nParent: cross-provider-auto-routing. Askbar Balanced/Quality/Economy choices retain manual Standard/Analysis and show the selected model; browser choice survives reload. Quality/Economy use configured slots without classifier cost. Missing/disabled policies are tested; no provider/account changes.\nRemark: Three policy/API tests, routing regressions and full browser checks passed. All seven workflows passed at 57f612a; installed app and migration kit updated, server restarted and policy choices verified. The full-suite fixture expectation was corrected to use current configured provider slots. This completes the selector foundation only; multi-provider pool, approved data scopes and measured model ranking remain open.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45871604694",
+    "completed": true,
     "type": "feature",
     "priority": "P0"
   }
