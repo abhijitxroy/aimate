@@ -19,9 +19,11 @@ window.AiMateLocalAI=(()=>{
     stopping=true;refreshStop(run);
     const status=$("#localStopStatus");status.hidden=false;status.textContent=unload ? "Stopping & unloading…" : "Stopping local request…";
     try {
-      const result=await api("/api/local-ai/stop",{method:"POST",body:JSON.stringify({
+      const operation=api("/api/local-ai/stop",{method:"POST",body:JSON.stringify({
         ...(run?.local ? {conversation:run.cid,request_id:run.requestId} : {}),
         model:run?.localModel || model,unload})});
+      if(run?.local)run.controller.abort();
+      const result=await operation;
       status.textContent=result.message;status.className="hint success";
       $("#localAIMessage").textContent=result.message;
     } catch(error) {status.textContent=error.message;status.className="hint warning";}

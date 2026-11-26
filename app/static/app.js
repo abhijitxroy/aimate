@@ -1033,7 +1033,8 @@ async function ask(question) {
     run={cid,controller:runController,nodes:[...$("#messages").children],private:privateChat,
       temporary:privateChat ? window.AiMateTemporaryChats?.options()?.lifetime : undefined,
       title:$("#chatTitle").textContent,activity:"Reading your question…",
-      local:window.AiMateLocalAI?.active() || false,localModel:window.AiMateLocalAI?.model(),requestId:crypto.randomUUID()};
+      local:window.AiMateLocalAI?.active() || false,localModel:window.AiMateLocalAI?.model(),
+      requestId:window.AiMateLocalAI?.active() ? crypto.randomUUID() : undefined};
     chatRuns.start(run.cid,run);
     syncChatControls();
     $("#question").value = "";

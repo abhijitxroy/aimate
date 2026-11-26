@@ -115,6 +115,30 @@ class BrowserRegressionTests(unittest.TestCase):
         self.page.locator("#localAIToggle").click()
         self.expect(self.page.locator("#stopLocalAI")).to_be_hidden()
 
+    def test_local_stop_targets_visible_request_and_immediately_releases_composer(self):
+        self.page.route("**/api/local-ai/status",lambda route:route.fulfill(status=200,content_type="application/json",
+            body=json.dumps({"available":True,"models":["qwen3:4b"],"message":"Ollama reachable."})))
+        questions=[];stops=[]
+        self.page.route("**/api/chat",lambda route:questions.append(route.request.post_data_json))
+        def stop(route):
+            stops.append(route.request.post_data_json)
+            route.fulfill(status=200,content_type="application/json",
+                          body=json.dumps({"message":"Stopped. Local model unloaded."}))
+        self.page.route("**/api/local-ai/stop",stop)
+        self.page.locator("#localAIToggle").click()
+        self.page.locator("#newChat").click()
+        self.page.locator("#question").fill("Local cancellable request")
+        with self.page.expect_request("**/api/chat") as sent:
+            self.page.locator("#send").click()
+        body=sent.value.post_data_json
+        self.expect(self.page.locator("#stop")).to_be_visible()
+        self.page.locator("#stopLocalAI").click()
+        self.expect(self.page.locator("#send")).to_be_enabled()
+        self.expect(self.page.locator("#localStopStatus")).to_have_text("Stopped. Local model unloaded.")
+        self.assertEqual(stops,[{"conversation":body["conversation"],
+            "request_id":body["request_id"],"model":"qwen3:4b","unload":True}])
+        self.expect(self.page.locator("#activity")).to_contain_text("Stopped")
+
     def test_local_ai_choice_and_cloud_failure_offer_are_explicit_and_optional(self):
         self.page.route("**/api/local-ai/status",lambda route:route.fulfill(status=200,content_type="application/json",
             body=json.dumps({"available":True,"models":["qwen3:4b"],"message":"Ollama reachable."})))
