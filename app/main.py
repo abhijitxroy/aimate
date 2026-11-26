@@ -400,6 +400,7 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
         public_config = store.public_config()
         rights = capabilities(session.get("role", "admin"), public_config)
         rights["local_evidence"] = not production and not demo and not public_showcase and not session.get("grant") and os.environ.get("AIMATE_LOCAL_EVIDENCE_ENABLED") != "0"
+        rights["knowledge_index"] = rights["local_evidence"] and os.environ.get("AIMATE_KNOWLEDGE_INDEX_ENABLED") != "0"
         public_config["allow_writes"] = rights["write"]
         return {"csrf": session["csrf"], "config": public_config, "demo": bool(demo), "access": rights,
                 "workspace": {"personal": bool(session.get("grant"))},
@@ -669,6 +670,8 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
     from app.usage_routes import register as register_usage
     register_usage(app, store, auth, config_lock)
     from app.local_evidence import register as register_local_evidence
+    from app.knowledge_index import register as register_knowledge_index
+    register_knowledge_index(app, store, auth, desktop=not production and not demo and not public_showcase)
     register_local_evidence(app, store, auth, config_lock,
                             desktop=not production and not demo and not public_showcase)
 

@@ -600,6 +600,39 @@ class BrowserRegressionTests(unittest.TestCase):
             self.expect(self.page.locator("#localEvidenceStatus")).to_contain_text("disconnected")
             self.expect(self.page.locator("#localEvidenceSources")).to_contain_text("No local folders")
 
+    def test_selected_knowledge_index_import_and_safe_paged_preview(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            def git(*args):
+                subprocess.run(["git", "-c", "core.hooksPath=", "-C", folder, *args],
+                               check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+                               env={key: value for key, value in os.environ.items() if not key.startswith("GIT_")})
+            git("init")
+            git("config", "user.email", "fixture@example.test")
+            git("config", "user.name", "Fixture")
+            text = "---\ntitle: Fixture reference\nstatus: active\n---\n<img src=x onerror=alert(1)>\n" + "pinned evidence " * 350
+            (root / "reference.md").write_text(text, encoding="utf-8")
+            git("add", "reference.md")
+            git("-c", "commit.gpgsign=false", "commit", "-m", "fixture")
+            self.page.locator("#headerSettings").click()
+            self.page.locator("#tab-changes").click()
+            self.page.locator("#openLocalEvidence").click()
+            self.page.locator("#localEvidenceName").fill("knowledge-fixture")
+            self.page.locator("#localEvidencePath").fill(folder)
+            self.page.get_by_role("button", name="Connect folder", exact=True).click()
+            self.expect(self.page.locator("#localEvidenceStatus")).to_contain_text("read-only")
+            self.page.locator("#knowledgeIndexSection > summary").click()
+            self.page.locator("#knowledgeIndexSource").select_option("knowledge-fixture")
+            self.page.locator("#knowledgeIndexPaths").fill("reference.md")
+            self.page.get_by_role("button", name="Index selected documents", exact=True).click()
+            self.expect(self.page.locator("#knowledgeIndexStatus")).to_contain_text("1 documents")
+            self.page.locator("#knowledgeIndexEntries summary").click()
+            self.page.get_by_role("button", name="Read document", exact=True).click()
+            self.expect(self.page.locator("#knowledgeIndexEntries pre")).to_have_text(text)
+            self.expect(self.page.locator("#knowledgeIndexEntries img")).to_have_count(0)
+            self.page.locator("#localEvidenceSources").get_by_role("button", name="Disconnect", exact=True).click()
+            self.expect(self.page.locator("#localEvidenceStatus")).to_contain_text("disconnected")
+
     def test_token_badge_includes_cache_reads_writes_and_restores_saved_breakdown(self):
         self.page.locator("#newChat").click()
         self.page.locator("#modelMode").select_option("standard")

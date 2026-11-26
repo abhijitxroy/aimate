@@ -86,7 +86,8 @@ class Assessment:
 
     def observe(self, name, result=None, failed=False):
         if name in {"api_read", "read_github_file", "read_pr_manifest", "read_attachment",
-                    "find_repository_files", "search_repository_text", "read_requested_repository", "inspect_local_source"}:
+                    "find_repository_files", "search_repository_text", "read_requested_repository", "inspect_local_source",
+                    "read_project_knowledge"}:
             # Later evidence invalidates an earlier assessment; don't show it as final.
             self.value = None
             if failed:

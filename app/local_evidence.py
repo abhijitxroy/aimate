@@ -143,6 +143,7 @@ class LocalEvidence:
                 if name.startswith("GIT_"):
                     env.pop(name)
             env["GIT_OPTIONAL_LOCKS"] = "0"
+            env["GIT_NO_LAZY_FETCH"] = "1"
             top = subprocess.run(["git", "--no-pager", "-c", "core.fsmonitor=false",
                 "-C", str(root), "rev-parse", "--show-toplevel"], stdout=subprocess.PIPE,
                 stderr=subprocess.DEVNULL, env=env, timeout=5, cwd=root,
