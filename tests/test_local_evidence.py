@@ -128,30 +128,36 @@ class LocalEvidenceTests(unittest.TestCase):
         with self.assertRaises(ValueError):self.call("git_show",ref="HEAD; echo bad",path="report.md")
 
     def test_owner_routes_hide_paths_and_preserve_roots_across_settings(self):
-        with tempfile.TemporaryDirectory() as data:
-            store=Store(data);store.save_config(self.cfg)
-            self.assertNotIn(KEY,store.public_config())
-            validated=validate_config(fixture_config(),store.config())
-            self.assertEqual(validated[KEY],self.cfg[KEY])
-            with patch.dict(os.environ,{"AIMATE_DEV_LOGIN":"1"}):
-                app=create_app(store=store,demo=False)
-                route=next(route for route in app.routes if getattr(route,"path","")=="/api/local-evidence" and "GET" in route.methods)
-                for role in ("developer","viewer","reviewer"):
-                    with self.assertRaises(HTTPException) as denied:
-                        route.endpoint(request=SimpleNamespace(client=SimpleNamespace(host="127.0.0.1")),
-                                       session={"role":role,"grant":"personal"})
-                    self.assertEqual(denied.exception.status_code,403)
-                with TestClient(app,base_url="http://127.0.0.1",client=("127.0.0.1",50000)) as client:
-                    csrf=client.post("/api/dev/login").json()["csrf"]
-                    headers={"x-csrf-token":csrf,"origin":"http://127.0.0.1"}
-                    response=client.put("/api/local-evidence",json={"sources":self.cfg[KEY]},headers=headers)
-                    self.assertEqual(response.status_code,200,response.text)
-                    self.assertEqual(client.get("/api/local-evidence").json()["sources"],self.cfg[KEY])
-                    self.assertNotIn(KEY,client.get("/api/state").json()["config"])
-                with patch.dict(os.environ,{"AIMATE_LOCAL_EVIDENCE_ENABLED":"0"}),TestClient(app,base_url="http://127.0.0.1",client=("127.0.0.1",50000)) as client:
-                    client.post("/api/dev/login")
-                    self.assertEqual(client.get("/api/local-evidence").status_code,403)
-            store.db.close()
+        data=tempfile.TemporaryDirectory()
+        self.addCleanup(data.cleanup)
+        store=Store(data.name)
+        self.addCleanup(store.db.close)
+        store.save_config(self.cfg)
+        self.assertNotIn(KEY,store.public_config())
+        validated=validate_config(fixture_config(),store.config())
+        self.assertEqual(validated[KEY],self.cfg[KEY])
+        with patch.dict(os.environ,{"AIMATE_DEV_LOGIN":"1"}):
+            app=create_app(store=store,demo=False)
+            route=next(route for route in app.routes if getattr(route,"path","")=="/api/local-evidence" and "GET" in route.methods)
+            for role in ("developer","viewer","reviewer"):
+                with self.assertRaises(HTTPException) as denied:
+                    route.endpoint(request=SimpleNamespace(client=SimpleNamespace(host="127.0.0.1")),
+                                   session={"role":role,"grant":"personal"})
+                self.assertEqual(denied.exception.status_code,403)
+            with TestClient(app,base_url="http://127.0.0.1",client=("127.0.0.1",50000)) as client:
+                csrf=client.post("/api/dev/login").json()["csrf"]
+                headers={"x-csrf-token":csrf,"origin":"http://127.0.0.1"}
+                response=client.put("/api/local-evidence",json={"sources":self.cfg[KEY]},headers=headers)
+                self.assertEqual(response.status_code,200,response.text)
+                saved=client.get("/api/local-evidence").json()["sources"]
+                self.assertEqual(len(saved),1)
+                self.assertEqual(saved[0]["name"],"project")
+                # Windows runners may submit an 8.3 alias; compare actual folder identity.
+                self.assertTrue(Path(saved[0]["path"]).samefile(self.root))
+                self.assertNotIn(KEY,client.get("/api/state").json()["config"])
+            with patch.dict(os.environ,{"AIMATE_LOCAL_EVIDENCE_ENABLED":"0"}),TestClient(app,base_url="http://127.0.0.1",client=("127.0.0.1",50000)) as client:
+                client.post("/api/dev/login")
+                self.assertEqual(client.get("/api/local-evidence").status_code,403)
 
     def test_native_and_responses_read_local_sources_without_network(self):
         with tempfile.TemporaryDirectory() as data:
