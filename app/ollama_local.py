@@ -5,10 +5,10 @@ import re
 import secrets
 from types import SimpleNamespace
 import httpx
+from app.local_prompt_budget import MAX_PROMPT_BYTES, fit, size
 
 URL="http://127.0.0.1:11434"
 DEFAULT_MODEL="qwen3:4b"
-MAX_PROMPT_BYTES=24_000
 MAX_RESPONSE_BYTES=1_000_000
 
 
@@ -62,8 +62,9 @@ def payload(args,stream):
     result={"model":model,"messages":rows,"stream":stream,"think":False,
         "options":{"num_ctx":32768,"num_predict":min(4096,max(1,args.get("max_tokens",4096)))}}
     if tools:result["tools"]=tools
-    if len(json.dumps(result,ensure_ascii=False).encode("utf-8"))>MAX_PROMPT_BYTES:
-        raise ValueError("The local model's prompt limit is 24 KB including context and tools. Continue in a new chat with a short saved summary, or shorten the request.")
+    result=fit(result)
+    if size(result)>MAX_PROMPT_BYTES:
+        raise ValueError("The local request still exceeds 64 KB after automatic context compaction. Your question and saved chat were kept intact. Attach long text as a document and ask about a section, or choose a cloud model.")
     return result
 
 

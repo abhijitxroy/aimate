@@ -435,23 +435,30 @@
   },
   {
     "id": "transparent-tools-sidebar",
-    "title": "P1 · WIP — Transparent Tools sidebar buttons\n\nKeep all icons and labels; remove panel backgrounds across themes.",
-    "completed": false,
+    "title": "P1 · Done — Transparent Tools sidebar buttons\n\nAll seven workflows passed at 44bcd6d: unit, integration (Windows/Linux), browser regression, reliability, quality, security and build. Live page verified seven transparent Tools buttons with icons/labels and clipboard cleanup. Accuracy is explicitly an AI-assessed evidence-support estimate, not independently measured correctness; completion derives from the requested-work checklist. Missing checks remain unverified. Code and large attachments remain lossless.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45773156583",
+    "completed": true,
     "type": "enhancement",
     "priority": "P1"
   },
   {
     "id": "answer-quality-percentages",
-    "title": "P1 · WIP — Evidence-based Accuracy and Completion badges\n\nCompute percentages from source-backed claim checks and requested-work checklist; show unverified when missing.",
-    "completed": false,
+    "title": "P1 · Done — Evidence-based Accuracy and Completion badges\n\nAll seven workflows passed at 44bcd6d: unit, integration (Windows/Linux), browser regression, reliability, quality, security and build. Live page verified seven transparent Tools buttons with icons/labels and clipboard cleanup. Accuracy is explicitly an AI-assessed evidence-support estimate, not independently measured correctness; completion derives from the requested-work checklist. Missing checks remain unverified. Code and large attachments remain lossless.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45773156583",
+    "completed": true,
     "type": "enhancement",
     "priority": "P1"
   },
   {
     "id": "pasted-prose-spacing",
-    "title": "P1 · WIP — Clean pasted prose spacing\n\nRemove repeated blank lines and empty bullets; preserve code and large evidence attachments.",
-    "completed": false,
+    "title": "P1 · Done — Clean pasted prose spacing\n\nAll seven workflows passed at 44bcd6d: unit, integration (Windows/Linux), browser regression, reliability, quality, security and build. Live page verified seven transparent Tools buttons with icons/labels and clipboard cleanup. Accuracy is explicitly an AI-assessed evidence-support estimate, not independently measured correctness; completion derives from the requested-work checklist. Missing checks remain unverified. Code and large attachments remain lossless.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45773156583",
+    "completed": true,
     "type": "enhancement",
+    "priority": "P1"
+  },
+  {
+    "id": "local-prompt-auto-compaction",
+    "title": "P1 · WIP — Continue local chats beyond the old 24 KB prompt limit\n\nUse a bounded 64 KB local request allowance and automatic history/tool-result excerpts. Preserve the latest question, safety policy, schemas, paired calls/results and saved data; validate a real downloaded local model.",
+    "completed": false,
+    "type": "bug",
     "priority": "P1"
   }
 ]

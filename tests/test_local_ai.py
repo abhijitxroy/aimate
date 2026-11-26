@@ -73,7 +73,9 @@ class LocalAITests(unittest.TestCase):
 
     def test_prompt_limit_images_and_foreign_signature_state_are_not_silently_replayed(self):
         args=self.args();args["messages"]=[{"role":"user","content":"x"*24000}]
-        with self.assertRaisesRegex(ValueError,"24 KB"):payload(args,True)
+        self.assertEqual(payload(args,True)["messages"][-1]["content"],"x"*24000)
+        args["messages"]=[{"role":"user","content":"x"*66000}]
+        with self.assertRaisesRegex(ValueError,"after automatic context compaction"):payload(args,True)
         args["messages"]=[{"role":"user","content":[{"type":"image","source":{"data":"synthetic"}}]}]
         with self.assertRaisesRegex(ValueError,"text-only"):payload(args,True)
         args["messages"]=[{"role":"assistant","content":[{"type":"text","text":"Readable answer","vertex_signature":"SECRET FOREIGN STATE"}]}]
@@ -163,6 +165,29 @@ class LocalAITests(unittest.TestCase):
             self.assertIn('"local_fallback": true',response.text)
             self.assertEqual(self.requests,[])
         finally:client.close()
+
+    def test_large_current_request_continues_in_same_chat_without_changing_saved_text(self):
+        question="Review PR 7 using the requested context:\n"+("context " * 3000)
+        cid=self.store.new_conversation()
+        self.store.save_turn(cid,[{"role":"user","content":"Earlier PR context."},
+                                 {"role":"assistant","content":"Keep this saved answer."}])
+        before=self.store.history(cid)
+        native=Client
+        with patch("app.ollama_local.Client",side_effect=lambda cfg:native(cfg,self.transport)):
+            client,headers=self.client()
+            try:
+                response=client.post("/api/chat",headers=headers,json={
+                    "conversation":cid,"question":question,"local_ai":True,"local_model":DEFAULT_MODEL})
+                self.assertIn('"event": "done"',response.text)
+                self.assertNotIn('"event": "error"',response.text)
+                generated=[json.loads(r.content) for r in self.requests if r.url.path=="/api/chat"]
+                self.assertTrue(generated)
+                self.assertGreater(len(json.dumps(generated[0]).encode()),24000)
+                self.assertIn(question,[r["content"] for r in generated[0]["messages"] if r["role"]=="user"])
+                saved=self.store.history(cid)
+                self.assertEqual(saved[:len(before)],before)
+                self.assertIn(question,[r["content"] for r in saved if r["role"]=="user"])
+            finally:client.close()
 
     def test_length_limited_reply_is_not_saved_but_reported_tokens_are_retained(self):
         self.mode="length";native=Client

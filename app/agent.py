@@ -388,7 +388,7 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
                     anthropic_usage(response.usage))
         selection = await select_model(config["ai"], model_mode, classify)
         if config.get("_local_ai"):
-            selection["notice"]="Local AI · no cloud inference. Saved context may be stale; service reads still need network/VPN."
+            selection["notice"]="Local AI · no cloud inference. Long context is compacted automatically; saved chat stays intact. Excerpts may be incomplete or stale; service reads still need network/VPN."
         add_usage(usage, by_model, config["ai"]["model"], selection["routing_usage"])
         yield selection
         for round_no in range(9):

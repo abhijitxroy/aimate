@@ -31,10 +31,19 @@ material and may be stale; no cached result is presented as a fresh live read.
 This small fallback is text-only. Images need your cloud vision provider.
 History sent to the local model uses a 3 KB readable excerpt plus existing saved
 context; full records remain available through scoped recall tools. The total
-local prompt (including context and tool schemas) is limited to 24 KB, with a
-32,768-token runtime context and at most 4,096 output tokens. Oversized or
+local request (including context and tool schemas) has a 64 KB application
+allowance, with a 32,768-token runtime context and at most 4,096 output tokens.
+This byte allowance is an application safeguard, not the model's token capacity.
+Older context and large tool results are automatically excerpted when needed.
+Policy, tool schemas, the latest question and the latest call/result group stay
+intact. Saved messages and full evidence are unchanged. Excerpts explicitly
+identify omitted content; the model must re-read smaller ranges before claiming
+complete coverage. You can continue in the same chat. A question which cannot
+fit even after compaction asks you to attach long text or use a cloud model.
+Disable compaction with `AIMATE_LOCAL_PROMPT_COMPACTION=0`.
+Oversized or
 interrupted replies return a clear error instead of saving an incomplete answer.
-For a large investigation, use a new chat with a short summary or a cloud model.
+For a large investigation, a cloud model may provide better reasoning and capacity.
 Local model answers still need verification.
 
 Provider-reported local tokens appear in Usage & billing under `ollama`.
