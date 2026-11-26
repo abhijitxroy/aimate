@@ -255,6 +255,7 @@ function updateModelInfo(message, used) {
   if (used.notice) panel.append(element("p", "hint", used.notice));
   message.modelInfo.replaceChildren(summary, panel);
   message.modelDetails = used;
+  window.AiMateAnswerQuality?.update(message,used.quality);
   return label;
 }
 
@@ -1087,7 +1088,7 @@ async function ask(question) {
         }
         if (event.event === "done") {
           renderAnswer(bot.body, bot.text);
-          if (bot.modelDetails) updateModelInfo(bot, {...bot.modelDetails, usage:event.usage});
+          if (bot.modelDetails) updateModelInfo(bot, {...bot.modelDetails, usage:event.usage, quality:event.quality});
           activity("Answer complete");
         }
         if(cid===run.cid) scrollMessages();

@@ -261,7 +261,8 @@ class ChatGPTTests(unittest.TestCase):
         self.assertEqual([t["name"] for t in payload["tools"][0]["tools"]],
                          ["api_read", "configure_repository", "search_knowledge", "read_past_conversation",
                           "read_knowledge_record", "read_saved_turn",
-                          "read_github_file", "read_pr_manifest", "review_coverage", "read_attachment", "read_requested_repository"])
+                          "read_github_file", "read_pr_manifest", "review_coverage", "read_attachment", "read_requested_repository",
+                          "find_repository_files", "search_repository_text"])
         instructions = payload["instructions"]
         self.assertIn('"change_proposals_enabled": false', instructions)
         self.assertIn('"github": false', instructions)

@@ -366,6 +366,57 @@ class BrowserRegressionTests(unittest.TestCase):
         self.assertEqual(project.locator(":scope > .group-children").evaluate(
             "el => el.firstElementChild.dataset.group"),data["child"])
 
+    def test_answer_quality_is_tiny_contextual_safe_and_dismissible(self):
+        self.page.evaluate("""() => {
+            const msg=addMessage('assistant','Evidence-backed partial review.',987,Date.now()/1000);
+            msg.root.id='quality-fixture';
+            updateModelInfo(msg,{mode:'auto',model:'fixture',usage:{input_tokens:4000,output_tokens:1200},
+              quality:{version:1,kind:'review',assessed:true,confidence:'medium',basis:'Source read; tests not run.',
+                coverage:'partial',gaps:['<img src=x onerror=alert(1)>'],further_investigation:true,
+                next_step:'Run the affected tests.',accuracy:'not_measured',source_count:2,failed_reads:1}});
+        }""")
+        root=self.page.locator("#quality-fixture")
+        quality=root.locator(".quality-info")
+        self.expect(quality.locator("summary")).to_have_text("Confidence · Medium")
+        self.assertIn("Accuracy: Not independently measured",quality.locator("summary").get_attribute("title"))
+        self.assertEqual(quality.locator("summary").evaluate("el=>getComputedStyle(el).fontSize"),"9px")
+        self.assertEqual(root.locator(".message-meta").evaluate(
+            "el=>Array.from(el.children).map(child=>child.className)"),
+            ["model-info","quality-info model-info","message-time"])
+        quality.locator("summary").click()
+        self.expect(quality.locator(".quality-details")).to_be_visible()
+        self.expect(quality.locator(".quality-details")).to_contain_text("Not independently measured")
+        self.expect(quality.locator(".quality-details")).to_contain_text("<img src=x onerror=alert(1)>")
+        self.expect(quality.locator("img")).to_have_count(0)
+        self.page.locator("#chatTitle").click()
+        self.assertFalse(quality.evaluate("el=>el.open"))
+        quality.locator("summary").click()
+        self.page.keyboard.press("Escape")
+        self.assertFalse(quality.evaluate("el=>el.open"))
+        self.page.evaluate("""() => {
+            const msg=addMessage('assistant','Hello.',988,Date.now()/1000);msg.root.id='quality-none';
+            updateModelInfo(msg,{mode:'auto',model:'fixture',usage:{input_tokens:1,output_tokens:1}});
+            const search=addMessage('assistant','Source lookup.',989,Date.now()/1000);search.root.id='quality-search';
+            updateModelInfo(search,{mode:'standard',model:'fixture',quality:{version:1,kind:'search',assessed:true,
+                confidence:'low',basis:'One source, not corroborated.',source_count:1}});
+            window.AiMateFeatures={...window.AiMateFeatures,answerQuality:false};
+            window.AiMateAnswerQuality.update(search,{version:1,kind:'review',assessed:false});
+        }""")
+        self.expect(self.page.locator("#quality-none .quality-info")).to_have_count(0)
+        self.expect(self.page.locator("#quality-search .quality-info")).to_have_count(0)
+        self.expect(self.page.locator("#quality-search > .message-meta > .model-info")).to_have_count(1)
+        self.page.evaluate("""() => {
+            window.AiMateFeatures.answerQuality=true;
+            const msg=addMessage('assistant','A source lookup.',990,Date.now()/1000);msg.root.id='quality-search-visible';
+            updateModelInfo(msg,{mode:'auto',model:'fixture',quality:{version:1,kind:'search',assessed:true,
+                confidence:'low',basis:'One source, not corroborated.',source_count:1}});
+        }""")
+        search=self.page.locator("#quality-search-visible .quality-info")
+        search.locator("summary").click()
+        self.expect(search.locator(".quality-details")).to_contain_text("Not independently measured")
+        self.assertNotIn("Further investigation",search.locator(".quality-details").inner_text())
+        self.assertNotIn("Coverage",search.locator(".quality-details").inner_text())
+
     def test_token_badge_includes_cache_reads_writes_and_restores_saved_breakdown(self):
         self.page.locator("#newChat").click()
         self.page.locator("#modelMode").select_option("standard")

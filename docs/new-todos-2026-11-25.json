@@ -120,10 +120,10 @@
   },
   {
     "id": "backlog-c271f2bb931810eef633f7c7",
-    "title": "P2 · Planned — Compare search, retrieval, analysis and visualisation\n\nUse repeatable tasks and measurements to compare the reference Dashboard and AiMate; document gaps and prioritise improvements. Reference repository access remains required.",
+    "title": "P0 · WIP — Search quality, Nexus knowledge and verified investigations\n\nHighest-priority workstream. Plan: docs/search-quality-plan.md. SQ-01 through SQ-15 are separate child tasks. Correctness and complete evidence precede speed. Reuse applicable past knowledge with current-source verification; keep answers compact with expandable detail and real metrics. Code/storage audit is complete; implementation and matched Odin answer-quality benchmark remain open. Never mark parity complete from a screenshot or fixtures alone.",
     "completed": false,
     "type": "triage",
-    "priority": "P2"
+    "priority": "P0"
   },
   {
     "id": "backlog-0be296b9e4ffbd54c89c40ca",
@@ -288,9 +288,114 @@
   },
   {
     "id": "backlog-nested-editor-paste",
-    "title": "P1 · WIP — Restore large text/file paste inside the styled askbar\n\nHandle clipboard events from nested editor lines. Preserve full pasted text as a document card and existing drafts; prevent duplicate short inserts and show import/size errors. Browser and exact-commit workflow validation pending.",
-    "completed": false,
+    "title": "P1 · Done — Restore large text/file paste inside the styled askbar\n\nLarge text and file paste now works from nested styled-editor lines. The exact 5,630-byte sample was preserved as one document card in an isolated local browser, without an AI request. Short paste inserts once, failed size checks preserve drafts, and all 74 browser tests plus seven exact-commit GitHub workflows passed.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45742800859",
+    "completed": true,
     "type": "bug",
     "priority": "P1"
+  },
+  {
+    "id": "search-quality-01",
+    "title": "P0 · Done — SQ-01: Storage/cache and reference architecture audit\n\nParent: backlog-c271f2bb931810eef633f7c7. Plan: docs/search-quality-plan.md.\nCompared the reference source tools, DB mirror, in-process cache tiers and prompt caching with AiMate SQLCipher, chat recall, briefs, coverage checkpoints and evidence snapshots. Inspected knowledge-repository architecture and metadata. This is code-audit evidence, not live runtime performance or answer parity.",
+    "completed": true,
+    "type": "triage",
+    "priority": "P0"
+  },
+  {
+    "id": "search-quality-02",
+    "title": "P0 · Planned — SQ-02: Matched reference benchmark and verified expected facts\n\nParent: backlog-c271f2bb931810eef633f7c7. Plan: docs/search-quality-plan.md.\nUse the same questions, needed context, access and source versions. Score independently verified facts, coverage, citations and unsupported claims; record time/tokens/cost separately. Exact reference question/context and full answers still needed.",
+    "completed": false,
+    "type": "task",
+    "priority": "P0"
+  },
+  {
+    "id": "search-quality-03",
+    "title": "P0 · WIP — SQ-03: Dedicated scoped repository file/content search\n\nParent: backlog-c271f2bb931810eef633f7c7. Plan: docs/search-quality-plan.md.\nFirst implementation batch. Add commit-pinned file discovery and bounded content search with explicit pagination/gaps, permission checks and independent disable switch. Test native/Responses providers, private mode, incomplete trees and source errors.",
+    "completed": false,
+    "type": "feature",
+    "priority": "P0"
+  },
+  {
+    "id": "search-quality-04",
+    "title": "P0 · Planned — SQ-04: Knowledge-repository connection and selected indexing\n\nParent: backlog-c271f2bb931810eef633f7c7. Plan: docs/search-quality-plan.md.\nConnect the approved Nexus repository by validated access. Ingest selected Markdown and metadata at pinned commits, preserving status, aliases/tags, scope, dates and evidence links. No credentials or automatic all-repository imports.",
+    "completed": false,
+    "type": "feature",
+    "priority": "P0"
+  },
+  {
+    "id": "search-quality-05",
+    "title": "P0 · Planned — SQ-05: Structured reusable failures, observations and outcomes\n\nParent: backlog-c271f2bb931810eef633f7c7. Plan: docs/search-quality-plan.md.\nStore symptoms/signatures, conditions, environment/version, evidence, diagnosis, resolution, actual outcome, reviewer/status and visibility. Keep private/candidate/shared separate; support corrections and retirement with provenance.",
+    "completed": false,
+    "type": "feature",
+    "priority": "P0"
+  },
+  {
+    "id": "search-quality-06",
+    "title": "P0 · Planned — SQ-06: Relevant retrieval, ranking and optional reranking\n\nParent: backlog-c271f2bb931810eef633f7c7. Plan: docs/search-quality-plan.md.\nCombine exact identifiers, metadata/aliases and full-text ranking. Check missed matches and irrelevant matches. Evaluate embeddings/reranking only when justified; do not send private content to a new provider implicitly.",
+    "completed": false,
+    "type": "enhancement",
+    "priority": "P0"
+  },
+  {
+    "id": "search-quality-07",
+    "title": "P0 · Planned — SQ-07: Approved read-only project-data connector\n\nParent: backlog-c271f2bb931810eef633f7c7. Plan: docs/search-quality-plan.md.\nAdd an optional scoped data API/database adapter with freshness, row/time limits and dataset/denominator citations. Source endpoint/schema/access needs setup. Personal chat/config/vault records are not a domain-data mirror.",
+    "completed": false,
+    "type": "feature",
+    "priority": "P0"
+  },
+  {
+    "id": "search-quality-08",
+    "title": "P0 · Planned — SQ-08: Thorough investigation and final evidence gate\n\nParent: backlog-c271f2bb931810eef633f7c7. Plan: docs/search-quality-plan.md.\nPlan, inspect current sources, test past-case applicability, resolve contradictions and complete file/log coverage before a verdict. Persist checkpoints and state unresolved gaps if access/budget prevents finishing. Progress summaries must not expose hidden reasoning.",
+    "completed": false,
+    "type": "feature",
+    "priority": "P0"
+  },
+  {
+    "id": "search-quality-09",
+    "title": "P0 · Planned — SQ-09: Cache tiers, freshness, invalidation and retention\n\nParent: backlog-c271f2bb931810eef633f7c7. Plan: docs/search-quality-plan.md.\nScope caches to credentials/workspace/source versions. Separate immutable content, mutable facts, retrieval indexes, past cases and provider prefix caching. Bound storage and mark freshness; test revoked/changed access and stale/conflicting data.",
+    "completed": false,
+    "type": "enhancement",
+    "priority": "P0"
+  },
+  {
+    "id": "search-quality-10",
+    "title": "P0 · Planned — SQ-10: Verified Standard/Analysis routing for real investigations\n\nParent: backlog-c271f2bb931810eef633f7c7. Plan: docs/search-quality-plan.md.\nConfigure and verify the authorized Analysis model; preserve manual control and honest fallback. Verify deeper tasks route correctly and display actual model plus reported token/cache use.",
+    "completed": false,
+    "type": "enhancement",
+    "priority": "P0"
+  },
+  {
+    "id": "search-quality-11",
+    "title": "P0 · Planned — SQ-11: Compact modular answer presentation\n\nParent: backlog-c271f2bb931810eef633f7c7. Plan: docs/search-quality-plan.md.\nShort verdict plus a small useful findings/action table; expandable evidence, gaps, reasons and technical detail. Readable code/JSON/YAML, accessible colour and real measured charts/metrics. Do not show every raw step by default.",
+    "completed": false,
+    "type": "enhancement",
+    "priority": "P0"
+  },
+  {
+    "id": "search-quality-12",
+    "title": "P0 · Planned — SQ-12: Quality and performance measurements before/after\n\nParent: backlog-c271f2bb931810eef633f7c7. Plan: docs/search-quality-plan.md.\nMatched samples of factual accuracy, coverage, supported citations, latency, calls, tokens and cost. No critical factual regressions per agreed case; separate quality from speed. Do not invent percentage improvement.",
+    "completed": false,
+    "type": "enhancement",
+    "priority": "P0"
+  },
+  {
+    "id": "search-quality-13",
+    "title": "P0 · Planned — SQ-13: User-reviewed learning capture and shared promotion\n\nParent: backlog-c271f2bb931810eef633f7c7. Plan: docs/search-quality-plan.md.\nOffer candidate learning after a verified outcome. User review controls personal-to-shared promotion and repository writes; track corrections, retired cases and source links. Repeated symptoms are not automatically confirmed recurrence.",
+    "completed": false,
+    "type": "feature",
+    "priority": "P0"
+  },
+  {
+    "id": "search-quality-14",
+    "title": "P0 · Planned — SQ-14: Isolation, migration and end-to-end release verification\n\nParent: backlog-c271f2bb931810eef633f7c7. Plan: docs/search-quality-plan.md.\nValidate source/account/private-mode isolation, permission revocation, secret exclusion, encrypted restore and disabled modules. Each code batch needs relevant local checks and all seven workflows; real-source validation and benchmark gaps stay explicit.",
+    "completed": false,
+    "type": "task",
+    "priority": "P0"
+  },
+  {
+    "id": "search-quality-15",
+    "title": "P0 · WIP — SQ-15: Tiny contextual answer-quality labels\n\nParent: backlog-c271f2bb931810eef633f7c7. Plan: docs/search-quality-plan.md.\nBeside token usage for analysis, code reviews, architecture/design and technical notes. Hover/click shows qualitative confidence, coverage, gaps and further investigation. Simple replies stay clean; factual search shows minimal source confidence. No invented accuracy percentages. Persist metadata; validate disabled feature, both provider loops, safe rendering and dismissal.",
+    "completed": false,
+    "type": "feature",
+    "priority": "P0"
   }
 ]

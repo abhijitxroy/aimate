@@ -517,6 +517,14 @@ fieldset > label { margin-bottom: 12px; }
 .model-token-counts small { display: block; font-size: 10px; color: var(--muted); }
 .model-token-counts strong { display: block; margin-top: 3px; color: var(--text); font-size: 14px; font-weight: 500; }
 .model-details p { margin: 10px 0 0; }
+.quality-info > summary { font-size: 9px; }
+.quality-info[data-confidence=high] > summary { color: var(--success,#69e3b1); }
+.quality-info[data-confidence=medium] > summary { color: var(--warning,#ffbd66); }
+.quality-info[data-confidence=low] > summary { color: var(--danger); }
+.quality-details { max-width: 390px; color: var(--text); }
+.quality-details dl { display: grid; grid-template-columns: auto minmax(0,1fr); gap: 8px 12px; margin: 0; font-size: 11px; line-height: 1.5; }
+.quality-details dt { color: var(--muted); }
+.quality-details dd { margin: 0; overflow-wrap: anywhere; }
 .conversation-context button { display: flex; align-items: center; gap: 9px; }
 .menu-action-icon { display: inline-flex; width: 14px; height: 14px; flex-shrink: 0; color: currentColor; }
 .icon-choices { display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; margin-bottom: 16px; }
