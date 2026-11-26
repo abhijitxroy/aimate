@@ -22,6 +22,7 @@ from app.answer_quality import TOOL as QUALITY_TOOL, Assessment, kind as quality
 from app.local_evidence import TOOL as LOCAL_TOOL, LocalEvidence, enabled as local_evidence_enabled, KEY as LOCAL_ROOTS
 from app.knowledge_index import TOOLS as KNOWLEDGE_TOOLS, Index as KnowledgeIndex, enabled as knowledge_enabled
 from app.investigation_completion import reason as completion_reason, checkpoint as completion_checkpoint
+from app.answer_synthesis import SYSTEM as SYNTHESIS_SYSTEM, packet as synthesis_packet, enabled as synthesis_enabled, recovered as synthesis_recovered
 
 SYSTEM = """You are AiMate, a project assistant for GitHub, Jira and Jenkins, created by Abhijit Roy.
 When asked your name, answer: "My name is AiMate, and my creator is Abhijit Roy."
@@ -453,6 +454,34 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
                     messages.append({"role": "user", "content": [
                         {"type": "tool_result", "tool_use_id": call["id"], "is_error": True,
                          "content": "Not executed: investigation paused at a request limit."} for call in calls]})
+                if pause == "empty_answer" and synthesis_enabled():
+                    if access_check:
+                        access_check()
+                    try:
+                        final = await client.messages.create(model=selection["model"], max_tokens=4096,
+                            system=SYNTHESIS_SYSTEM, messages=[{"role": "user",
+                            "content": scrub(synthesis_packet(messages[start:], question), config)}])
+                    except Exception:
+                        # Preserve the evidence checkpoint on provider/budget errors;
+                        # cancellation still propagates and permissions are rechecked.
+                        final = None
+                    if access_check:
+                        access_check()
+                    if final is not None:
+                        add_usage(usage, by_model, getattr(final, "model", None) or selection["model"],
+                                  anthropic_usage(final.usage))
+                    text = scrub("".join(getattr(b, "text", "") for b in getattr(final, "content", [])
+                                         if getattr(b, "type", "") == "text"), config)
+                    if any(getattr(b, "type", "") == "tool_use" for b in getattr(final, "content", [])):
+                        text = ""
+                    if text.strip():
+                        messages.append({"role": "assistant", "content": text})
+                        yield {"event": "text", "delta": ("\n\n" if answer else "") + text}
+                        if getattr(final, "stop_reason", None) != "max_tokens":
+                            completion, final_quality = synthesis_recovered(quality)
+                            completed = True
+                            break
+                        pause = "output_limit"
                 completion, final_quality = completion_checkpoint(pause, quality)
                 note = completion["notice"]
                 messages.append({"role": "assistant", "content": note})
@@ -717,9 +746,39 @@ async def _run_chatgpt_turn(store, cid, question, connection, services_factory, 
                 saved.append({"role": "user", "content": [
                     {"type": "tool_result", "tool_use_id": call["call_id"], "is_error": True,
                      "content": "Not executed: investigation paused at a request limit."} for call in calls]})
-            completion, final_quality = completion_checkpoint(pause, quality)
-            saved.append({"role": "assistant", "content": completion["notice"]})
-            yield {"event": "text", "delta": "\n\n" + completion["notice"]}
+            if pause == "empty_answer" and synthesis_enabled():
+                if access_check:
+                    access_check()
+                recovery_payload = {"model": model, "instructions": SYNTHESIS_SYSTEM, "store": False,
+                    "stream": True, "tool_choice": "none", "input": [{"role": "user",
+                    "content": scrub(synthesis_packet(saved, question), config)}]}
+                recovered_text, recovered_result = "", None
+                try:
+                    async for recovery_event in response_events(connection, recovery_payload, expected_account=account_id):
+                        if access_check:
+                            access_check()
+                        if recovery_event["type"] == "response.output_text.delta":
+                            recovered_text += recovery_event.get("delta", "")
+                        elif recovery_event["type"] == "response.completed":
+                            recovered_result = recovery_event["response"]
+                            add_usage(usage, by_model, recovered_result.get("model") or model, recovered_result.get("usage", {}))
+                except Exception:
+                    recovered_result = None
+                if access_check:
+                    access_check()
+                recovered_text = scrub(recovered_text, config)
+                if (recovered_result and recovered_text.strip() and
+                    not any(item.get("type") == "function_call" for item in recovered_result.get("output", []))):
+                    saved.append({"role": "assistant", "content": recovered_text})
+                    completion, final_quality = synthesis_recovered(quality)
+                    yield {"event": "text", "delta": "\n\n" + recovered_text}
+                else:
+                    completion, final_quality = completion_checkpoint(pause, quality)
+            else:
+                completion, final_quality = completion_checkpoint(pause, quality)
+            if completion["status"] == "incomplete":
+                saved.append({"role": "assistant", "content": completion["notice"]})
+                yield {"event": "text", "delta": "\n\n" + completion["notice"]}
             if access_check:
                 access_check()
             store.save_turn(cid, scrub(saved, config), {"model": model, "mode": model_mode, "route": selection["route"],

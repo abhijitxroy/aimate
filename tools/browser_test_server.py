@@ -61,6 +61,9 @@ class AI:
         self.messages = self
 
     async def create(self, **kwargs):
+        if kwargs.get("system", "").startswith("Produce the final answer now"):
+            return SimpleNamespace(content=[SimpleNamespace(type="text", text="Synthetic recovered findings; runtime cause remains unverified.")],
+                                   stop_reason="end_turn", usage=SimpleNamespace(input_tokens=20, output_tokens=12))
         return SimpleNamespace(content=[SimpleNamespace(type="text", text='{"route":"analysis"}')],
                                usage=SimpleNamespace(input_tokens=20, output_tokens=6))
 
@@ -68,6 +71,8 @@ class AI:
         question=str(kwargs["messages"][-1]["content"])
         if question == "Output limit fixture":
             return Stream(kwargs["model"], "Synthetic partial answer.", stop="max_tokens")
+        if question == "Empty final fixture":
+            return Stream(kwargs["model"], "")
         if question.startswith("Parallel "):
             return Stream(kwargs["model"],"Reply: "+question,slow=True)
         if "Which ticket" in str(kwargs["messages"][-1]["content"]):

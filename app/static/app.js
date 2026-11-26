@@ -933,8 +933,9 @@ async function loadConversation(id, title, version) {
     }
     let bot;
     for (const msg of turn.messages) {
-      if (msg.role !== "assistant" || !Array.isArray(msg.content)) continue;
-      const text = msg.content.filter(b => b.type === "text").map(b => b.text).join("\n\n");
+      if (msg.role !== "assistant") continue;
+      const text = typeof msg.content === "string" ? msg.content :
+        Array.isArray(msg.content) ? msg.content.filter(b => b.type === "text").map(b => b.text).join("\n\n") : "";
       if (text) {
         if (!bot) bot = addMessage("assistant", text, turn.id, turn.created);
         else { bot.text += "\n\n" + text; renderAnswer(bot.body, bot.text); }
@@ -1097,7 +1098,8 @@ async function ask(question) {
           renderAnswer(bot.body, bot.text);
           if (bot.modelDetails) updateModelInfo(bot, {...bot.modelDetails, usage:event.usage, quality:event.quality,
             ...(event.completion ? {completion:event.completion, notice:event.completion.notice} : {})});
-          activity(event.completion?.status === "incomplete" ? "Investigation incomplete · checkpoint saved" : "Answer complete");
+          activity(event.completion?.status === "incomplete" ? "Investigation incomplete · checkpoint saved" :
+            event.completion?.status === "partial" ? "Findings ready · review evidence gaps" : "Answer complete");
         }
         if(cid===run.cid) scrollMessages();
       }
@@ -1958,8 +1960,9 @@ function conversationMarkdown(conversation) {
         }
         if (turn.usage?.attachments?.length) lines.push("");
       }
-      const answers = turn.messages.filter(m => m.role === "assistant" && Array.isArray(m.content))
-        .flatMap(m => m.content.filter(b => b.type === "text").map(b => b.text));
+      const answers = turn.messages.filter(m => m.role === "assistant")
+        .flatMap(m => typeof m.content === "string" ? [m.content] :
+          Array.isArray(m.content) ? m.content.filter(b => b.type === "text").map(b => b.text) : []);
       if (answers.length) lines.push("## AiMate", "", answers.join("\n\n"), "");
       const sources = new Set();
       for (const message of turn.messages) for (const block of Array.isArray(message.content) ? message.content : []) {

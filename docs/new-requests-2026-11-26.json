@@ -75,5 +75,19 @@
     "completed": false,
     "type": "feature",
     "priority": "P0"
+  },
+  {
+    "id": "empty-final-answer-recovery",
+    "title": "P0 · WIP — Recover final findings after an empty model answer\n\nObserved: a real analysis run gathered sources and emitted progress, then ended with no final text after an assessment validation error. Add one bounded tool-free synthesis request from existing, source-labelled evidence excerpts; exclude hidden reasoning and secrets. Never restart searches, execute pending actions or invent full coverage. Preserve an incomplete checkpoint if recovery fails or returns empty text; partial findings must stay labelled partial. Acceptance: native/Responses paths, failed/empty recovery, disabled module, private/revoked access and browser reload. Remark: implementing and validating recovery; live-source correctness and broad evidence gate remain separate.",
+    "completed": false,
+    "type": "bug",
+    "priority": "P0"
+  },
+  {
+    "id": "cross-provider-auto-routing",
+    "title": "P0 · Planned — Auto routing across validated AI connection profiles\n\nExtend beyond current Standard/Analysis slots: optional encrypted profiles for Bedrock Claude/GPT, Gemini Vertex, OpenCode-backed models and eligible ChatGPT/Codex connections. Tools/clients are not themselves distinct models; avoid duplicate routes to the same backend. Separate Intel-approved and personal data permissions; never transfer protected evidence to an unapproved account. Select one eligible model per request using task type, context/vision/tool capabilities, verified access, health and explicit cost ceilings. Provide manual override, selection explanation and approved fallback; no silent expensive escalation or concurrent multi-model billing. Validate candidate invocation separately from catalog presence, preserve credential removal/revocation and fail closed when no permitted profile exists. Acceptance: provider/profile isolation, no secret exposure, revoked/expired access, deterministic routing contracts, benchmark quality and live access checks. Dependencies: multi-provider profile storage/settings and permission labels; current Auto only chooses the active provider Standard/Analysis models. Remark: new routing feature; not implemented yet.",
+    "completed": false,
+    "type": "feature",
+    "priority": "P0"
   }
 ]

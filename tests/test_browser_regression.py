@@ -109,6 +109,14 @@ class BrowserRegressionTests(unittest.TestCase):
         self.page.locator("#send").click()
         self.expect(self.page.locator("#activity")).to_have_text("Answer complete")
 
+    def test_empty_final_answer_recovers_findings_without_repeating_search(self):
+        self.page.locator("#question").fill("Empty final fixture")
+        self.page.locator("#send").click()
+        self.expect(self.page.locator("#activity")).to_have_text("Findings ready · review evidence gaps")
+        self.expect(self.page.locator("#messages")).to_contain_text("Synthetic recovered findings")
+        self.page.reload()
+        self.expect(self.page.locator("#messages")).to_contain_text("Synthetic recovered findings")
+
     def local_fixture(self):
         self.page.route("**/api/local-ai/status",lambda route:route.fulfill(status=200,content_type="application/json",
             body=json.dumps({"available":True,"models":["qwen3:4b"],"message":"Ollama reachable."})))

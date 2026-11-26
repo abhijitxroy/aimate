@@ -107,7 +107,8 @@ class CompletionTests(unittest.TestCase):
                 async def run():
                     return [event async for event in run_turn(store, cid, "Review synthetic input",
                         client_factory=Answer, services_factory=lambda _: None, model_mode="standard")]
-                events = asyncio.run(run())
+                with patch.dict(os.environ, {"AIMATE_FINAL_SYNTHESIS_ENABLED": "0"}):
+                    events = asyncio.run(run())
                 self.assertEqual(events[-1]["completion"]["reason"], expected)
                 self.assertEqual(store.rows("SELECT count(*) n FROM turns")[0]["n"], 1)
                 store.db.close()
