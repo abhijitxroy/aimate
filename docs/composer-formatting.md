@@ -7,8 +7,9 @@ Formatting is stored as portable Markdown text, so copying/exporting/editing ret
 The editor grows with multiline text, including generated warnings, tables and code. It reveals the inserted text automatically; long messages scroll within a bounded editor so the send controls remain available. Clearing the editor returns it to its compact height.
 
 Type `---` on its own line and press **Shift+Enter** to create a visible
-horizontal rule and continue typing below it. Markdown keeps the original
-`---` for copying, exporting and sending. Code blocks keep literal dashes.
+horizontal rule and continue typing directly below it, without extra blank
+rows. It is saved as the equivalent Markdown `***` so preceding text cannot
+turn it into a heading. Code blocks keep literal dashes.
 Undo restores the typed line. Disable this shortcut and its inline decoration
 with `window.AiMateFeatures.horizontalRule=false`; normal Shift+Enter still works.
 

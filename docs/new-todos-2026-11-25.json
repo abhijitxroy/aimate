@@ -463,14 +463,28 @@
   },
   {
     "id": "askbar-horizontal-rule-shortcut",
-    "title": "P1 · WIP — Askbar horizontal rule with three dashes and Shift+Enter\n\nDisplay a horizontal rule, continue below it and retain portable Markdown. Preserve literal code, Undo, disabled mode and ordinary newline behavior.",
-    "completed": false,
+    "title": "P1 · Done — Askbar horizontal rule with three dashes and Shift+Enter\n\nAll seven workflows passed at e36e3d0. Browser tests cover the horizontal-rule shortcut, normal/code/disabled behavior, Undo, Foreground replacement/reset, existing nested markup and combined formats. Pure JS tests cover repeated toggling, unselected text and adjacent coloured runs. The installed live page displayed a rule after --- plus Shift+Enter; Foreground created one colour wrapper and the next click removed it. Updated source, installed app and migration kit.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45788565612",
+    "completed": true,
     "type": "enhancement",
     "priority": "P1"
   },
   {
     "id": "askbar-foreground-toggle",
-    "title": "P1 · WIP — Foreground replaces/resets colour without nested tags\n\nRename Colour to Foreground. Reapplying the same colour resets to default; a different colour replaces it. Repair existing nesting and preserve other formatting/unselected text.",
+    "title": "P1 · Done — Foreground replaces/resets colour without nested tags\n\nAll seven workflows passed at e36e3d0. Browser tests cover the horizontal-rule shortcut, normal/code/disabled behavior, Undo, Foreground replacement/reset, existing nested markup and combined formats. Pure JS tests cover repeated toggling, unselected text and adjacent coloured runs. The installed live page displayed a rule after --- plus Shift+Enter; Foreground created one colour wrapper and the next click removed it. Updated source, installed app and migration kit.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45788565612",
+    "completed": true,
+    "type": "bug",
+    "priority": "P1"
+  },
+  {
+    "id": "askbar-caret-visible",
+    "title": "P1 · WIP — Visible theme-aware askbar caret\n\nUse theme text colour for native and rich carets, including coloured text.",
+    "completed": false,
+    "type": "bug",
+    "priority": "P1"
+  },
+  {
+    "id": "askbar-compact-rule",
+    "title": "P1 · WIP — Compact horizontal rule without spacer rows\n\nCreate a rule and move directly below it. Preserve Markdown, Undo, code literals and disabled behavior.",
     "completed": false,
     "type": "bug",
     "priority": "P1"

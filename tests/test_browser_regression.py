@@ -850,17 +850,19 @@ class BrowserRegressionTests(unittest.TestCase):
         field=self.page.locator("#question")
         field.fill("First paragraph\n---")
         field.press("Shift+Enter")
-        self.expect(field).to_have_js_property("value","First paragraph\n\n---\n\n")
+        self.expect(field).to_have_js_property("value","First paragraph\n***\n")
         rule=field.get_by_role("separator",name="Horizontal rule")
         self.expect(rule).to_be_visible()
         self.assertEqual(rule.evaluate("e=>getComputedStyle(e).borderBottomStyle"),"solid")
-        self.expect(self.page.locator("#questionSource")).to_have_value("First paragraph\n\n---\n\n")
+        self.expect(self.page.locator("#questionSource")).to_have_value("First paragraph\n***\n")
+        self.assertEqual(rule.evaluate("e=>getComputedStyle(e).marginTop"),"0px")
+        self.assertEqual(rule.evaluate("e=>getComputedStyle(e).marginBottom"),"0px")
         field.press("Control+z")
         self.expect(field).to_have_js_property("value","First paragraph\n---")
         self.expect(rule).to_have_count(0)
         field.press("Shift+Enter")
         field.press_sequentially("Next paragraph")
-        self.expect(field).to_have_js_property("value","First paragraph\n\n---\n\nNext paragraph")
+        self.expect(field).to_have_js_property("value","First paragraph\n***\nNext paragraph")
         self.expect(rule).to_have_count(1)
         self.expect(self.page.locator("#welcome")).to_be_visible() # No request was submitted.
         field.fill("```text\n---")
@@ -872,6 +874,19 @@ class BrowserRegressionTests(unittest.TestCase):
         field.press("Shift+Enter")
         self.expect(field).to_have_js_property("value","---\n")
         self.expect(rule).to_have_count(0)
+
+    def test_askbar_caret_uses_readable_theme_colour_even_in_coloured_text(self):
+        field=self.page.locator("#question")
+        field.fill("[colour:#eb0f46]Hello[/colour]")
+        for theme in ("navy","beige","black-blue","life","brown-gold"):
+            self.page.evaluate("theme=>window.AiMateAppearance.apply(theme)",theme)
+            styles=field.evaluate("""e=>({
+                caret:getComputedStyle(e).caretColor,text:getComputedStyle(e).color,
+                colouredCaret:getComputedStyle(e.querySelector('[data-rich-colour]')).caretColor,
+                colouredText:getComputedStyle(e.querySelector('[data-rich-colour]')).color})""")
+            self.assertEqual(styles["caret"],styles["text"],theme)
+            self.assertEqual(styles["colouredCaret"],styles["text"],theme)
+            self.assertNotEqual(styles["colouredCaret"],styles["colouredText"],theme)
 
     def test_foreground_replaces_or_resets_colour_and_repairs_existing_nested_tags(self):
         field=self.page.locator("#question")

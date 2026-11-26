@@ -16,11 +16,10 @@ export function insertHorizontalRule(view) {
     if(["FencedCode","CodeBlock"].includes(node.name) && node.from<=line.from && node.to>=line.to) literal=true;
   }});
   if(literal) return false;
-  // A blank line before the rule prevents Markdown's Setext-heading ambiguity.
-  const prefix=line.number>1 && doc.line(line.number-1).text.trim() ? "\n" : "";
-  const insert=prefix+"---"+(line.to===doc.length ? "\n\n" : "\n");
+  // *** is an unambiguous Markdown rule, without spacer rows or a Setext heading.
+  const insert="***"+(line.to===doc.length ? "\n" : "");
   view.dispatch({changes:{from:line.from,to:line.to,insert},
-    selection:EditorSelection.cursor(line.from+insert.length),scrollIntoView:true,
+    selection:EditorSelection.cursor(line.from+insert.length+(line.to<doc.length ? 1 : 0)),scrollIntoView:true,
     annotations:[Transaction.userEvent.of("input.horizontal-rule"),isolateHistory.of("full")]});
   return true;
 }
@@ -29,7 +28,7 @@ export function decorateHorizontalRule(view,node,ranges) {
   if(!enabled() || node.name!=="HorizontalRule") return;
   const line=view.state.doc.lineAt(node.from);
   // Show typed dashes until Shift+Enter terminates the line.
-  if(line.to===view.state.doc.length || !/^\s{0,3}---\s*$/.test(line.text)) return;
+  if(line.to===view.state.doc.length || !/^\s{0,3}(?:---|\*\*\*)\s*$/.test(line.text)) return;
   ranges.push(Decoration.line({attributes:{class:"cm-horizontal-rule",role:"separator",
     "aria-label":"Horizontal rule"}}).range(line.from));
   ranges.push(Decoration.replace({}).range(node.from,node.to));

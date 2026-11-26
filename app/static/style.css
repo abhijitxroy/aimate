@@ -399,6 +399,7 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; }
 .composer { padding: 16px; border: 1px solid #9fc5ef44; border-radius: 18px; background: #1b365480; backdrop-filter: blur(24px); box-shadow: 0 12px 40px #0002; }
 .composer textarea { background: transparent; border: 0; resize: none; padding: 0; min-height: 46px; line-height: 1.6; }
 .composer textarea:focus-visible { outline: none; box-shadow: none; }
+#question, #question * { caret-color: var(--text); }
 .composer:focus-within { border-color: #6392b64d; }
 .composer-tools { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; }
 .composer-tools #modelMode { max-width: min(260px, 80%); }

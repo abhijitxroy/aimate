@@ -114,7 +114,7 @@ export function attach(source) {
       ".cm-inline-italic":{fontStyle:"italic"},
       ".cm-inline-underline":{textDecoration:"underline"},
       ".cm-inline-code":{fontFamily:"Consolas,monospace",color:"var(--accent)"},
-      ".cm-horizontal-rule":{borderBottom:"1px solid var(--muted)",minHeight:"8px",margin:"6px 0"},
+      ".cm-horizontal-rule":{borderBottom:"1px solid var(--muted)",minHeight:"8px",lineHeight:"8px",margin:"0"},
       ".cm-selectionBackground":{backgroundColor:"#79baff40 !important"}
     })
   ];
