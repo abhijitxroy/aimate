@@ -1,0 +1,4 @@
+# Historical fixture false positives: literal sample issue IDs and a test-only
+# redaction marker. Exact fingerprints only; credential rules remain enabled.
+ae8fdcf7374b9eaa058325b6ec6e1f1f4b55db81:tests/test_retrieval_rank.py:generic-api-key:16
+ae8fdcf7374b9eaa058325b6ec6e1f1f4b55db81:tests/test_retrieval_rank.py:generic-api-key:53

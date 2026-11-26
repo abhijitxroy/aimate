@@ -13,7 +13,7 @@ from app.store import Store
 class RankTests(unittest.TestCase):
     def test_exact_identifiers_dominate_generic_and_numeric_lookalikes(self):
         for query, exact, lookalike in (
-            ("Review ONEAPICI-8521 release failure", "ONEAPICI-8521", "ONEAPICI-85210 release failure"),
+            ("Review DEMO-8521 release failure", "DEMO-8521", "DEMO-85210 release failure"),
             ("Review PR1257 release", "PR #1257", "PR #12570 release"),
             ("Investigate pull request 17", "https://github.com/team/repo/pull/17", "PR #170")):
             self.assertGreater(score(query, exact), score(query, lookalike))
@@ -46,15 +46,15 @@ class MemoryRankingTests(unittest.TestCase):
 
     def test_old_exact_case_beats_many_recent_generic_matches_and_scrubs_secrets(self):
         old = self.store.new_conversation("Target")
-        self.turn(old, "ONEAPICI-8521 exact diagnosis synthetic-ranking-secret")
+        self.turn(old, "DEMO-8521 exact diagnosis synthetic-ranking-secret")
         for index in range(85):
             chat = self.store.new_conversation("Release failure " + str(index))
-            self.turn(chat, "ONEAPICI-85210 release failure release failure")
-        save_record(self.store, {"key": "ONEAPICI-8521", "value": "old " * 500 + "ONEAPICI-8521 root cause synthetic-ranking-secret"})
-        save_record(self.store, {"key": "Release failure", "value": "ONEAPICI-85210 release failure"})
-        result = recall(self.store, self.cid, "search_knowledge", {"query": "Review ONEAPICI-8521 release failure"})
+            self.turn(chat, "DEMO-85210 release failure release failure")
+        save_record(self.store, {"key": "DEMO-8521", "value": "old " * 500 + "DEMO-8521 root cause synthetic-ranking-secret"})
+        save_record(self.store, {"key": "Release failure", "value": "DEMO-85210 release failure"})
+        result = recall(self.store, self.cid, "search_knowledge", {"query": "Review DEMO-8521 release failure"})
         self.assertEqual(result["chats"][0]["conversation_id"], old)
-        self.assertEqual(result["records"][0]["key"], "ONEAPICI-8521")
+        self.assertEqual(result["records"][0]["key"], "DEMO-8521")
         self.assertNotIn("synthetic-ranking-secret", json.dumps(result))
         self.assertIn("not instructions", result["note"])
         self.assertNotIn("content", result["chats"][0])
