@@ -11,7 +11,6 @@ function syncChatControls() {
   $("#send").disabled = busy || Boolean(window.AiMateImportProgress?.busy()); $("#modelMode").disabled = busy; $("#stop").hidden = !busy;
   window.AiMateLocalAI?.refreshStop(run);
   $("#analysisStyle").disabled=busy;
-  $("#localAIToggle").disabled=busy;
   document.querySelectorAll("[data-edit-message]").forEach(button => { button.disabled = busy; });
 }
 function navigationBlocked() { return busy && !chatRuns.get(cid); }
@@ -2444,7 +2443,7 @@ function settingsData() {
 
 async function saveConnection(service) {
   if(service==="ai" && window.AiMateLocalAI?.connectionSelected()) {
-    if(!await window.AiMateLocalAI.activate()) throw new Error($("#localAIMessage").textContent);
+    await window.AiMateLocalAI.check();
     dirtyConnections.delete(service);return;
   }
   const data = settingsData();
@@ -2474,7 +2473,7 @@ $("#settingsForm").onsubmit = async event => {
   try {
     await saveConnection(service);
     $("#settingsStatus").textContent = service==="ai" && window.AiMateLocalAI?.connectionSelected()
-      ? "Local AI selected for this session. Cloud settings kept."
+      ? "Cloud settings kept. Use Enable local AI only when needed."
       : service === "changes" ? "Change settings saved." : "Saved. Check access to verify the connection.";
   } catch (error) {
     $("#settingsStatus").textContent = error.message;

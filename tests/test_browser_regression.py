@@ -93,61 +93,72 @@ class BrowserRegressionTests(unittest.TestCase):
     def tearDown(self):
         self.context.close()
 
-    def test_local_stop_unload_is_explicit_and_cloud_controls_stay_usable(self):
-        self.page.route("**/api/local-ai/status",lambda route:route.fulfill(status=200,content_type="application/json",
-            body=json.dumps({"available":True,"models":["qwen3:4b"],"message":"Ollama reachable."})))
-        stopped=[]
-        def stop(route):
-            stopped.append(route.request.post_data_json)
-            route.fulfill(status=200,content_type="application/json",
-                          body=json.dumps({"message":"Stopped. Local model unloaded."}))
-        self.page.route("**/api/local-ai/stop",stop)
-        self.expect(self.page.locator("#stopLocalAI")).to_be_hidden()
-        self.page.locator("#localAIToggle").click()
-        self.expect(self.page.locator("#stopLocalAI")).to_be_visible()
-        self.page.locator("#stopLocalAI").click()
-        self.expect(self.page.locator("#localStopStatus")).to_have_text("Stopped. Local model unloaded.")
-        self.assertEqual(stopped,[{"model":"qwen3:4b","unload":True}])
-        self.page.locator("#localAIToggle").click()
-        self.expect(self.page.locator("#stopLocalAI")).to_be_hidden()
-        self.expect(self.page.locator("#send")).to_be_enabled()
-        self.page.evaluate("()=>window.AiMateLocalAI.setControls(false)")
-        self.page.locator("#localAIToggle").click()
-        self.expect(self.page.locator("#stopLocalAI")).to_be_hidden()
+    def local_settings(self):
+        self.page.locator("#headerSettings").click()
+        self.page.locator('[name="ai.provider"]').select_option("local")
+        self.expect(self.page.locator("#localAISettings")).to_be_visible()
 
-    def test_local_stop_targets_visible_request_and_immediately_releases_composer(self):
+    def local_fixture(self):
         self.page.route("**/api/local-ai/status",lambda route:route.fulfill(status=200,content_type="application/json",
             body=json.dumps({"available":True,"models":["qwen3:4b"],"message":"Ollama reachable."})))
-        questions=[];stops=[]
-        self.page.route("**/api/chat",lambda route:questions.append(route.request.post_data_json))
+        stops=[]
         def stop(route):
             stops.append(route.request.post_data_json)
-            route.fulfill(status=200,content_type="application/json",
-                          body=json.dumps({"message":"Stopped. Local model unloaded."}))
+            route.fulfill(status=200,content_type="application/json",body=json.dumps({"message":"Stopped."}))
         self.page.route("**/api/local-ai/stop",stop)
-        self.page.locator("#localAIToggle").click()
-        self.page.locator("#newChat").click()
-        self.page.locator("#question").fill("Local cancellable request")
-        with self.page.expect_request("**/api/chat") as sent:
-            self.page.locator("#send").click()
-        body=sent.value.post_data_json
-        self.expect(self.page.locator("#stop")).to_be_visible()
-        self.page.locator("#stopLocalAI").click()
+        return stops
+
+    def test_local_stop_unload_is_explicit_and_cloud_controls_stay_usable(self):
+        stops=self.local_fixture()
+        self.assertEqual(self.page.locator("#localAIToggle, #stopLocalAI, #localStopStatus").count(),0)
+        self.local_settings()
+        self.expect(self.page.locator("#localAIState")).to_contain_text("Off")
+        self.page.locator("#saveConnection").click()
+        self.expect(self.page.locator("#localAIState")).to_contain_text("Off")
+        self.page.locator("#useLocalAI").click()
+        self.expect(self.page.locator("#localAIState")).to_contain_text("On")
+        self.page.locator("#useCloudAI").click()
+        self.expect(self.page.locator("#localAIMessage")).to_have_text("Local AI off. Model memory released.")
+        self.expect(self.page.locator("#localAIState")).to_contain_text("Off")
+        self.assertEqual(stops,[{"model":"qwen3:4b","unload":True}])
+        self.page.locator('[data-close="settingsDialog"]').click()
         self.expect(self.page.locator("#send")).to_be_enabled()
-        self.expect(self.page.locator("#localStopStatus")).to_have_text("Stopped. Local model unloaded.")
-        self.assertEqual(stops,[{"conversation":body["conversation"],
-            "request_id":body["request_id"],"model":"qwen3:4b","unload":True}])
-        self.expect(self.page.locator("#activity")).to_contain_text("Stopped")
+        self.page.reload()
+        self.expect(self.page.locator("#workspace")).to_be_visible()
+        self.local_settings()
+        self.expect(self.page.locator("#localAIState")).to_contain_text("Off")
+
+    def test_local_stop_targets_visible_request_and_immediately_releases_composer(self):
+        stops=self.local_fixture()
+        self.page.route("**/api/chat",lambda route:None)
+        self.local_settings()
+        self.page.locator("#useLocalAI").click()
+        self.expect(self.page.locator("#localAIState")).to_contain_text("On")
+        self.page.locator('[data-close="settingsDialog"]').click()
+        requests=[]
+        for text in ("First local request","Second local request"):
+            self.page.locator("#newChat").click()
+            self.page.locator("#question").fill(text)
+            with self.page.expect_request("**/api/chat") as sent:
+                self.page.locator("#send").click()
+            requests.append(sent.value.post_data_json)
+            self.expect(self.page.locator("#stop")).to_be_visible()
+        self.page.locator("#headerSettings").click()
+        self.page.locator("#useCloudAI").click()
+        self.expect(self.page.locator("#localAIMessage")).to_have_text("Local AI off. Model memory released.")
+        self.assertEqual(stops,[*[{"conversation":body["conversation"],"request_id":body["request_id"],"unload":False}
+            for body in requests],{"model":"qwen3:4b","unload":True}])
+        self.page.locator('[data-close="settingsDialog"]').click()
+        self.expect(self.page.locator("#send")).to_be_enabled()
+        self.expect(self.page.locator("#stop")).to_be_hidden()
+        self.assertEqual(self.page.evaluate("()=>chatRuns.size()"),0)
 
     def test_local_ai_choice_and_cloud_failure_offer_are_explicit_and_optional(self):
-        self.page.route("**/api/local-ai/status",lambda route:route.fulfill(status=200,content_type="application/json",
-            body=json.dumps({"available":True,"models":["qwen3:4b"],"message":"Ollama reachable."})))
+        self.local_fixture()
         requests=[]
         def chat(route):
             body=route.request.post_data_json;requests.append(body)
-            events=([{"event":"model","mode":"auto","route":"standard","model":"qwen3:4b"},
-                     {"event":"text","delta":"Local fallback answered."},
-                     {"event":"done","model":"qwen3:4b","usage":{"input_tokens":10,"output_tokens":3}}]
+            events=([{ "event":"text","delta":"Local fallback answered."},{"event":"done"}]
                 if body.get("local_ai") else [{"event":"error","message":"Cloud unavailable.","local_fallback":True}])
             route.fulfill(status=200,content_type="text/event-stream",
                 body="".join("data: "+json.dumps(event)+"\n\n" for event in events))
@@ -155,23 +166,38 @@ class BrowserRegressionTests(unittest.TestCase):
         self.page.locator("#newChat").click()
         self.page.locator("#question").fill("Local consent check")
         self.page.locator("#send").click()
-        button=self.page.locator("#continueOfflineAI")
-        self.expect(button).to_be_visible()
+        self.expect(self.page.get_by_role("button",name="Open AI connections",exact=True)).to_be_visible()
         self.assertEqual(len(requests),1)
         self.assertFalse(requests[0]["local_ai"])
-        button.click()
+        self.expect(self.page.locator("#offlineAIDialog")).to_be_hidden()
+        self.page.get_by_role("button",name="Open AI connections",exact=True).click()
+        self.expect(self.page.locator("#localAIState")).to_contain_text("Off")
+        self.page.locator("#useLocalAI").click()
+        self.expect(self.page.locator("#localAIState")).to_contain_text("On")
+        self.page.locator('[data-close="settingsDialog"]').click()
+        self.page.locator("#question").fill("Try local explicitly")
+        self.page.locator("#send").click()
         self.expect(self.page.locator("#messages")).to_contain_text("Local fallback answered.")
-        self.assertEqual(len(requests),2)
-        self.assertTrue(requests[1]["local_ai"])
-        self.assertEqual(requests[1]["local_model"],"qwen3:4b")
-        self.expect(self.page.locator("#localAIToggle")).to_have_attribute("aria-pressed","true")
-        self.expect(self.page.locator("#modelMode")).to_contain_text("Qwen3 4B")
-        self.page.locator("#localAIToggle").click()
-        self.expect(self.page.locator("#localAIToggle")).to_have_attribute("aria-pressed","false")
+        self.assertTrue(requests[-1]["local_ai"])
         self.page.evaluate("()=>{window.AiMateFeatures={...window.AiMateFeatures,localAI:false};document.dispatchEvent(new Event('aimate:state'));}")
-        self.expect(self.page.locator("#localAIToggle")).to_be_hidden()
-        self.page.locator("#question").fill("Cloud draft still available")
-        self.expect(self.page.locator("#question")).to_have_js_property("value","Cloud draft still available")
+        self.assertFalse(self.page.evaluate("()=>window.AiMateLocalAI.active()"))
+
+    def test_connection_stop_during_enable_check_never_reactivates_local_ai(self):
+        self.local_fixture()
+        self.local_settings()
+        self.expect(self.page.locator("#useLocalAI")).to_be_enabled()
+        checks=[]
+        self.page.unroute("**/api/local-ai/status")
+        self.page.route("**/api/local-ai/status",lambda route:checks.append(route))
+        self.page.locator("#useLocalAI").click()
+        self.expect(self.page.locator("#checkLocalAI")).to_be_disabled()
+        self.page.locator("#useCloudAI").click()
+        self.expect(self.page.locator("#localAIMessage")).to_have_text("Local AI off. Model memory released.")
+        checks[-1].fulfill(status=200,content_type="application/json",body=json.dumps({
+            "available":True,"models":["qwen3:4b"],"message":"Ollama reachable."}))
+        self.expect(self.page.locator("#checkLocalAI")).to_be_enabled()
+        self.expect(self.page.locator("#localAIState")).to_contain_text("Off")
+        self.assertFalse(self.page.evaluate("()=>window.AiMateLocalAI.active()"))
 
     def test_local_connection_picker_keeps_cloud_settings_and_hides_cloud_fields(self):
         self.page.route("**/api/local-ai/status",lambda route:route.fulfill(status=200,content_type="application/json",
@@ -192,9 +218,8 @@ class BrowserRegressionTests(unittest.TestCase):
         self.assertEqual(writes,[])
         self.assertEqual(self.page.evaluate("()=>JSON.stringify(config.ai)"),before)
         self.page.locator("#useCloudAI").click()
-        self.expect(picker).not_to_have_value("local")
-        self.expect(self.page.locator("#localAIToggle")).to_have_attribute("aria-pressed","false")
-        self.expect(self.page.locator("#testAIButton")).to_be_visible()
+        self.expect(self.page.locator("#localAIState")).to_contain_text("Off")
+        self.assertFalse(self.page.evaluate("()=>window.AiMateLocalAI.active()"))
         self.page.evaluate("()=>{window.AiMateFeatures={...window.AiMateFeatures,localAI:false};document.dispatchEvent(new Event('aimate:state'));}")
         self.assertTrue(picker.locator('[value="local"]').is_disabled())
         self.expect(self.page.locator("#localAISettings")).to_be_hidden()
@@ -210,7 +235,7 @@ class BrowserRegressionTests(unittest.TestCase):
         self.expect(self.page.locator("#offlineAIDialog")).to_be_visible()
         self.expect(self.page.locator("#offlineAIReason")).to_contain_text("No cloud AI connection")
         self.expect(self.page.locator("#offlineAIStatus")).to_contain_text("No models installed")
-        self.expect(self.page.locator("#continueOfflineAI")).to_be_disabled()
+        self.assertEqual(self.page.locator("#continueOfflineAI").count(),0)
         self.page.locator("#cancelOfflineAI").click()
         self.expect(self.page.locator("#offlineAIDialog")).to_be_hidden()
         self.expect(self.page.locator("#question")).to_have_js_property("value","Keep this offline draft")
@@ -220,7 +245,7 @@ class BrowserRegressionTests(unittest.TestCase):
             body=json.dumps({"available":False,"models":[],"message":"Start Ollama on this laptop."})))
         self.page.locator("#send").click()
         self.expect(self.page.locator("#offlineAIStatus")).to_contain_text("Start Ollama")
-        self.expect(self.page.locator("#continueOfflineAI")).to_be_disabled()
+        self.assertEqual(self.page.locator("#continueOfflineAI").count(),0)
         self.page.keyboard.press("Escape")
         self.expect(self.page.locator("#offlineAIDialog")).to_be_hidden()
         self.assertEqual(requests,[])
@@ -236,9 +261,15 @@ class BrowserRegressionTests(unittest.TestCase):
         self.page.evaluate("()=>{config.ai={};}")
         self.page.locator("#question").fill("Use offline only when I agree")
         self.page.locator("#send").click()
-        self.expect(self.page.locator("#continueOfflineAI")).to_be_enabled()
+        self.expect(self.page.locator("#offlineAIConnections")).to_be_enabled()
         self.assertEqual(requests,[])
-        self.page.locator("#continueOfflineAI").click()
+        self.page.locator("#offlineAIConnections").click()
+        self.expect(self.page.locator("#localAIState")).to_contain_text("Off")
+        self.assertEqual(requests,[])
+        self.page.locator("#useLocalAI").click()
+        self.expect(self.page.locator("#localAIState")).to_contain_text("On")
+        self.page.locator('[data-close="settingsDialog"]').click()
+        self.page.locator("#send").click()
         self.expect(self.page.locator("#messages")).to_contain_text("Offline consent answered.")
         self.assertEqual(len(requests),1)
         self.assertTrue(requests[0]["local_ai"])
@@ -253,32 +284,25 @@ class BrowserRegressionTests(unittest.TestCase):
         self.page.locator("#question").fill("Keep cloud until I choose")
         self.page.locator("#send").click()
         self.expect(self.page.locator("#offlineAIReason")).to_have_text("You appear to be offline.")
-        self.expect(self.page.locator("#continueOfflineAI")).to_be_enabled()
+        self.expect(self.page.locator("#offlineAIConnections")).to_be_enabled()
         self.page.locator("#cancelOfflineAI").click()
-        self.expect(self.page.locator("#localAIToggle")).to_have_attribute("aria-pressed","false")
+        self.assertFalse(self.page.evaluate("()=>window.AiMateLocalAI.active()"))
         self.expect(self.page.locator("#question")).to_have_js_property("value","Keep cloud until I choose")
         self.assertEqual(calls,[])
 
     def test_cancelling_offline_popup_during_recheck_never_activates_local(self):
         checks=[];calls=[]
-        body=json.dumps({"available":True,"models":["qwen3:4b"],"message":"Ollama reachable."})
-        def status(route):
-            checks.append(route)
-            if len(checks)==1:route.fulfill(status=200,content_type="application/json",body=body)
-        self.page.route("**/api/local-ai/status",status)
+        self.page.route("**/api/local-ai/status",lambda route:checks.append(route))
         self.page.route("**/api/chat",lambda route:(calls.append(route.request.post_data),route.abort()))
         self.page.evaluate("()=>{config.ai={};}")
         self.page.locator("#question").fill("Cancel the pending local switch")
         self.page.locator("#send").click()
-        self.expect(self.page.locator("#continueOfflineAI")).to_be_enabled()
-        self.page.locator("#continueOfflineAI").click()
-        self.expect(self.page.locator("#checkLocalAI")).to_be_disabled()
+        self.expect(self.page.locator("#offlineAIDialog")).to_be_visible()
         self.page.locator("#cancelOfflineAI").click()
-        self.assertEqual(len(checks),2)
-        checks[-1].fulfill(status=200,content_type="application/json",body=body)
+        checks[-1].fulfill(status=200,content_type="application/json",body=json.dumps({
+            "available":True,"models":["qwen3:4b"],"message":"Ollama reachable."}))
         self.expect(self.page.locator("#checkLocalAI")).to_be_enabled()
-        self.expect(self.page.locator("#offlineAIDialog")).to_be_hidden()
-        self.expect(self.page.locator("#localAIToggle")).to_have_attribute("aria-pressed","false")
+        self.assertFalse(self.page.evaluate("()=>window.AiMateLocalAI.active()"))
         self.expect(self.page.locator("#question")).to_have_js_property("value","Cancel the pending local switch")
         self.assertEqual(calls,[])
 

@@ -505,9 +505,16 @@
   },
   {
     "id": "local-stop-unload",
-    "title": "P1 · WIP — Stop local generation and unload its model\n\nServer-side request cancellation and explicit memory release. Awaiting all seven workflows and installed live validation.",
-    "completed": false,
+    "title": "P1 · Done — Stop local generation and unload its model\n\nAll seven workflows passed at 50f4de4: unit, Windows/Linux integration, browser regression, reliability, quality, security and build. Stop cancels only the exact session-owned local request and closes inference without saving an unfinished reply; the same chat can retry. Stop & unload checks actual Ollama model state, blocks when another AiMate chat uses the model, and has an optional disable flag. The installed live askbar button returned Stopped. Local model unloaded; Ask remained enabled. Actual Ollama loaded-model list was empty. Source, installed app and migration kit updated.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45816979723",
+    "completed": true,
     "type": "bug",
+    "priority": "P1"
+  },
+  {
+    "id": "local-ai-settings-only",
+    "title": "P1 · WIP — Local AI enable and stop only in Connections\n\nRemove askbar local switches. Default off; explicit enable in Connections only. Stop and disable all local chats owned by this page and unload their models. Offline notices must preserve drafts and link to settings without activating local inference. Awaiting all seven workflows and installed live UI validation.",
+    "completed": false,
+    "type": "enhancement",
     "priority": "P1"
   }
 ]

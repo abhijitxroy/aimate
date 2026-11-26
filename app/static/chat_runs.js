@@ -4,6 +4,7 @@ window.AiMateRuns = (() => {
   return {
     get: id => runs.get(id),
     size: () => runs.size,
+    list: () => [...runs.values()],
     start(id, run) {
       if (runs.has(id)) throw new Error("This conversation is already answering.");
       if (runs.size >= 3) throw new Error("Three chats are answering. Wait for one to finish.");
