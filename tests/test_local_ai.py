@@ -39,9 +39,10 @@ class LocalAITests(unittest.TestCase):
             if not body["stream"]:return httpx.Response(200,json=final)
             values=[{"message":message,"done":False}]
             if self.mode=="legacy":
-                final["message"]["content"]="Unshown reasoning</think>\nLocal answer."
+                final["message"]["content"]="<think>Unshown reasoning</think>\nLocal answer."
                 if not body["stream"]:return httpx.Response(200,json=final)
-                values=[{"message":{"content":"Unshown reasoning</thi"},"done":False},
+                values=[{"message":{"content":"<thi"},"done":False},
+                        {"message":{"content":"nk>Unshown reasoning</thi"},"done":False},
                         {"message":{"content":"nk>\nLocal answer."},"done":False}]
             if self.mode!="interrupted":values.append({**final,"message":{"content":""}})
             return httpx.Response(200,text="".join(json.dumps(v)+"\n" for v in values),
@@ -100,8 +101,11 @@ class LocalAITests(unittest.TestCase):
             try:
                 async with client.stream(**self.args()) as stream:
                     text="".join([part async for part in stream.text_stream])
-                    self.assertEqual(text,"Local answer.")
-                    self.assertEqual((await stream.get_final_message()).usage.output_tokens,4)
+                self.assertEqual(text.strip(),"Local answer.")
+                body=json.loads(next(r.content for r in self.requests if r.url.path=="/api/chat"))
+                self.assertEqual(body["messages"][-1],{"role":"user","content":"Hello"})
+                self.assertEqual(body["options"]["num_thread"],4)
+                self.assertEqual((await stream.get_final_message()).usage.output_tokens,4)
             finally:await client.close()
         asyncio.run(run())
 
@@ -143,6 +147,7 @@ class LocalAITests(unittest.TestCase):
                 response=client.post("/api/chat",headers=headers,json={"conversation":cid,"question":"Read my PR",
                     "local_ai":True,"local_model":DEFAULT_MODEL})
                 self.assertIn('"event": "done"',response.text)
+                self.assertIn('"event": "local_status"',response.text)
                 self.assertIn("Local answer",response.text)
                 budget.assert_not_called()
                 self.assertEqual(self.store.config(),before)
@@ -187,6 +192,35 @@ class LocalAITests(unittest.TestCase):
                 saved=self.store.history(cid)
                 self.assertEqual(saved[:len(before)],before)
                 self.assertIn(question,[r["content"] for r in saved if r["role"]=="user"])
+            finally:client.close()
+
+    def test_local_timeout_reports_error_cancels_work_and_does_not_save_a_turn(self):
+        class Slow(httpx.AsyncByteStream):
+            closed=False
+            async def __aiter__(self):
+                while True:
+                    await asyncio.sleep(.02)
+                    yield b'{"message":{"content":"<think>"},"done":false}\n'
+            async def aclose(self):self.closed=True
+        slow=Slow()
+        def remote(request):
+            if request.url.path=="/api/chat":return httpx.Response(200,stream=slow)
+            if request.url.path=="/api/tags":
+                return httpx.Response(200,json={"models":[{"name":DEFAULT_MODEL}]})
+            return httpx.Response(200,json={"model_info":{"general.architecture":"qwen3"},"details":{"format":"gguf"}})
+        native=Client
+        with patch("app.ollama_local.Client",side_effect=lambda cfg:native(cfg,httpx.MockTransport(remote))),patch(
+                "app.ollama_local.MAX_SECONDS",.2):
+            client,headers=self.client()
+            try:
+                cid=self.store.new_conversation()
+                response=client.post("/api/chat",headers=headers,json={"conversation":cid,"question":"Hello","local_ai":True})
+                self.assertIn('"event": "local_status"',response.text)
+                self.assertIn('"event": "error"',response.text)
+                self.assertIn("2 minutes",response.text)
+                self.assertNotIn('"event": "done"',response.text)
+                self.assertTrue(slow.closed)
+                self.assertEqual(self.store.rows("SELECT id FROM turns WHERE conversation=?",(cid,)),[])
             finally:client.close()
 
     def test_length_limited_reply_is_not_saved_but_reported_tokens_are_retained(self):

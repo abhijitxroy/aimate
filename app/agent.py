@@ -351,7 +351,7 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
     context_reference = "" if config.get("_private") else scrub(memory_context(store, cid, question), config)
     system = SYSTEM + action_capabilities(config) + context_reference + "\nConfigured sources:\n" + json.dumps(scope) + "\nRecent proposal outcomes:\n" + json.dumps(outcomes)
     if config.get("_local_ai"):
-        system += "\nLocal inference: saved context and cached snapshots may be stale. Use service tools for live facts only when their network is reachable; clearly report failed access. Do not claim offline access to current remote data."
+        system += "\nLocal inference: saved context and cached snapshots may be stale. Use service tools for live facts only when their network is reachable; clearly report failed access. Do not claim offline access to current remote data. Keep the reply concise; report verified findings and unfinished scope explicitly."
     from app.analysis_styles import instruction
     system += instruction(store,question,template_mode,config)
     config["_quality_kind"] = quality_kind(question, template_mode)
@@ -398,6 +398,8 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
                       "system": system, "messages": messages, "tools": available_tools}
             if round_no == 8:
                 params["tool_choice"] = {"type": "none"}
+            if config.get("_local_ai"):
+                yield {"event":"local_status","message":"Processing on this laptop · CPU-friendly mode · 2-minute limit. Stop cancels the request."}
             async with client.messages.stream(**params) as stream:
                 first_delta = True
                 protected_text = ""

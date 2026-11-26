@@ -477,16 +477,30 @@
   },
   {
     "id": "askbar-caret-visible",
-    "title": "P1 · WIP — Visible theme-aware askbar caret\n\nUse theme text colour for native and rich carets, including coloured text.",
-    "completed": false,
+    "title": "P1 · Done — Visible theme-aware askbar caret\n\nAll seven workflows passed at e63700d. Browser checks verified native caret colour across five themes and inside coloured text, plus compact rule source, zero margins, typing below, Undo/code/disabled behavior. The installed page showed a light caret matching navy text and exactly Before/rule/After rows with no spacer rows. Source, installed app and migration kit updated.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45790347626",
+    "completed": true,
     "type": "bug",
     "priority": "P1"
   },
   {
     "id": "askbar-compact-rule",
-    "title": "P1 · WIP — Compact horizontal rule without spacer rows\n\nCreate a rule and move directly below it. Preserve Markdown, Undo, code literals and disabled behavior.",
+    "title": "P1 · Done — Compact horizontal rule without spacer rows\n\nAll seven workflows passed at e63700d. Browser checks verified native caret colour across five themes and inside coloured text, plus compact rule source, zero margins, typing below, Undo/code/disabled behavior. The installed page showed a light caret matching navy text and exactly Before/rule/After rows with no spacer rows. Source, installed app and migration kit updated.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45790347626",
+    "completed": true,
+    "type": "bug",
+    "priority": "P1"
+  },
+  {
+    "id": "local-cpu-runtime-guard",
+    "title": "P1 · WIP — Bound local CPU use and replace indefinite Thinking status\n\nAdaptive 8K–32K contexts, four threads, 1024 output tokens, one-minute idle retention and shared two-minute model deadline. Cancel streams on timeout; preserve saved data and hide reasoning. Validate real qwen3 smoke test.",
     "completed": false,
     "type": "bug",
+    "priority": "P1"
+  },
+  {
+    "id": "local-lightweight-model",
+    "title": "P1 · WIP — Lighter non-thinking offline model (download awaiting network)\n\nqwen2.5:3b download timed out against registry.ollama.ai. A tool policy blocked a temporary loopback download helper. Download on an approved reachable network, then verify real answers and scoped tool use before changing the default. No model replacement completed.",
+    "completed": false,
+    "type": "enhancement",
     "priority": "P1"
   }
 ]

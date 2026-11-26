@@ -32,7 +32,17 @@ This small fallback is text-only. Images need your cloud vision provider.
 History sent to the local model uses a 3 KB readable excerpt plus existing saved
 context; full records remain available through scoped recall tools. The total
 local request (including context and tool schemas) has a 64 KB application
-allowance, with a 32,768-token runtime context and at most 4,096 output tokens.
+allowance, with an adaptive 8,192–32,768-token runtime context and at most 1,024
+output tokens. Local inference uses four CPU threads and a two-minute total
+budget across the turn's model calls; Stop also cancels it. The interface shows
+local processing status rather than an indefinite “Thinking”. Models stay loaded
+for one idle minute. Smaller requests use a smaller context to reduce memory.
+Older Qwen templates can ignore `think=false` and spend their output budget
+on hidden reasoning. Their thinking is filtered and the same time limit applies.
+For a low-load, non-thinking alternative, download and select `qwen2.5:3b`
+when the approved network can reach the Ollama registry. Installation is not
+automatic; fixture tests do not prove that another model is installed.
+These settings reduce load; CPU-only inference may still spin the fans.
 This byte allowance is an application safeguard, not the model's token capacity.
 Older context and large tool results are automatically excerpted when needed.
 Policy, tool schemas, the latest question and the latest call/result group stay

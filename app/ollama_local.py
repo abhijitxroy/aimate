@@ -1,11 +1,15 @@
 """Optional loopback-only Ollama inference; never downloads models or reads credentials."""
 import json
+import asyncio
 import os
 import re
 import secrets
+import sys
+import time
 from types import SimpleNamespace
 import httpx
 from app.local_prompt_budget import MAX_PROMPT_BYTES, fit, size
+from app.local_inference import MAX_SECONDS, TIMEOUT_MESSAGE, ThoughtFilter, options
 
 URL="http://127.0.0.1:11434"
 DEFAULT_MODEL="qwen3:4b"
@@ -60,11 +64,13 @@ def payload(args,stream):
         {"type":"function","function":{"name":t["name"],"description":t.get("description",""),
             "parameters":t["input_schema"]}} for t in args.get("tools",[])]
     result={"model":model,"messages":rows,"stream":stream,"think":False,
-        "options":{"num_ctx":32768,"num_predict":min(4096,max(1,args.get("max_tokens",4096)))}}
+        "keep_alive":"1m","options":{}}
     if tools:result["tools"]=tools
+    result["options"]=options(size(result),args.get("max_tokens",1024))
     result=fit(result)
     if size(result)>MAX_PROMPT_BYTES:
         raise ValueError("The local request still exceeds 64 KB after automatic context compaction. Your question and saved chat were kept intact. Attach long text as a document and ask about a section, or choose a cloud model.")
+    result["options"]=options(size(result),args.get("max_tokens",1024))
     return result
 
 
@@ -120,6 +126,7 @@ class Client:
         self.messages=self
         self.verified=set()
         self.legacy_thinking=set()
+        self.started=None
 
     async def verify(self,model):
         if any(marker in model.lower() for marker in ("-cloud",":cloud")):
@@ -127,7 +134,7 @@ class Client:
         if model not in self.verified:
             if model not in await installed(self.http):
                 raise ValueError("Local model "+model+" is not installed. Run: ollama pull "+model)
-            response=await self.http.post(URL+"/api/show",json={"model":model})
+            response=await self.http.post(URL+"/api/show",json={"model":model},timeout=5)
             if response.status_code!=200 or len(response.content)>200_000:
                 raise ValueError("Local model metadata is unavailable.")
             data=response.json()
@@ -141,17 +148,29 @@ class Client:
                     self.legacy_thinking.add(model)
             self.verified.add(model)
 
+    async def prepare(self,body):
+        if self.started is None:self.started=time.monotonic()
+        await self.verify(body["model"])
+        return body
+
+    def remaining(self):
+        remaining=MAX_SECONDS-(time.monotonic()-self.started)
+        if remaining<=0:raise ValueError(TIMEOUT_MESSAGE)
+        return remaining
+
     async def create(self,**args):
-        body=payload(args,False);await self.verify(body["model"])
-        try:response=await self.http.post(URL+"/api/chat",json=body)
+        body=await self.prepare(payload(args,False))
+        try:
+            async with asyncio.timeout(self.remaining()):
+                response=await self.http.post(URL+"/api/chat",json=body)
+        except TimeoutError:raise ValueError(TIMEOUT_MESSAGE) from None
         except httpx.HTTPError:raise ValueError("Local inference failed. Check Ollama and retry.") from None
         if response.status_code!=200 or len(response.content)>MAX_RESPONSE_BYTES:
             raise ValueError("Ollama rejected this request. Check the installed model and available memory.")
         data=response.json();message=data.get("message",{});text=message.get("content","")
-        if body["model"] in self.legacy_thinking:
-            if "</think>" not in text and not message.get("tool_calls"):
-                raise ValueError("The local model did not separate its reply from reasoning. Retry a narrower question.")
-            text=text.split("</think>",1)[1].lstrip() if "</think>" in text else ""
+        thoughts=ThoughtFilter()
+        if body["model"] in self.legacy_thinking:thoughts.inside=True
+        text=thoughts.feed(text)+thoughts.finish(bool(message.get("tool_calls")))
         return result(body["model"],text,message.get("tool_calls",[]),data)
 
     def stream(self,**args):return Stream(self,args)
@@ -160,15 +179,22 @@ class Client:
 
 class Stream:
     def __init__(self,owner,args):
-        self.owner,self.args=owner,args;self.text="";self.calls=[];self.final=None;self.total=0;self.thought_buffer=""
+        self.owner,self.args=owner,args;self.text="";self.calls=[];self.final=None;self.total=0
+        self.thoughts=ThoughtFilter()
     async def __aenter__(self):
-        self.body=payload(self.args,True);await self.owner.verify(self.body["model"])
-        self.thinking=self.body["model"] in self.owner.legacy_thinking
+        self.body=await self.owner.prepare(payload(self.args,True))
+        if self.body["model"] in self.owner.legacy_thinking:self.thoughts.inside=True
         self.context=self.owner.http.stream("POST",URL+"/api/chat",json=self.body)
+        self.deadline=asyncio.timeout(self.owner.remaining())
+        await self.deadline.__aenter__()
         try:self.response=await self.context.__aenter__()
-        except httpx.HTTPError:raise ValueError("Local inference failed. Check Ollama and retry.") from None
+        except BaseException:
+            try:await self.deadline.__aexit__(*sys.exc_info())
+            except TimeoutError:raise ValueError(TIMEOUT_MESSAGE) from None
+            raise
         if self.response.status_code!=200:
             await self.context.__aexit__(None,None,None)
+            await self.deadline.__aexit__(None,None,None)
             raise ValueError("Ollama rejected this request. Check the installed model and available memory.")
         return self
     @property
@@ -185,20 +211,17 @@ class Stream:
                     if not isinstance(text,str) or not isinstance(message.get("tool_calls",[]),list):
                         raise ValueError("Ollama returned invalid reply data.")
                     self.calls.extend(message.get("tool_calls",[]))
-                    if self.thinking:
-                        self.thought_buffer+=text
-                        if "</think>" in self.thought_buffer:
-                            text=self.thought_buffer.split("</think>",1)[1].lstrip()
-                            self.thinking=False;self.thought_buffer=""
-                        else:text=""
+                    text=self.thoughts.feed(text)
                     if text:self.text+=text;yield text
                     if data.get("done"):
-                        self.final=data;break
+                        self.final=data
+                        tail=self.thoughts.finish(bool(self.calls))
+                        if tail:self.text+=tail;yield tail
+                        break
             except httpx.HTTPError:raise ValueError("Local inference was interrupted; the reply was not saved.") from None
         return chunks()
     async def get_final_message(self):
-        if self.thinking and not self.calls:
-            raise ValueError("The local model did not separate its reply from reasoning. Retry a narrower question.")
+        self.thoughts.finish(bool(self.calls))
         return result(self.body["model"],self.text,self.calls,self.final)
     def usage_snapshot(self):
         if not self.final:return None
@@ -206,4 +229,8 @@ class Stream:
             (("input_tokens","prompt_eval_count"),("output_tokens","eval_count"))}
         if not all(type(n) is int and n>=0 for n in counts.values()):return None
         return SimpleNamespace(model=self.body["model"],usage=SimpleNamespace(**counts))
-    async def __aexit__(self,*args):return await self.context.__aexit__(*args)
+    async def __aexit__(self,*args):
+        try:return await self.context.__aexit__(*args)
+        finally:
+            try:await self.deadline.__aexit__(*args)
+            except TimeoutError:raise ValueError(TIMEOUT_MESSAGE) from None

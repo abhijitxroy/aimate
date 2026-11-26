@@ -1064,12 +1064,14 @@ async function ask(question) {
           activity("Thinking…");
         }
         if (event.event === "text") {
+          if(!bot.hasAnswerText && event.delta.trim()) {bot.hasAnswerText=true;activity("Answering…");}
           bot.text += event.delta;
           // Coalesce streamed deltas into one render per animation frame.
           if (!bot.renderFrame) bot.renderFrame = requestAnimationFrame(() => {
             bot.renderFrame = null; renderAnswer(bot.body, bot.text); if(cid===run.cid) scrollMessages();
           });
         }
+        if (event.event === "local_status") activity(event.message);
         if (event.event === "source") addSource(bot, event.url);
         if (event.event === "tool") {
           activity(event.name === "propose_action" ? "Preparing a change for review…" : `Reading ${event.input.service || event.name}${event.input.path ? ": "+event.input.path : ""}…`);
