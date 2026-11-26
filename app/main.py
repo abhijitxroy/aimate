@@ -1044,7 +1044,7 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
             turn_config = store.config()
             from app.vault import redactions
             turn_config["_vault_secrets"] = redactions(store)
-            selected_model = turn_config.get("ai", {}).get("analysis_model") if model_mode == "analysis" else turn_config.get("ai", {}).get("model")
+            selected_model = turn_config.get("ai", {}).get("analysis_model") if model_mode in {"analysis", "auto-quality"} else turn_config.get("ai", {}).get("model")
             try:
                 if demo:
                     from app.demo import run_demo_turn

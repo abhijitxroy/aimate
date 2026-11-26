@@ -213,11 +213,12 @@ function shortModelName(model) {
 
 function updateModelInfo(message, used) {
   const route = used.route === "analysis" ? "Analysis" : "Standard";
-  const mode = used.mode === "auto" ? "Auto" : route;
+  const mode = used.mode?.startsWith("auto") ? "Auto" : route;
   const total = used.usage ? ["input_tokens","output_tokens","cache_read_input_tokens","cache_creation_input_tokens"]
     .reduce((sum,key)=>sum+(used.usage[key] || 0),0) : null;
   const label = `${mode}${total === null ? "" : ` · 🔥 ${total.toLocaleString()}`}`;
-  const details = [`${used.mode === "auto" ? "Auto → " : ""}${route} · ${used.model}`];
+  const details = [`${used.mode?.startsWith("auto") ? "Auto → " : ""}${route} · ${used.model}`];
+  if (used.mode?.startsWith("auto")) details.push("Policy: " + (used.mode === "auto-quality" ? "Quality" : used.mode === "auto-economy" ? "Economy" : "Balanced"));
   if (used.usage) details.push(`${(used.usage.input_tokens || 0).toLocaleString()} input / ${(used.usage.output_tokens || 0).toLocaleString()} output tokens`);
   if (used.usage?.cache_read_input_tokens) details.push(`${used.usage.cache_read_input_tokens.toLocaleString()} cache read tokens`);
   if (used.usage?.cache_creation_input_tokens) details.push(`${used.usage.cache_creation_input_tokens.toLocaleString()} cache write tokens`);
@@ -276,21 +277,27 @@ function renderModelSelection(event = null) {
   const key = JSON.stringify([mode, selectedAI?.provider, selectedAI?.model, selectedAI?.analysis_model, demo]);
   if (event) activeModelSelection = {key, route: event.route, model: event.model};
   if (activeModelSelection?.key !== key) activeModelSelection = null;
-  const route = activeModelSelection?.route || (mode === "analysis" ? "analysis" : "standard");
+  const route = activeModelSelection?.route || (["analysis","auto-quality"].includes(mode) ? "analysis" : "standard");
   const model = activeModelSelection?.model || (route === "analysis" ? selectedAI?.analysis_model : selectedAI?.model);
   const unavailable = demo || !selectedAI?.analysis_model;
   const picker = $("#modelMode");
   for (const option of picker.options) {
-    const label = option.value === "auto" ? "Auto" : option.value === "analysis" ? "Analysis" : "Standard";
-    const selectedModel = option.value === "auto" ? model : option.value === "analysis" ? selectedAI?.analysis_model : selectedAI?.model;
+    const label = option.value === "auto" ? "Auto · Balanced" : option.value === "auto-quality" ? "Auto · Quality" :
+      option.value === "auto-economy" ? "Auto · Economy" : option.value === "analysis" ? "Analysis" : "Standard";
+    const selectedModel = option.value === "auto" ? model : ["analysis","auto-quality"].includes(option.value) ? selectedAI?.analysis_model : selectedAI?.model;
     option.textContent = pagesPreview ? label : demo ? `${label} · Demo` : `${label} · ${shortModelName(selectedModel)}`;
-    option.disabled = option.value === "analysis" && unavailable;
-    option.title = option.value === "auto" ? "Auto: AiMate chooses Standard for lookups and Analysis for debugging or complex tasks." : selectedModel || "Set an Analysis model in Settings → AI model → Advanced.";
+    option.disabled = ["analysis","auto-quality"].includes(option.value) && unavailable;
+    option.title = option.value === "auto" ? "Balanced: AI chooses Standard or Analysis within your selected provider." :
+      option.value === "auto-quality" ? "Quality: prefer your configured Analysis model. Current provider only." :
+      option.value === "auto-economy" ? "Economy: prefer your configured Standard model. Configure a lower-cost model for this slot." :
+      selectedModel || "Set an Analysis model in Settings → AI model → Advanced.";
   }
   picker.title = pagesPreview ? "Backend not connected. No AI model is running." : demo ? "Scripted demo" : `${mode === "auto" ? "Auto: AiMate chooses Standard for lookups and Analysis for debugging or complex tasks.\n" : ""}${model || "No model configured"}${mode === "auto" && activeModelSelection ? " · Auto selected " + route : ""}${unavailable ? "\nAnalysis unavailable: configure it in Settings → AI model → Advanced." : ""}`;
   picker.setAttribute("aria-label", `Model selection: ${mode === "auto" ? "Auto · " + shortModelName(model) : picker.selectedOptions[0].textContent}`);
 }
-$("#modelMode").onchange = () => renderModelSelection();
+const savedModelMode = localStorage.getItem("aimate-model-mode");
+if ([...$("#modelMode").options].some(option => option.value === savedModelMode)) $("#modelMode").value = savedModelMode;
+$("#modelMode").onchange = () => {localStorage.setItem("aimate-model-mode",$("#modelMode").value);renderModelSelection();};
 
 async function api(path, options = {}) {
   const headers = {"Content-Type": "application/json", "X-CSRF-Token": csrf, ...options.headers};
@@ -450,7 +457,7 @@ async function refreshState() {
   connectionReports = state.connection_checks || {};
   connectionDefaults = state.connection_defaults || {};
   $("#modelMode").querySelector('[value="analysis"]').disabled = !config.ai?.analysis_model || demo;
-  if ($("#modelMode").value === "analysis" && (!config.ai?.analysis_model || demo)) $("#modelMode").value = "auto";
+  if (["analysis","auto-quality"].includes($("#modelMode").value) && (!config.ai?.analysis_model || demo)) $("#modelMode").value = "auto";
   renderModelSelection();
   $("#demoBanner").hidden = !demo;
   if (pagesPreview) {

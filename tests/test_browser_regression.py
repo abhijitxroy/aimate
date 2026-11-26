@@ -117,6 +117,25 @@ class BrowserRegressionTests(unittest.TestCase):
         self.page.reload()
         self.expect(self.page.locator("#messages")).to_contain_text("Synthetic recovered findings")
 
+    def test_user_auto_policy_quality_economy_and_reload(self):
+        self.page.locator("#newChat").click()
+        picker = self.page.locator("#modelMode")
+        picker.select_option("auto-quality")
+        self.expect(picker).to_contain_text("Auto · Quality")
+        self.page.locator("#question").fill("Policy quality fixture")
+        self.page.locator("#send").click()
+        self.expect(self.page.locator("#activity")).to_have_text("Answer complete")
+        self.page.locator(".model-info").first.locator("summary").click()
+        self.expect(self.page.locator(".model-details").first).to_contain_text("analysis-fixture")
+        self.page.reload()
+        self.expect(self.page.locator("#modelMode")).to_have_value("auto-quality")
+        self.page.locator("#modelMode").select_option("auto-economy")
+        self.page.locator("#question").fill("Policy economy fixture")
+        self.page.locator("#send").click()
+        self.expect(self.page.locator("#activity")).to_have_text("Answer complete")
+        self.page.locator(".model-info").last.locator("summary").click()
+        self.expect(self.page.locator(".model-details").last).to_contain_text("standard-fixture")
+
     def local_fixture(self):
         self.page.route("**/api/local-ai/status",lambda route:route.fulfill(status=200,content_type="application/json",
             body=json.dumps({"available":True,"models":["qwen3:4b"],"message":"Ollama reachable."})))

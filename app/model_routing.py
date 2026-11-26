@@ -1,7 +1,8 @@
 """Bounded, tool-free AI routing; never invent model IDs or change providers."""
 import json
+from app.auto_policy import MODES as POLICY_MODES, choose as choose_policy
 
-MODES = {"auto", "standard", "analysis"}
+MODES = {"auto", "standard", "analysis", *POLICY_MODES}
 # Reasoning-capable providers count internal reasoning against output limits.
 # 32 tokens can stop before the tiny route JSON is emitted.
 ROUTER_MAX_TOKENS = 128
@@ -35,12 +36,16 @@ def parse_route(text):
 
 async def select_model(ai, mode, classify):
     if mode not in MODES:
-        raise ValueError("Choose Auto, Standard or Analysis")
+        raise ValueError("Choose an available Auto policy, Standard or Analysis")
     standard, analysis = ai.get("model"), ai.get("analysis_model")
     if not standard:
         raise ValueError("Set your Standard model in Settings")
     result = {"event": "model", "mode": mode, "route": "standard", "model": standard,
               "routing_usage": {"input_tokens": 0, "output_tokens": 0}}
+    policy = choose_policy(ai, mode)
+    if policy:
+        result.update(policy)
+        return result
     if mode == "analysis":
         if not analysis:
             raise ValueError("Add an Analysis model in Settings → AI model → Model selection")
