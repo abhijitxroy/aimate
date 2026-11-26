@@ -40,8 +40,11 @@ def register(app,store,auth,config_lock):
     @app.post("/api/conversations/{cid}/favorites/{turn}/{role}")
     async def favorite(cid:str,turn:int,role:str,request:Request,session=Depends(auth)):
         body=await request.json()
-        if role not in {"user","assistant"} or not isinstance(body,dict) or set(body)!={"pinned"} or type(body["pinned"]) is not bool:
+        if (role not in {"user","assistant"} or not isinstance(body,dict) or
+                "pinned" not in body or set(body)-{"pinned","confirm_unpin"} or type(body["pinned"]) is not bool):
             raise ValueError("Choose a saved user/assistant message and a boolean pinned state.")
+        if not body["pinned"] and body.get("confirm_unpin") is not True:
+            raise ValueError("Unlock Favorites and explicitly confirm removing this pin.")
         async with config_lock:
             with store.lock:
                 rows=store.rows("SELECT t.messages,u.metadata FROM turns t LEFT JOIN turn_usage u ON u.turn=t.id WHERE t.id=? AND t.conversation=?",(turn,cid))

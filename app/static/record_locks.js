@@ -1,14 +1,14 @@
 /* Accidental-edit guard, independent for each personal-record dialog. */
 (() => {
   "use strict";
-  const locked = {diary:true,todos:true};
+  const locked = {diary:true,todos:true,favorites:true};
   const controls = new Map();
   function set(kind,value) {
     if (!(kind in locked)) throw new Error("Unknown record section");
     locked[kind] = value;
     const button = controls.get(kind);
     if (button) {
-      const title = (value ? "Unlock" : "Lock") + (kind === "diary" ? " My Diary" : " To-do") + " editing and deletion";
+      const title = (value ? "Unlock" : "Lock") + ({diary:" My Diary",todos:" To-do",favorites:" Favorites"}[kind]) + " editing and deletion";
       button.title = title; button.setAttribute("aria-label",title);
       button.setAttribute("aria-pressed",String(!value));
       button.dataset.locked = String(value);
@@ -18,7 +18,7 @@
   }
   window.AiMateRecordLocks = {isLocked:kind => locked[kind] !== false, lock:kind => set(kind,true)};
   document.addEventListener("DOMContentLoaded",() => {
-    for (const [kind,id] of [["diary","knowledgeDialog"],["todos","todoDialog"]]) {
+    for (const [kind,id] of [["diary","knowledgeDialog"],["todos","todoDialog"],["favorites","favoritesDialog"]]) {
       const header = document.querySelector("#"+id+" .dialog-head");
       const group = document.createElement("div"); group.className = "record-head-actions";
       const button = document.createElement("button"); button.type = "button";

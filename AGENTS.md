@@ -6,6 +6,7 @@ actionable work, ask only for genuine missing information, and update completion
 with evidence. Preserve incomplete live-validation items as open.
 
 For feature/enhancement work, read [the pluggable-feature skill](skills/pluggable-features/SKILL.md). New modules must be independently disableable without breaking the core app or weakening permissions.
+For response-policy and presentation changes, follow [AiMate answer style](skills/aimate-answer-style/SKILL.md), including persistent user brevity preferences and honest quality labels.
 
 Work through requested tasks one at a time. Preserve existing user data and unrelated edits. A green fixture-based test is automated evidence; do not describe it as complete live-service validation.
 

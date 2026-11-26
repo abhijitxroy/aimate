@@ -384,6 +384,9 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
     if supplied:
         system, available_tools = supplied
         context_reference = ""
+    from app.answer_preference import prepare as answer_preference
+    preference, presentation = answer_preference(store, cid, question)
+    system += presentation
     from app.usage_meter import MeteredClient
     client = MeteredClient(await asyncio.to_thread(client_factory, config), store, config, "Chat / routing")
     answer = ""
@@ -518,7 +521,7 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
             store.save_turn(cid, scrub(messages[start:], config),
                             {"model": selection["model"], "mode": model_mode, "route": selection["route"],
                              "usage": usage, "by_model": by_model, "notice": selection.get("notice"),
-                             "quality": quality.metadata()})
+                             "quality": quality.metadata(), "answer_preference": preference})
         yield {"event": "done", "usage": usage, "model": selection["model"], "mode": model_mode, "by_model": by_model,
                "quality": quality.metadata()}
     finally:
@@ -615,6 +618,9 @@ async def _run_chatgpt_turn(store, cid, question, connection, services_factory, 
     if supplied:
         instructions, tools = supplied
         context_reference = ""
+    from app.answer_preference import prepare as answer_preference
+    preference, presentation = answer_preference(store, cid, question)
+    instructions += presentation
     namespace = {"type": "namespace", "name": "project", "description": "Scoped engineering project tools",
                  "tools": [{"type": "function", "name": t["name"], "description": t["description"],
                             "parameters": t["input_schema"], "strict": False} for t in tools]}
@@ -685,7 +691,7 @@ async def _run_chatgpt_turn(store, cid, question, connection, services_factory, 
         if not calls:
             store.save_turn(cid, scrub(saved, config), {"model": model, "mode": model_mode, "route": selection["route"],
                                         "usage": usage, "by_model": by_model, "notice": selection.get("notice"),
-                                        "quality": quality.metadata()})
+                                        "quality": quality.metadata(), "answer_preference": preference})
             yield {"event": "done", "usage": usage, "model": model, "mode": model_mode, "by_model": by_model,
                    "quality": quality.metadata()}
             return

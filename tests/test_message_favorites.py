@@ -45,7 +45,11 @@ class FavoritesTests(unittest.TestCase):
                 second=client.get("/api/favorites",params={"before_turn":first["next_before_turn"]}).json()
                 self.assertEqual(len(second["entries"]),1);self.assertIsNone(second["next_before_turn"])
                 turn=second["entries"][0]["turn"]
-                client.post(f"/api/conversations/{cid}/favorites/{turn}/user",headers=headers,json={"pinned":False})
+                path=f"/api/conversations/{cid}/favorites/{turn}/user"
+                self.assertEqual(client.post(path,headers=headers,json={"pinned":False}).status_code,400)
+                self.assertEqual(len(client.get("/api/favorites").json()["entries"]),50)
+                self.assertEqual(len(client.get("/api/favorites",params={"before_turn":first["next_before_turn"]}).json()["entries"]),1)
+                self.assertEqual(client.post(path,headers=headers,json={"pinned":False,"confirm_unpin":True}).status_code,200)
                 self.assertEqual(len(client.get("/api/favorites").json()["entries"]),50)
                 self.assertEqual(len(store.rows("SELECT id FROM turns")),51)
             store.db.close()
