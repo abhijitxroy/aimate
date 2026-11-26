@@ -11,7 +11,17 @@ accuracy percentage, independent review or guarantee of correctness**. Accuracy
 is labelled “Not independently measured”. A model that skips the assessment
 gets “Not assessed”, rather than a fabricated score.
 
-The `assess_answer` tool accepts only bounded qualitative fields, no percentages.
+Optional **Accuracy · ~60%** and **Completion · 80%** badges use bounded
+checklists, rather than model-invented percentages. Accuracy is an estimate of
+support among the claims checked against sources read this turn; it is not an
+independent accuracy measurement or proof that the whole answer is correct.
+Completion counts completed items in the model's requested-work checklist.
+Click the badge for the claims, sources and completed/pending tasks. No checks
+means “Unverified”; no task checklist means “Not assessed”. Old answers retain
+their qualitative assessment. Failed or later reads invalidate the assessment.
+Colours progress from red, through amber and light green, to green.
+
+The `assess_answer` tool accepts bounded qualitative fields and optional checklists, no direct percentages.
 It cannot read sources or change settings. The normal source tools still enforce
 permissions. Current-turn source and failed-read counts come from tool outcomes;
 they are not a quality score. No separate evaluator model/API request runs.

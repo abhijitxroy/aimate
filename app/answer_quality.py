@@ -7,7 +7,10 @@ TOOL = {
     "description": (
         "Record a concise assessment of the final answer, after inspecting evidence. "
         "This is your assessment, not measured accuracy or certification. Do not guess "
-        "percentages. Describe actual coverage, important gaps and further investigation. "
+        "percentages. For numerical badges provide checks of important claims against "
+        "read evidence and a checklist covering every requested task. The server calculates "
+        "the percentages. Never invent checks, evidence or completed work. "
+        "Describe actual coverage, important gaps and further investigation. "
         "Do not include hidden reasoning. Call once before your final answer; update it "
         "if later evidence changes the conclusion."
     ),
@@ -18,6 +21,15 @@ TOOL = {
         "gaps": {"type": "array", "maxItems": 6, "items": {"type": "string", "maxLength": 200}},
         "further_investigation": {"type": "boolean"},
         "next_step": {"type": "string", "maxLength": 300},
+        "checks": {"type": "array", "maxItems": 20, "items": {"type": "object", "properties": {
+            "claim": {"type": "string", "maxLength": 200},
+            "supported": {"type": "boolean"},
+            "source": {"type": "string", "maxLength": 500},
+        }, "required": ["claim", "supported", "source"], "additionalProperties": False}},
+        "work_items": {"type": "array", "maxItems": 20, "items": {"type": "object", "properties": {
+            "task": {"type": "string", "maxLength": 200},
+            "completed": {"type": "boolean"},
+        }, "required": ["task", "completed"], "additionalProperties": False}},
     }, "required": ["confidence", "basis", "coverage", "gaps", "further_investigation", "next_step"],
         "additionalProperties": False},
 }
@@ -54,6 +66,11 @@ def instruction(answer_kind):
         "not an accuracy score. Coverage describes the requested scope actually checked, "
         "not whether the code is correct. State missing evidence, uncertainty and a "
         "concrete next step when needed. Never mark partial/truncated reads complete. "
+        "Include optional checks only for claims checked against sources actually read "
+        "this turn, using their exact source identifiers. Include work_items covering "
+        "all parts of the user request, with completed=false for unfinished verification. "
+        "The accuracy badge estimates support within those checks, not guaranteed factual "
+        "accuracy; do not claim a complete fix merely because code was proposed. "
         "The interface shows these details separately; do not repeat a long scorecard "
         "in the answer. Routine factual searches need only a concise source-accuracy "
         "assessment. Do not include private chain-of-thought."
@@ -79,7 +96,7 @@ class Assessment:
 
     def record(self, args):
         required = set(TOOL["input_schema"]["required"])
-        if not self.kind or not isinstance(args, dict) or set(args) != required:
+        if not self.kind or not isinstance(args, dict) or not required <= set(args) or set(args) - required - {"checks", "work_items"}:
             raise ValueError("Provide the answer assessment fields only.")
         if not isinstance(args["confidence"], str) or not isinstance(args["coverage"], str) or args["confidence"] not in {"high", "medium", "low"} or args["coverage"] not in {
                 "complete", "partial", "limited", "not_applicable"}:
@@ -99,12 +116,38 @@ class Assessment:
             raise ValueError("Incomplete coverage needs further investigation.")
         if args["further_investigation"] and not args["next_step"].strip():
             raise ValueError("Describe the next investigation step.")
+        for key, text_key, boolean_key in (("checks", "claim", "supported"), ("work_items", "task", "completed")):
+            items = args.get(key, [])
+            if not isinstance(items, list) or len(items) > 20:
+                raise ValueError("Use up to twenty concise checklist items.")
+            seen = set()
+            for item in items:
+                fields = {text_key, boolean_key} | ({"source"} if key == "checks" else set())
+                if not isinstance(item, dict) or set(item) != fields:
+                    raise ValueError("Provide only the checklist fields.")
+                text = item[text_key]
+                if not isinstance(text, str) or not text.strip() or len(text) > 200 or "\0" in text or text.strip().casefold() in seen:
+                    raise ValueError("Use distinct concise checklist items.")
+                seen.add(text.strip().casefold())
+                if type(item[boolean_key]) is not bool:
+                    raise ValueError("Checklist states must be booleans.")
+                if key == "checks" and (not isinstance(item["source"], str) or item["source"] not in self.sources or len(item["source"]) > 500):
+                    raise ValueError("Each accuracy check needs an exact source read this turn.")
+            if key == "work_items" and items:
+                unfinished = any(not item["completed"] for item in items)
+                if (args["coverage"] == "complete" and unfinished) or (
+                        args["coverage"] in {"partial", "limited"} and not unfinished):
+                    raise ValueError("The task checklist must match coverage.")
         self.value = {**args, "gaps": list(gaps)}
         return {"recorded": True, "note": "Self-assessment recorded; accuracy is not independently measured."}
 
     def metadata(self):
         if not self.kind or not enabled():
             return None
+        checks = (self.value or {}).get("checks", [])
+        work = (self.value or {}).get("work_items", [])
         return {"version": 1, "kind": self.kind, "assessed": self.value is not None,
                 "accuracy": "not_measured", "source_count": len(self.sources),
-                "failed_reads": self.failed_reads, **(self.value or {})}
+                "failed_reads": self.failed_reads, **(self.value or {}),
+                "accuracy_percent": round(100 * sum(item["supported"] for item in checks) / len(checks)) if checks else None,
+                "completion_percent": round(100 * sum(item["completed"] for item in work) / len(work)) if work else None}

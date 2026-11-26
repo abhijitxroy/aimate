@@ -21,6 +21,33 @@ COMMIT = "a" * 40
 
 
 class QualityTests(unittest.TestCase):
+    def test_percentages_come_from_evidence_and_requested_work_checklists(self):
+        assessment = Assessment("review")
+        assessment.observe("api_read", {"source": "fixture:source"})
+        checks = [{"claim": f"Claim {i}", "supported": i < 3, "source": "fixture:source"} for i in range(5)]
+        work = [{"task": f"Task {i}", "completed": i < 4} for i in range(5)]
+        assessment.record({**FIELDS, "checks": checks, "work_items": work})
+        self.assertEqual(assessment.metadata()["accuracy_percent"], 60)
+        self.assertEqual(assessment.metadata()["completion_percent"], 80)
+        self.assertEqual(assessment.metadata()["accuracy"], "not_measured")
+        assessment.observe("api_read", failed=True)
+        self.assertIsNone(assessment.metadata()["accuracy_percent"])
+        self.assertIsNone(assessment.metadata()["completion_percent"])
+
+    def test_unverified_sources_duplicate_work_and_false_completion_rejected(self):
+        for extras in (
+            {"checks": [{"claim": "Known fact", "supported": True, "source": "not read"}]},
+            {"work_items": [{"task": "Fix", "completed": True}]},
+            {"work_items": [{"task": "Fix", "completed": False}] * 2},
+            {"work_items": [{"task": "Fix", "completed": "yes"}]},
+        ):
+            with self.subTest(extras=extras), self.assertRaises(ValueError):
+                Assessment("review").record({**FIELDS, **extras})
+        assessment = Assessment("review")
+        assessment.record(FIELDS)
+        self.assertIsNone(assessment.metadata()["accuracy_percent"])
+        self.assertIsNone(assessment.metadata()["completion_percent"])
+
     def test_only_relevant_prompts_and_disabled_behavior(self):
         for question in ("What is your name?", "Hello", "Show PR 7 details"):
             self.assertIsNone(kind(question))

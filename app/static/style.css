@@ -168,6 +168,12 @@ body.resizing-sidebar { cursor: col-resize; user-select: none; }
 .sidebar-tools > button { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; border: 0; font-size: 12px; min-height: 42px; }
 #sidebarTools .sidebar-tools > button { background: transparent; box-shadow: none; }
 #sidebarTools .sidebar-tools > button:is(:hover, :focus-visible) { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.quality-score { display: inline-block; margin-left: 5px; font-size: inherit; font-weight: 400; }
+.quality-score[data-band="high"] { color: var(--success,#69e3b1); }
+.quality-score[data-band="good"] { color: color-mix(in srgb, var(--success,#69e3b1) 72%, var(--text)); }
+.quality-score[data-band="partial"] { color: var(--warning,#ffbd66); }
+.quality-score[data-band="low"] { color: var(--danger); }
+.quality-score[data-band="unknown"] { color: var(--muted); }
 .sidebar-icon { display: block; width: 20px; height: 20px; flex: 0 0 20px; color: inherit; }
 .local-label { margin: 18px 12px 0; font-size: 10px; color: var(--muted); }
 .access-mode { display: flex; align-items: center; gap: 8px; margin: 12px 14px 0; color: var(--muted); font-size: 11px; }

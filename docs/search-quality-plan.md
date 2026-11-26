@@ -117,3 +117,11 @@ model selection alone.
 - All seven implementation workflows passed at `12f98aa`; browser evidence: https://github.com/abhijitxroy/aimate/actions/runs/45763472025.
 - Local checks: 50 unit, 312 integration (including 7 pre-existing unpublished export-package draft tests), 75 browser tests.
 - Benchmark parity, Nexus indexing, domain data, incident learning and independent accuracy measurement remain open.
+
+## Verified local-evidence and presentation batch — 26 November 2026
+
+SQ-16 is complete at `df2b72c`: connected-folder reads, fixed Git inspection, hashes, manifests and deterministic preserved-file row/group counts. The live model returned the independently verified documentation hash; Dashboard Git and Nexus knowledge-directory reads passed. Message actions moved to bottom-right; outer assistant cards were removed and meaningful theme-aware highlights verified live.
+
+All seven workflows passed at this commit: https://github.com/abhijitxroy/aimate/actions/runs/45769348609. Delivered CI inventory: 50 unit, 312 integration and 77 browser tests; reliability checks repeat their selected cases. The preceding Windows failure was corrected by checking actual folder identity across path aliases.
+
+SQ-17 (Jira attachments/vision) and SQ-18 (retained historical populations/reconciliation) remain open. Local Nexus access does not yet mean repository indexing or reusable case learning is complete. The matched benchmark remains unverified.

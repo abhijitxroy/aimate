@@ -377,7 +377,7 @@ class BrowserRegressionTests(unittest.TestCase):
         }""")
         root=self.page.locator("#quality-fixture")
         quality=root.locator(".quality-info")
-        self.expect(quality.locator("summary")).to_have_text("Confidence · Medium")
+        self.expect(quality.locator("summary")).to_have_text("Confidence · MediumAccuracy · UnverifiedCompletion · Not assessed")
         self.assertIn("Accuracy: Not independently measured",quality.locator("summary").get_attribute("title"))
         self.assertEqual(quality.locator("summary").evaluate("el=>getComputedStyle(el).fontSize"),"9px")
         self.assertEqual(root.locator(".message-meta").evaluate(
@@ -416,6 +416,51 @@ class BrowserRegressionTests(unittest.TestCase):
         self.expect(search.locator(".quality-details")).to_contain_text("Not independently measured")
         self.assertNotIn("Further investigation",search.locator(".quality-details").inner_text())
         self.assertNotIn("Coverage",search.locator(".quality-details").inner_text())
+
+    def test_quality_percentages_show_colours_and_auditable_checklists(self):
+        self.page.evaluate("""() => {
+            const msg=addMessage('assistant','Partial fix.',994,Date.now()/1000);msg.root.id='quality-score-fixture';
+            updateModelInfo(msg,{quality:{version:1,kind:'analysis',assessed:true,confidence:'medium',
+              coverage:'partial',basis:'Source checked.',gaps:['One task pending.'],further_investigation:true,
+              accuracy_percent:60,completion_percent:80,checks:[{claim:'Claim',supported:true,source:'fixture:source'}],
+              work_items:[{task:'Run live tests',completed:false}]}});
+        }""")
+        root=self.page.locator("#quality-score-fixture")
+        scores=root.locator(".quality-score")
+        self.expect(scores.nth(0)).to_have_text("Accuracy · ~60%")
+        self.expect(scores.nth(0)).to_have_attribute("data-band","partial")
+        self.expect(scores.nth(1)).to_have_text("Completion · 80%")
+        self.expect(scores.nth(1)).to_have_attribute("data-band","good")
+        self.assertNotEqual(scores.nth(0).evaluate("e=>getComputedStyle(e).color"),
+                            scores.nth(1).evaluate("e=>getComputedStyle(e).color"))
+        root.locator(".quality-info > summary").click()
+        self.expect(root.locator(".quality-details")).to_contain_text("not independently measured accuracy")
+        self.expect(root.locator(".quality-details")).to_contain_text("Pending: Run live tests")
+
+    def test_pasted_prose_removes_empty_bullets_and_excess_spacing_but_preserves_code(self):
+        field=self.page.locator("#question")
+        field.fill("")
+        self.page.evaluate("""() => {
+            const data=new DataTransfer();data.setData('text/plain','Hello,\\n\\n\\n\\nContext:\\n\\n- First\\n-\\n\\n- Second\\n\\n\\nThanks.');
+            document.querySelector('#question .cm-line').dispatchEvent(new ClipboardEvent('paste',
+              {clipboardData:data,bubbles:true,cancelable:true}));
+        }""")
+        self.expect(field).to_have_js_property("value","Hello,\n\nContext:\n\n- First\n- Second\n\nThanks.")
+        field.fill("")
+        self.page.evaluate("""() => {
+            const data=new DataTransfer();data.setData('text/plain','```python\\nx=1\\n\\n\\nprint(x)\\n```');
+            document.querySelector('#question .cm-line').dispatchEvent(new ClipboardEvent('paste',
+              {clipboardData:data,bubbles:true,cancelable:true}));
+        }""")
+        self.expect(field).to_have_js_property("value","```python\nx=1\n\n\nprint(x)\n```")
+        field.fill("")
+        self.page.evaluate("""() => {
+            window.AiMateFeatures={...window.AiMateFeatures,pasteCleanup:false};
+            const data=new DataTransfer();data.setData('text/plain','Keep\\n\\n\\nspacing');
+            document.querySelector('#question .cm-line').dispatchEvent(new ClipboardEvent('paste',
+              {clipboardData:data,bubbles:true,cancelable:true}));
+        }""")
+        self.expect(field).to_have_js_property("value","Keep\n\n\nspacing")
 
     def test_message_actions_are_below_borderless_replies_with_theme_aware_highlights(self):
         self.page.evaluate("""() => {

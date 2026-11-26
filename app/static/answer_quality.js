@@ -26,6 +26,23 @@
       }
     } else rows.push(["Assessment","The model did not assess this answer."]);
     rows.push(["Accuracy","Not independently measured"]);
+    if(assessed) {
+      for(const [field,name] of [["accuracy_percent","Accuracy"],["completion_percent","Completion"]]) {
+        const value=quality[field];
+        const valid=Number.isInteger(value) && value>=0 && value<=100;
+        const badge=document.createElement("span");badge.className="quality-score";
+        badge.dataset.band=!valid ? "unknown" : value>=95 ? "high" : value>=75 ? "good" : value>=50 ? "partial" : "low";
+        badge.textContent=name+" · "+(valid ? (name==="Accuracy" ? "~" : "")+value+"%" : name==="Accuracy" ? "Unverified" : "Not assessed");
+        summary.append(badge);
+        if(valid) rows.push([name+" score",value+"% · "+(name==="Accuracy"
+          ? "AI-assessed support among checked claims; not independently measured accuracy"
+          : "Completed checklist items / requested checklist items; AI assessment")]);
+      }
+      if(Array.isArray(quality.checks)) for(const item of quality.checks)
+        rows.push(["Claim check",(item.supported ? "Supported" : "Not supported")+": "+item.claim+" · "+item.source]);
+      if(Array.isArray(quality.work_items)) for(const item of quality.work_items)
+        rows.push(["Requested work",(item.completed ? "Done" : "Pending")+": "+item.task]);
+    }
     if(Number.isInteger(quality.source_count)) rows.push(["Sources read",String(quality.source_count)]);
     if(quality.failed_reads>0) rows.push(["Failed reads",String(quality.failed_reads)+" · see activity for details"]);
     summary.title=rows.map(([key,value])=>key+": "+value).join("\n");

@@ -6,6 +6,11 @@ Formatting is stored as portable Markdown text, so copying/exporting/editing ret
 
 The editor grows with multiline text, including generated warnings, tables and code. It reveals the inserted text automatically; long messages scroll within a bounded editor so the send controls remain available. Clearing the editor returns it to its compact height.
 
+Pasted prose removes empty bullets and repeated blank lines, and closes extra
+spacing between list items. Paragraph breaks stay readable. Fenced/indented code,
+JSON, uploaded files and large clipboard attachments keep their contents.
+Set `window.AiMateFeatures.pasteCleanup=false` to disable this optional cleanup.
+
 Blue buttons indicate the format at the current caret/selection. Moving into plain text clears the relevant highlight. Preview, Wrap and More show their actual on/open state. Bold, italic and underline can be toggled off without removing other inline formats. Insert-only actions such as paragraph breaks and outdent do not pretend to be persistent modes.
 
 Raw HTML, arbitrary CSS and embedded remote images remain disabled. Colour values accept only six-digit hex codes. Advanced options start collapsed; none of the formatting buttons submits a request. The editor retains Markdown source alongside its rendered preview.
