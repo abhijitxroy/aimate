@@ -463,16 +463,15 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
     from app.gemini_vertex import register as register_gemini
     register_gemini(app, auth)
 
+    from app.claude_catalog import Catalog
+    claude_catalog = Catalog()
+
     @app.get("/api/bedrock/models")
     async def bedrock_models(discover: bool = False, session=Depends(auth)):
-        from app.bedrock_models import presets, discover_models
         ai = store.config().get("ai", {})
-        result = {"models": [], "message": "Organization presets. Refresh models to list the saved account and region. Access is verified only by Save & test."}
-        if discover:
-            if demo or ai.get("provider") != "bedrock":
-                raise HTTPException(409, "Save a live Bedrock connection before refreshing models.")
-            result = await discover_models(ai)
-        return {**result, "presets": presets(ai.get("bedrock_endpoint", "runtime"))}
+        if discover and (demo or ai.get("provider") != "bedrock"):
+            raise HTTPException(409, "Save a live Bedrock connection before refreshing models.")
+        return await claude_catalog.get(ai, force=discover)
 
     @app.post("/api/chatgpt/disconnect")
     async def disconnect_chatgpt(session=Depends(auth)):
@@ -1016,6 +1015,13 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
         model_mode = body.get("model_mode", "auto")
         if not isinstance(model_mode, str) or model_mode not in MODES:
             raise ValueError("Choose Auto, Standard or Analysis")
+        manual_model = body.get("manual_model")
+        if model_mode == "manual":
+            if demo or local_model:
+                raise ValueError("Direct Claude selection is unavailable in demo/local mode.")
+            manual_model = claude_catalog.choose(store.config().get("ai", {}), manual_model)
+        elif manual_model is not None:
+            raise ValueError("Choose Manual mode to select a specific Claude model.")
         template_mode=body.get("template_mode","auto")
         from app.analysis_styles import select as select_style
         select_style(chat_store,question,template_mode)
@@ -1045,6 +1051,8 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
             from app.vault import redactions
             turn_config["_vault_secrets"] = redactions(store)
             selected_model = turn_config.get("ai", {}).get("analysis_model") if model_mode in {"analysis", "auto-quality"} else turn_config.get("ai", {}).get("model")
+            if manual_model:
+                selected_model = manual_model
             try:
                 if demo:
                     from app.demo import run_demo_turn
@@ -1058,6 +1066,7 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
                         turn_store = LocalStore(chat_store,local_model)
                     turn = run_turn(turn_store, cid, question, client_factory=ai_client if local_model else client_factory,
                                     services_factory=services_factory, chatgpt=chatgpt, model_mode=model_mode,
+                                    manual_model=manual_model,
                                     images=image_blocks, role=session.get("role", "admin"),template_mode=template_mode,
                                     vault_access=lambda: chat_store is store and valid_session(session["token"]) and vault_unlocked(session),
                                     local_access=not production and not demo and not session.get("grant") and request.client.host in {"127.0.0.1","::1","testclient"},

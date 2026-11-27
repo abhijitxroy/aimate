@@ -22,6 +22,13 @@ renderer’s HTML line breaks as extra empty rows. Lists stay compact; separate
 paragraphs, plain-text line breaks and literal code spacing remain readable.
 Existing saved messages also benefit without rewriting their stored text.
 
+After a bold/italic/underlined/coloured word, collapse the selection with Right
+and press Space to continue in plain text. The space is inserted outside the
+closing formatting markers so the word stays styled and markers stay hidden.
+Spaces inside a word or literal code are unchanged. Undo remains available.
+Disable this optional boundary behaviour with
+`window.AiMateFeatures.inlineFormatBoundary=false`.
+
 Blue buttons indicate the format at the current caret/selection. Moving into plain text clears the relevant highlight. Preview, Wrap and More show their actual on/open state. Bold, italic and underline can be toggled off without removing other inline formats. Insert-only actions such as paragraph breaks and outdent do not pretend to be persistent modes.
 
 **Foreground** applies the chosen text colour. Choosing a different colour

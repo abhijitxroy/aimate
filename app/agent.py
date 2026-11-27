@@ -318,10 +318,17 @@ async def propose(store, config, services, cid, args, access_check=None):
     return public_action(store.action(aid))
 
 
-async def run_turn(store, cid, question, *, client_factory=ai_client, services_factory=Services, chatgpt=None, model_mode="auto", images=None, role="admin", vault_access=None, access_check=None, template_mode="auto", local_access=False):
+async def run_turn(store, cid, question, *, client_factory=ai_client, services_factory=Services, chatgpt=None, model_mode="auto", manual_model=None, images=None, role="admin", vault_access=None, access_check=None, template_mode="auto", local_access=False):
     if access_check:
         access_check()
     config = store.config()
+    if model_mode == "manual":
+        from app.claude_catalog import enabled as manual_enabled, model_id
+        if not manual_enabled() or config.get("ai", {}).get("provider") != "bedrock":
+            raise ValueError("Direct Claude selection is unavailable for this connection.")
+        config["ai"]["model"] = model_id(manual_model)
+    elif manual_model is not None:
+        raise ValueError("Use Manual mode for a specific Claude model.")
     config["_role"] = role
     config["_local_access"] = local_access
     config["_vault_secrets"] = vault_redactions(store)

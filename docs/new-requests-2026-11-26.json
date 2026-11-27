@@ -131,5 +131,19 @@
     "completed": false,
     "type": "enhancement",
     "priority": "P1"
+  },
+  {
+    "id": "claude-direct-all-models",
+    "title": "P0 · WIP — Opus, Fable and full Claude catalog in askbar and Settings\n\nOrganization presets plus active AWS catalog models/profiles; exact direct selection per request without changing Standard/Analysis slots. Credential/region/endpoint-isolated five-minute memory cache; fallback presets, disabled mode, routing and reload tested locally. Listing is not invocation proof. Remark: all seven workflows, installation and live catalog/UI validation pending. Cross-provider Auto remains a separate open task.",
+    "completed": false,
+    "type": "feature",
+    "priority": "P0"
+  },
+  {
+    "id": "inline-format-space-boundary",
+    "title": "P1 · WIP — Keep bold visible and exit formatting with Space\n\nFix the caret boundary after bold/italic/underline/foreground so a trailing space lands outside closing markers, keeping the word styled and following text plain. Preserve nested formatting, internal spaces, literal code, Undo and disabled mode. Reproduced the original bold trap; focused browser checks passed locally. Remark: required workflows and installed browser validation pending.",
+    "completed": false,
+    "type": "bug",
+    "priority": "P1"
   }
 ]

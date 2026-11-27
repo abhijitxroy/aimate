@@ -324,6 +324,41 @@ class BrowserRegressionTests(unittest.TestCase):
         fallback = self.page.locator("#messages .answer-table").last
         self.assertNotIn("answer-table-modern", fallback.get_attribute("class"))
 
+    def test_claude_full_catalog_and_direct_askbar_choice_preserve_slots(self):
+        self.page.locator("#newChat").click()
+        self.page.locator("#headerSettings").click()
+        self.page.locator('[name="ai.provider"]').select_option("bedrock")
+        self.page.locator('[name="ai.bedrock_mode"]').select_option("advanced")
+        self.page.locator('[name="ai.region"]').fill("us-east-2")
+        self.page.locator('[name="ai.api_key"]').fill("synthetic-fixture")
+        self.page.locator("#bedrockModel").select_option("us.anthropic.claude-haiku-5-5")
+        self.page.locator("#settingsDialog .model-selection summary").click()
+        self.page.locator("#bedrockAnalysisModel").select_option("us.anthropic.claude-sonnet-5-5")
+        self.page.locator("#saveConnection").click()
+        self.expect(self.page.locator("#settingsStatus")).to_contain_text("Saved.")
+        self.page.locator('[data-close="settingsDialog"]').click()
+        self.expect(self.page.locator("#settingsDialog")).to_be_hidden()
+        self.expect(self.page.locator("#modelMode")).to_contain_text("Sonnet 4.6")
+        picker = self.page.locator("#modelMode")
+        self.expect(picker).to_contain_text("Fable 5.2")
+        chosen = "global.anthropic.claude-opus-5-5"
+        picker.select_option("manual:" + chosen)
+        self.expect(picker.locator('option[value="auto"]')).to_contain_text("Haiku 5.5")
+        self.page.locator("#question").fill("Direct model fixture")
+        self.page.locator("#send").click()
+        self.expect(self.page.locator("#activity")).to_have_text("Answer complete")
+        self.page.locator(".model-info").last.locator("summary").click()
+        self.expect(self.page.locator(".model-details").last).to_contain_text(chosen)
+        self.page.reload()
+        self.expect(picker).to_have_value("manual:" + chosen)
+        state = self.page.request.get(self.url + "/api/state").json()["config"]["ai"]
+        self.assertEqual(state["model"], "us.anthropic.claude-haiku-5-5")
+        self.assertEqual(state["analysis_model"], "us.anthropic.claude-sonnet-5-5")
+        self.page.locator("#headerSettings").click()
+        self.page.locator('[name="ai.bedrock_mode"]').select_option("advanced")
+        self.expect(self.page.locator("#bedrockModel")).to_contain_text("US Claude Sonnet 4.6")
+        self.expect(self.page.locator("#bedrockModel")).to_contain_text("Global Claude Opus 5.5")
+
     def test_reply_glow_real_stream_stops_and_optional_module_can_be_disabled(self):
         self.page.locator("#newChat").click()
         self.page.locator("#question").fill("Glow held fixture")
@@ -1333,6 +1368,51 @@ class BrowserRegressionTests(unittest.TestCase):
         self.assertEqual(self.page.evaluate("richPolicyViolations"),[])
         field.fill("```text\n**literal** ++literal++ [colour:#ff7aaf]literal[/colour]\n```")
         self.assertEqual(field.locator("strong,u,[data-rich-colour]").count(),0)
+
+    def test_space_after_bold_keeps_word_formatted_and_exits_to_plain_text(self):
+        field = self.page.locator("#question")
+        field.fill("Bold word")
+        field.press("Control+a")
+        field.press("Control+b")
+        field.press("ArrowRight")
+        field.press("Space")
+        field.type("normal")
+        self.expect(field).to_have_js_property("value", "**Bold word** normal")
+        self.expect(field.locator("strong")).to_have_text("Bold word")
+        self.assertNotIn("**", field.inner_text())
+        self.expect(self.page.get_by_role("button", name="Bold", exact=True)).to_have_attribute("aria-pressed", "false")
+        field.press("Control+z")
+        self.expect(field.locator("strong")).to_have_text("Bold word")
+
+    def test_inline_space_boundary_preserves_nested_formats_internal_spaces_and_code(self):
+        field = self.page.locator("#question")
+        for source in ("*word*", "++word++", "***word***",
+                       "[colour:#ff7aaf]word[/colour]",
+                       "***++[colour:#ff7aaf]word[/colour]++***"):
+            with self.subTest(source=source):
+                field.fill(source)
+                position = source.index("word") + 4
+                field.evaluate("(e,pos)=>e.setSelectionRange(pos,pos)", position)
+                field.press("Space")
+                field.type("plain")
+                self.expect(field).to_have_js_property("value", source + " plain")
+                self.assertNotIn("[/colour]", field.inner_text())
+        field.fill("**word**")
+        field.evaluate("e=>e.setSelectionRange(4,4)")
+        field.press("Space")
+        self.expect(field).to_have_js_property("value", "**wo rd**")
+        source = "```text\n**word**\n```"
+        field.fill(source)
+        position = source.index("word") + 4
+        field.evaluate("(e,pos)=>e.setSelectionRange(pos,pos)", position)
+        field.press("Space")
+        self.expect(field).to_have_js_property("value", source[:position] + " " + source[position:])
+        self.assertEqual(field.locator("strong").count(), 0)
+        self.page.evaluate("window.AiMateFeatures={inlineFormatBoundary:false}")
+        field.fill("**word**")
+        field.evaluate("e=>e.setSelectionRange(6,6)")
+        field.press("Space")
+        self.expect(field).to_have_js_property("value", "**word **")
 
     def test_inline_editor_enter_sends_portable_markdown_and_clears_draft(self):
         field=self.page.locator("#question")

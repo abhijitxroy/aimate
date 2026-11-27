@@ -18,6 +18,17 @@ os.environ.pop("APP_PUBLIC_URL", None)
 
 from app.main import create_app, app as import_app
 from app.store import Store
+import app.claude_catalog as claude_catalog_module
+
+
+async def fixture_claude_catalog(ai):
+    return {"models": [
+        {"id": "global.anthropic.claude-opus-5-5", "label": "Global Claude Opus 5.5", "source": "AWS inference profile"},
+        {"id": "us.anthropic.claude-sonnet-4-6", "label": "US Claude Sonnet 4.6", "source": "AWS inference profile"}],
+        "message": "Synthetic catalog only. Invocation access is not verified."}
+
+
+claude_catalog_module.discover_models = fixture_claude_catalog
 parallel_release = asyncio.Event()
 
 

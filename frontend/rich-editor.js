@@ -5,6 +5,7 @@ import {syntaxTree} from "@codemirror/language";
 import {defaultKeymap,history,historyKeymap,insertNewlineAndIndent,isolateHistory} from "@codemirror/commands";
 import {StyleModule} from "style-mod";
 import {insertHorizontalRule,decorateHorizontalRule} from "./horizontal-rule.js";
+import {exitInlineFormatOnSpace} from "./inline-boundary.js";
 
 // Preserve style-src 'self': trusted editor styles use CSSOM, not inline <style>.
 const originalMount=StyleModule.mount, styleRoots=new WeakMap();
@@ -66,6 +67,7 @@ export function attach(source) {
   });
   const extensions=[
     markdown({addKeymap:false}),history(),
+    EditorView.inputHandler.of(exitInlineFormatOnSpace),
     keymap.of([{key:"Shift-Enter",run:view=>insertHorizontalRule(view) || insertNewlineAndIndent(view)},
       ...defaultKeymap.filter(binding=>!["Enter","Mod-Enter","Mod-b","Mod-i","Mod-u"].includes(binding.key)),
       ...historyKeymap.filter(binding=>binding.key!=="Mod-u")]),

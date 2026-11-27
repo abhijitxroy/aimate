@@ -2,7 +2,7 @@
 import json
 from app.auto_policy import MODES as POLICY_MODES, choose as choose_policy
 
-MODES = {"auto", "standard", "analysis", *POLICY_MODES}
+MODES = {"auto", "standard", "analysis", "manual", *POLICY_MODES}
 # Reasoning-capable providers count internal reasoning against output limits.
 # 32 tokens can stop before the tiny route JSON is emitted.
 ROUTER_MAX_TOKENS = 128
@@ -45,6 +45,9 @@ async def select_model(ai, mode, classify):
     policy = choose_policy(ai, mode)
     if policy:
         result.update(policy)
+        return result
+    if mode == "manual":
+        result["route"] = "manual"
         return result
     if mode == "analysis":
         if not analysis:
