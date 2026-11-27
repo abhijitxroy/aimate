@@ -1,0 +1,33 @@
+/* The normal askbar stays compact; expanded mode follows the active theme. */
+.composer-expand-ready { position: relative; padding-top: 38px; }
+.composer-expand-toggle {
+  position: absolute; top: 7px; right: 9px; width: 28px; height: 28px;
+  display: grid; place-items: center; padding: 0; border: 0;
+  background: transparent; color: var(--muted); border-radius: 8px;
+}
+.composer-expand-toggle:hover { color: var(--text); background: var(--line); }
+body.composer-is-expanded { overflow: hidden; }
+#chatForm.composer-expanded {
+  position: fixed; inset: 16px; width: min(1280px, calc(100% - 32px));
+  height: calc(100dvh - 32px); margin: 0 auto; z-index: 900;
+  display: flex; flex-direction: column; gap: 8px; min-width: 0;
+  background: var(--panel); border-color: var(--line); border-radius: 22px;
+  box-shadow: 0 0 0 100vmax color-mix(in srgb, var(--bg) 85%, transparent);
+}
+#chatForm.composer-expanded #composerFormatting,
+#chatForm.composer-expanded .attachment-cards,
+#chatForm.composer-expanded .composer-bottom { flex-shrink: 0; }
+#chatForm.composer-expanded #composerFormatting { max-height: 36%; overflow: auto; }
+#chatForm.composer-expanded .attachment-cards { max-height: 20%; overflow: auto; }
+#chatForm.composer-expanded #question,
+#chatForm.composer-expanded .rich-composer {
+  flex: 1; min-height: 80px; width: 100%; overflow: hidden;
+}
+#chatForm.composer-expanded textarea#question { height: auto !important; overflow: auto !important; }
+#chatForm.composer-expanded .cm-editor { height: 100%; }
+#chatForm.composer-expanded .cm-scroller { height: 100%; max-height: none !important; }
+#chatForm.composer-expanded .composer-bottom { flex-wrap: wrap; margin-top: auto; }
+#chatForm.composer-expanded .composer-tools { flex-wrap: wrap; }
+@media (max-width: 600px) {
+  #chatForm.composer-expanded { inset: 6px; width: calc(100% - 12px); height: calc(100dvh - 12px); border-radius: 16px; padding: 36px 12px 12px; }
+}

@@ -140,6 +140,82 @@ class BrowserRegressionTests(unittest.TestCase):
         self.page.locator(".model-info").last.locator("summary").click()
         self.expect(self.page.locator(".model-details").last).to_contain_text(current_ai["model"])
 
+    def test_expanded_composer_retains_draft_formatting_attachments_and_restores(self):
+        self.page.locator("#newChat").click()
+        field = self.page.locator("#question")
+        draft = "**Quarterly report**\n\n| Item | Count |\n| --- | --- |\n| Builds | 42 |\n" + "Detail\n" * 80
+        field.fill(draft)
+        self.page.locator("#textAttachment").set_input_files({
+            "name": "sample.txt", "mimeType": "text/plain", "buffer": b"Fixture document"
+        })
+        self.expect(self.page.locator("#attachmentCards")).to_contain_text("sample.txt")
+        field.evaluate("(node)=>{node.selectionStart=2;node.selectionEnd=18}")
+        toggle = self.page.locator("#composerExpand")
+        normal_height = self.page.locator(".cm-scroller").bounding_box()["height"]
+        toggle.click()
+        self.expect(toggle).to_have_attribute("aria-expanded", "true")
+        self.expect(self.page.locator("#chatForm")).to_have_attribute("aria-modal", "true")
+        self.assertTrue(self.page.locator("#messages").evaluate("(node)=>node.inert"))
+        self.assertEqual(field.evaluate("(node)=>node.value"), draft)
+        self.assertEqual(field.evaluate("(node)=>[node.selectionStart,node.selectionEnd]"), [2, 18])
+        self.assertGreater(self.page.locator(".cm-scroller").bounding_box()["height"], normal_height + 150)
+        self.expect(self.page.locator("#attachmentCards")).to_contain_text("sample.txt")
+        self.assertGreater(self.page.locator(".cm-inline-bold").count(), 0)
+        self.page.locator("#send").focus()
+        self.page.keyboard.press("Tab")
+        self.expect(toggle).to_be_focused()
+        self.page.keyboard.press("Escape")
+        self.expect(toggle).to_have_attribute("aria-expanded", "false")
+        self.assertFalse(self.page.locator("#messages").evaluate("(node)=>node.inert"))
+        self.assertEqual(field.evaluate("(node)=>node.value"), draft)
+        self.assertEqual(field.evaluate("(node)=>[node.selectionStart,node.selectionEnd]"), [2, 18])
+        self.page.set_viewport_size({"width": 390, "height": 700})
+        self.page.evaluate("document.documentElement.dataset.theme='beige'")
+        toggle.click()
+        panel = self.page.locator("#chatForm").bounding_box()
+        self.assertGreaterEqual(panel["x"], 0)
+        self.assertLessEqual(panel["x"] + panel["width"], 390)
+        self.expect(self.page.locator("#send")).to_be_visible()
+        self.page.get_by_role("button", name="Restore editor", exact=True).click()
+        self.assertEqual(field.evaluate("(node)=>node.value"), draft)
+
+    def test_expanded_composer_plain_fallback_and_disabled_module(self):
+        self.page.add_init_script("window.AiMateFeatures={richComposer:false}")
+        self.page.reload()
+        field = self.page.locator("#question")
+        field.fill("Multiline\n" * 60)
+        self.page.get_by_role("button", name="Expand editor", exact=True).click()
+        self.assertGreater(field.bounding_box()["height"], 300)
+        field.press("Escape")
+        self.expect(field).to_have_value("Multiline\n" * 60)
+        self.page.add_init_script("window.AiMateFeatures={richComposer:false,composerExpand:false}")
+        self.page.reload()
+        self.assertEqual(self.page.locator("#composerExpand").count(), 0)
+        field.fill("Core editor still works")
+        self.expect(field).to_have_value("Core editor still works")
+
+    def test_message_rail_markers_are_compact_for_short_and_long_chats(self):
+        self.page.locator("#newChat").click()
+        self.page.evaluate("""() => {
+            addMessage("user","First"); addMessage("assistant","Second");
+        }""")
+        rail = self.page.locator(".message-rail")
+        self.expect(rail).to_be_visible()
+        markers = rail.locator("button")
+        self.assertLessEqual(rail.bounding_box()["height"], 20)
+        self.assertLessEqual(markers.nth(1).bounding_box()["y"] - markers.first.bounding_box()["y"], 10)
+        self.page.evaluate("""() => {
+            for(let i=0;i<150;i++) addMessage("assistant","Message "+i);
+        }""")
+        self.expect(markers).to_have_count(152)
+        bounds = rail.bounding_box()
+        messages = self.page.locator("#messages").bounding_box()
+        self.assertLessEqual(bounds["y"] + bounds["height"], messages["y"] + messages["height"])
+        markers.first.focus()
+        markers.first.press("End")
+        self.expect(markers.last).to_be_focused()
+        self.expect(self.page.locator(".message-rail-preview")).to_contain_text("Message 149")
+
     def local_fixture(self):
         self.page.route("**/api/local-ai/status",lambda route:route.fulfill(status=200,content_type="application/json",
             body=json.dumps({"available":True,"models":["qwen3:4b"],"message":"Ollama reachable."})))

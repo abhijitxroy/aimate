@@ -76,7 +76,8 @@ function installMessageNavigation() {
     }
     const bounds=box.getBoundingClientRect(), parent=main.getBoundingClientRect();
     rail.style.top=(bounds.top-parent.top+12)+"px";
-    rail.style.height=Math.max(0,bounds.height-24)+"px";
+    // Keep short chats compact; dense histories compress into the available gutter.
+    rail.style.height=Math.min(roots.length*10,Math.max(0,bounds.height-24))+"px";
     rail.hidden=roots.length<2 || bounds.height<80;
     let nearest=0, distance=Infinity;
     roots.forEach((root,index)=>{
