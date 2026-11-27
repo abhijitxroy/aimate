@@ -218,8 +218,8 @@
   },
   {
     "id": "conversation-width-view",
-    "title": "P2 · WIP — Current and Wide conversation views\n\nRemark: Keep the existing readable width as default; add an optional wider conversation body and aligned askbar, controlled from Appearance. Remember this browser preference, preserve sidebar/drafts/formatting and test wide desktop, narrow screens, reload and feature disable.",
-    "completed": false,
+    "title": "P2 · Done — Current and Wide conversation views\n\nRemark: Keep the existing readable width as default; add an optional wider conversation body and aligned askbar, controlled from Appearance. Remember this browser preference, preserve sidebar/drafts/formatting and test wide desktop, narrow screens, reload and feature disable.\n\nVerified: Two focused browser regressions and all seven workflows passed at 778d203. Wide expands desktop content and preserves draft/table/sidebar geometry; mobile 480px has no page overflow. Reload and disabled-module behavior passed. Installed Appearance controls and Wide persistence verified, then original Current preference restored.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45984637399",
+    "completed": true,
     "type": "enhancement",
     "priority": "P2"
   }
