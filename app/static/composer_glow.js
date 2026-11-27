@@ -7,6 +7,14 @@
   const appearance = document.querySelector("#appearanceDialog");
   if (!form || !stop || !appearance) return;
   const key = "aimate.composer.glow";
+  const colourKey = key + ".colour";
+  const savedColour = () => {
+    try {
+      const value = localStorage.getItem(colourKey);
+      return /^#[0-9a-f]{6}$/i.test(value || "") ? value : null;
+    } catch { return null; }
+  };
+  let customColour = savedColour();
   let enabled = true;
   try { enabled = localStorage.getItem(key) !== "false"; } catch {}
   const label = document.createElement("label");
@@ -19,24 +27,67 @@
   const title = document.createElement("strong");
   title.textContent = "Reply border light";
   const hint = document.createElement("small");
-  hint.textContent = "Red pulse wave while AiMate prepares a reply.";
+  hint.textContent = "Pulse across the upper askbar edge while AiMate prepares a reply.";
   copy.append(title, hint);
   label.append(toggle, copy);
   appearance.querySelector(".hint").before(label);
+  const colourRow = document.createElement("div");
+  colourRow.className = "composer-glow-colour";
+  const colourLabel = document.createElement("label");
+  colourLabel.textContent = "Heartbeat colour";
+  colourLabel.htmlFor = "composerGlowColour";
+  const colour = document.createElement("input");
+  colour.type = "color"; colour.id = "composerGlowColour";
+  const reset = document.createElement("button");
+  reset.type = "button"; reset.textContent = "Default";
+  reset.title = "Restore the theme's default red";
+  colourRow.append(colourLabel, colour, reset);
+  label.after(colourRow);
   const heartbeat = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   heartbeat.classList.add("composer-heartbeat");
-  heartbeat.setAttribute("viewBox", "0 0 128 26");
+  heartbeat.setAttribute("preserveAspectRatio", "none");
   heartbeat.setAttribute("aria-hidden", "true");
   heartbeat.setAttribute("focusable", "false");
   for (const name of ["heartbeat-track", "heartbeat-trace"]) {
     const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
     path.setAttribute("class", name);
-    path.setAttribute("d", "M2 13H27L33 9L39 13H48L55 3L63 23L71 13H126");
+    path.setAttribute("vector-effect", "non-scaling-stroke");
     path.setAttribute("pathLength", "100");
     heartbeat.append(path);
   }
   form.append(heartbeat);
   form.classList.add("composer-glow-ready");
+  function resizeWave() {
+    const width = Math.max(40, form.clientWidth - 24), step = Math.min(140, width);
+    let drawing = "M2 13";
+    for (let x = 0; x + step <= width; x += step) {
+      const point = value => (x + value * step / 140).toFixed(1);
+      drawing += `H${point(28)}L${point(34)} 9L${point(40)} 13H${point(52)}`
+        + `L${point(59)} 3L${point(67)} 23L${point(75)} 13H${point(138)}`;
+    }
+    drawing += `H${width - 2}`;
+    heartbeat.setAttribute("viewBox", `0 0 ${width} 26`);
+    for (const path of heartbeat.children) path.setAttribute("d", drawing);
+  }
+  function refreshColour() {
+    if (customColour) form.style.setProperty("--composer-activity-color", customColour);
+    else form.style.removeProperty("--composer-activity-color");
+    colour.value = getComputedStyle(form).getPropertyValue("--composer-activity-color").trim() || "#e97b87";
+  }
+  colour.addEventListener("input", () => {
+    customColour = colour.value;
+    try { localStorage.setItem(colourKey, customColour); } catch {}
+    refreshColour();
+  });
+  reset.addEventListener("click", () => {
+    customColour = null;
+    try { localStorage.removeItem(colourKey); } catch {}
+    refreshColour();
+  });
+  new ResizeObserver(resizeWave).observe(form);
+  new MutationObserver(refreshColour).observe(document.documentElement,
+    {attributes: true, attributeFilter: ["data-theme"]});
+  resizeWave(); refreshColour();
   function refresh() {
     form.classList.toggle("composer-generating",
       enabled && !stop.hidden && document.visibilityState !== "hidden");
@@ -49,8 +100,9 @@
   new MutationObserver(refresh).observe(stop, {attributes: true, attributeFilter: ["hidden"]});
   document.addEventListener("visibilitychange", refresh);
   window.addEventListener("storage", event => {
-    if (event.key !== key && event.key !== null) return;
+    if (event.key !== key && event.key !== colourKey && event.key !== null) return;
     try { enabled = localStorage.getItem(key) !== "false"; } catch { return; }
+    customColour = savedColour(); refreshColour();
     toggle.checked = enabled;
     refresh();
   });

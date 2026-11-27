@@ -1,10 +1,13 @@
 # Expanded askbar
 
-While AiMate works, the red border includes a small pulse wave at its top centre.
-The bright trace follows the wave up and down every 2.4 seconds; the editor does
+While AiMate works, the red border includes a pulse wave across its upper edge.
+The bright trace follows repeated up/down peaks every 2.4 seconds; the editor does
 not move. The wave disappears on completion, cancellation or switching to an
 idle chat. Appearance → Reply border light turns both effects off. Reduced motion
 shows a steady wave instead of animation.
+Choose **Heartbeat colour** in Appearance to change the pulse and border colour.
+**Default** restores the current theme's red. The colour is saved in this browser,
+like the theme and border-light switch; it is not an AI connection or server setting.
 
 Click the diagonal-arrow icon at the askbar's top right to expand the editor.
 Click it again, or press Escape, to restore the compact view. The same editor

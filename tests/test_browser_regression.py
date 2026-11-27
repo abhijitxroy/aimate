@@ -489,8 +489,9 @@ class BrowserRegressionTests(unittest.TestCase):
         bounds=wave.bounding_box()
         self.assertAlmostEqual(bounds["x"]+bounds["width"]/2,before["x"]+before["width"]/2,delta=1)
         self.assertEqual(bounds["height"],26)
-        self.assertEqual(wave.locator("path").first.get_attribute("d"),
-                         "M2 13H27L33 9L39 13H48L55 3L63 23L71 13H126")
+        self.assertAlmostEqual(bounds["width"],before["width"]-24,delta=3)
+        self.assertIn(" 23L",wave.locator("path").first.get_attribute("d"))
+        self.assertGreater(wave.locator("path").first.get_attribute("d").count(" 3L"),1)
         trace=wave.locator(".heartbeat-trace")
         frames=trace.evaluate("""e=>{const a=e.getAnimations()[0];a.pause();
           a.currentTime=0;const start=getComputedStyle(e).strokeDashoffset;
@@ -513,6 +514,35 @@ class BrowserRegressionTests(unittest.TestCase):
         self.expect(wave).to_be_visible()
         self.page.evaluate("document.querySelector('#stop').hidden=true")
         self.expect(wave).to_be_hidden()
+
+    def test_reply_heartbeat_colour_persists_resets_and_full_width_wave_resizes(self):
+        form=self.page.locator("#chatForm")
+        self.page.locator("#openAppearance").click()
+        colour=self.page.locator("#composerGlowColour")
+        self.expect(colour).to_be_visible()
+        colour.evaluate("e=>{e.value='#44ccaa';e.dispatchEvent(new Event('input'));}")
+        self.assertEqual(form.evaluate("e=>getComputedStyle(e).getPropertyValue('--composer-activity-color').trim()"),"#44ccaa")
+        self.page.reload()
+        self.expect(self.page.locator("#workspace")).to_be_visible()
+        self.assertEqual(form.evaluate("e=>getComputedStyle(e).getPropertyValue('--composer-activity-color').trim()"),"#44ccaa")
+        self.page.locator("#openAppearance").click()
+        self.expect(colour).to_have_value("#44ccaa")
+        self.page.locator(".composer-glow-colour button").click()
+        self.assertIsNone(self.page.evaluate("localStorage.getItem('aimate.composer.glow.colour')"))
+        self.page.evaluate("AiMateAppearance.apply('beige')")
+        self.expect(colour).to_have_value("#b94c60")
+        self.page.locator('[data-close="appearanceDialog"]').click()
+        self.page.evaluate("document.querySelector('#stop').hidden=false")
+        wave=form.locator(".composer-heartbeat")
+        for width in (1280,700):
+            self.page.set_viewport_size({"width":width,"height":800})
+            self.page.wait_for_function("""()=>{const f=document.querySelector('#chatForm'),w=f.querySelector('.composer-heartbeat');
+              return Math.abs(w.viewBox.baseVal.width-(f.clientWidth-24))<1;}""")
+            bounds=form.bounding_box();w=wave.bounding_box()
+            self.assertAlmostEqual(w["width"],bounds["width"]-24,delta=3)
+        self.page.add_init_script("window.AiMateFeatures={composerGlow:false}")
+        self.page.reload()
+        self.assertEqual(self.page.locator("#composerGlowColour,.composer-heartbeat").count(),0)
 
     def test_result_status_cards_use_crisp_icons_and_keep_tables_and_code(self):
         sample="## Final status\\n\\n> [!SUCCESS] **Checks passed**\\n> Synthetic test example.\\n\\n| Item | Status |\\n|---|---|\\n| Test | Passed |\\n\\n```json\\n{\"result\":\"passed\"}\\n```\\n\\n> [!WARNING] Example risk.\\n\\n> [!NOTE] Earlier validation."
