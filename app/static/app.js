@@ -1293,12 +1293,16 @@ function renderBedrockModels() {
     const picker = $("#" + pickerId), current = form.elements[field].value;
     picker.replaceChildren();
     if (optional) { const option = element("option", "", "Use Standard only"); option.value = ""; picker.append(option); }
-    for (const model of bedrockCatalog) {
-      const option = element("option", "", model.label + " · " + model.source);
+    const choices=window.AiMateLatestModels?.choose(bedrockCatalog,{
+      region:form.elements["ai.region"].value,endpoint:form.elements["ai.bedrock_endpoint"].value,
+      preferred:[current,config.ai?.model,config.ai?.analysis_model].filter(Boolean)
+    }) || bedrockCatalog;
+    for (const model of choices) {
+      const option = element("option", "", model.label);
       option.value = model.id; option.title = model.id; picker.append(option);
     }
     const custom = element("option", "", "Custom model / profile ID"); custom.value = "custom"; picker.append(custom);
-    picker.value = current && bedrockCatalog.some(m => m.id === current) ? current : optional && !current ? "" : "custom";
+    picker.value = current && choices.some(m => m.id === current) ? current : optional && !current ? "" : "custom";
   }
   $("#apiModelLabel").hidden = form.elements["ai.bedrock_mode"].value === "simple" || $("#bedrockModel").value !== "custom";
   $("#analysisModelLabel").hidden = $("#bedrockAnalysisModel").value !== "custom";

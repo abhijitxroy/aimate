@@ -25,4 +25,4 @@ jobs:
         with:
           node-version: "22"
       - name: Run rendering, security and Pages-preview unit tests
-        run: node --test tests/markdown.test.cjs tests/syntax.test.cjs tests/pages-preview.cjs tests/composer_formats.test.cjs tests/recent_chats.test.cjs tests/theme_catalog.test.cjs
+        run: node --test tests/markdown.test.cjs tests/syntax.test.cjs tests/pages-preview.cjs tests/composer_formats.test.cjs tests/recent_chats.test.cjs tests/theme_catalog.test.cjs tests/latest_model_choices.test.cjs

@@ -22,7 +22,7 @@ window.AiMateManualModels = (() => {
       picker.querySelector("[data-manual-models]")?.remove();
       if (!result.manual_enabled) { renderModelSelection(); return; }
       const group = document.createElement("optgroup");
-      group.label = "Claude · direct selection";
+      group.label = window.AiMateFeatures?.latestModelChoices === false ? "Claude · direct selection" : "Claude · latest models";
       group.dataset.manualModels = "true";
       const models = [...new Map([...result.presets, ...result.models].map(row => [row.id, row])).values()];
       // Settings may already be open with the fallback presets. Refresh its
@@ -33,19 +33,26 @@ window.AiMateManualModels = (() => {
         document.querySelector("#bedrockModelsHint").textContent = result.message;
         renderBedrockModels();
       }
-      for (const row of models) {
+      const preferred = current.startsWith("manual:") ? current : saved?.startsWith("manual:") ? saved : current;
+      const choices = window.AiMateLatestModels?.choose(models, {
+        region:config.ai.region,endpoint:config.ai.bedrock_endpoint,
+        preferred:[preferred?.replace(/^manual:/,""),config.ai.model,config.ai.analysis_model].filter(Boolean)
+      }) || models;
+      for (const row of choices) {
         const option = document.createElement("option");
         option.value = "manual:" + row.id; option.dataset.manualModel = row.id;
-        const route = row.id.startsWith("global.") ? "Global" : row.id.startsWith("us.") ? "US" :
-          row.source.includes("foundation") ? "Foundation" : "";
-        option.textContent = shortModelName(row.id) + (route ? " · " + route : "");
-        option.title = row.id + " · Catalog only; invocation access is checked when used." +
+        option.textContent = shortModelName(row.id);
+        option.title = "Invocation access is checked when used." +
           (/opus|fable/.test(row.id) ? " Higher-cost model; manual selection." : "");
         group.append(option);
       }
       picker.append(group);
-      const preferred = current.startsWith("manual:") ? current : saved?.startsWith("manual:") ? saved : current;
       if ([...picker.options].some(option => option.value === preferred)) picker.value = preferred;
+      else if(preferred?.startsWith("manual:")) {
+        picker.value="auto";
+        document.querySelector("#activity").textContent="The previous model is not in the latest list. Choose a model; saved Standard/Analysis settings are unchanged.";
+        localStorage.setItem("aimate-model-mode","auto");
+      }
       syncActive();
       renderModelSelection();
     } catch { /* Existing Auto/Standard/Analysis remain usable if discovery fails. */ }

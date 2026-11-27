@@ -338,10 +338,10 @@ class BrowserRegressionTests(unittest.TestCase):
         self.expect(self.page.locator("#settingsStatus")).to_contain_text("Saved.")
         self.page.locator('[data-close="settingsDialog"]').click()
         self.expect(self.page.locator("#settingsDialog")).to_be_hidden()
-        self.expect(self.page.locator("#modelMode")).to_contain_text("Sonnet 4.6")
+        self.expect(self.page.locator("#modelMode [data-manual-models] option")).to_have_count(4)
         picker = self.page.locator("#modelMode")
         self.expect(picker).to_contain_text("Fable 5.2")
-        chosen = "global.anthropic.claude-opus-5-5"
+        chosen = "us.anthropic.claude-opus-5-5"
         picker.select_option("manual:" + chosen)
         self.expect(picker.locator('option[value="auto"]')).to_contain_text("Haiku 5.5")
         self.page.locator("#question").fill("Direct model fixture")
@@ -356,8 +356,27 @@ class BrowserRegressionTests(unittest.TestCase):
         self.assertEqual(state["analysis_model"], "us.anthropic.claude-sonnet-5-5")
         self.page.locator("#headerSettings").click()
         self.page.locator('[name="ai.bedrock_mode"]').select_option("advanced")
-        self.expect(self.page.locator("#bedrockModel")).to_contain_text("US Claude Sonnet 4.6")
-        self.expect(self.page.locator("#bedrockModel")).to_contain_text("Global Claude Opus 5.5")
+        labels = self.page.locator("#bedrockModel option:not([value=custom])").all_text_contents()
+        self.assertEqual(labels, ["Haiku 5.5", "Sonnet 5.5", "Opus 5.5", "Fable 5.2"])
+        self.assertFalse(any("US" in label or "Global" in label or "Foundation" in label for label in labels))
+
+    def test_latest_model_menu_handles_old_saved_choice_and_can_be_disabled(self):
+        response=self.page.request.put(self.url+"/api/settings/ai",
+            headers={"X-CSRF-Token":self.page.evaluate("csrf")},data={
+                "provider":"bedrock","model":"us.anthropic.claude-haiku-5-5",
+                "analysis_model":"us.anthropic.claude-sonnet-5-5","api_key":"synthetic-fixture",
+                "region":"us-east-2","bedrock_mode":"advanced","bedrock_endpoint":"runtime"})
+        self.assertEqual(response.status,200,response.text())
+        self.page.add_init_script("localStorage.setItem('aimate-model-mode','manual:us.anthropic.claude-sonnet-4-6')")
+        self.page.reload()
+        self.expect(self.page.locator("#modelMode [data-manual-models] option")).to_have_count(4)
+        self.expect(self.page.locator("#modelMode")).to_have_value("auto")
+        self.expect(self.page.locator("#activity")).to_contain_text("previous model")
+        state=self.page.request.get(self.url+"/api/state").json()["config"]["ai"]
+        self.assertEqual(state["model"],"us.anthropic.claude-haiku-5-5")
+        self.assertEqual(state["analysis_model"],"us.anthropic.claude-sonnet-5-5")
+        self.page.evaluate("window.AiMateFeatures={latestModelChoices:false};window.AiMateManualModels.update()")
+        self.expect(self.page.locator("#modelMode [data-manual-models] option")).to_have_count(8)
 
     def test_reply_glow_real_stream_stops_and_optional_module_can_be_disabled(self):
         self.page.locator("#newChat").click()
