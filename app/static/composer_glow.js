@@ -27,7 +27,7 @@
   const title = document.createElement("strong");
   title.textContent = "Reply border light";
   const hint = document.createElement("small");
-  hint.textContent = "Pulse across the upper askbar edge while AiMate prepares a reply.";
+  hint.textContent = "One heartbeat travels left to right while AiMate prepares a reply.";
   copy.append(title, hint);
   label.append(toggle, copy);
   appearance.querySelector(".hint").before(label);
@@ -48,26 +48,20 @@
   heartbeat.setAttribute("preserveAspectRatio", "none");
   heartbeat.setAttribute("aria-hidden", "true");
   heartbeat.setAttribute("focusable", "false");
-  for (const name of ["heartbeat-track", "heartbeat-trace"]) {
-    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    path.setAttribute("class", name);
-    path.setAttribute("vector-effect", "non-scaling-stroke");
-    path.setAttribute("pathLength", "100");
-    heartbeat.append(path);
-  }
+  const trace = document.createElementNS(heartbeat.namespaceURI, "g");
+  trace.classList.add("heartbeat-trace");
+  const path = document.createElementNS(heartbeat.namespaceURI, "path");
+  path.setAttribute("vector-effect", "non-scaling-stroke");
+  trace.append(path); heartbeat.append(trace);
   form.append(heartbeat);
   form.classList.add("composer-glow-ready");
   function resizeWave() {
-    const width = Math.max(40, form.clientWidth - 24), step = Math.min(140, width);
-    let drawing = "M2 13";
-    for (let x = 0; x + step <= width; x += step) {
-      const point = value => (x + value * step / 140).toFixed(1);
-      drawing += `H${point(28)}L${point(34)} 9L${point(40)} 13H${point(52)}`
-        + `L${point(59)} 3L${point(67)} 23L${point(75)} 13H${point(138)}`;
-    }
-    drawing += `H${width - 2}`;
+    const width = Math.max(40, form.clientWidth - 2), pulseWidth = Math.min(80, width);
+    const point = value => (value * pulseWidth / 80).toFixed(1);
     heartbeat.setAttribute("viewBox", `0 0 ${width} 26`);
-    for (const path of heartbeat.children) path.setAttribute("d", drawing);
+    heartbeat.style.setProperty("--heartbeat-travel", `${width - pulseWidth}px`);
+    path.setAttribute("d", `M0 13H${point(20)}L${point(26)} 9L${point(32)} 13H${point(40)}`
+      + `L${point(47)} 3L${point(55)} 23L${point(63)} 13H${pulseWidth}`);
   }
   function refreshColour() {
     if (customColour) form.style.setProperty("--composer-activity-color", customColour);

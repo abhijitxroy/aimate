@@ -489,17 +489,21 @@ class BrowserRegressionTests(unittest.TestCase):
         bounds=wave.bounding_box()
         self.assertAlmostEqual(bounds["x"]+bounds["width"]/2,before["x"]+before["width"]/2,delta=1)
         self.assertEqual(bounds["height"],26)
-        self.assertAlmostEqual(bounds["width"],before["width"]-24,delta=3)
+        self.assertAlmostEqual(bounds["width"],before["width"]-2,delta=3)
         self.assertIn(" 23L",wave.locator("path").first.get_attribute("d"))
-        self.assertGreater(wave.locator("path").first.get_attribute("d").count(" 3L"),1)
+        self.assertEqual(wave.locator("path").count(),1)
+        self.assertEqual(wave.locator("path").first.get_attribute("d").count(" 3L"),1)
         trace=wave.locator(".heartbeat-trace")
         frames=trace.evaluate("""e=>{const a=e.getAnimations()[0];a.pause();
-          a.currentTime=0;const start=getComputedStyle(e).strokeDashoffset;
-          a.currentTime=1200;const middle=getComputedStyle(e).strokeDashoffset;
-          return {start,middle,duration:a.effect.getTiming().duration,
+          a.currentTime=0;const start=e.getBoundingClientRect().x;
+          a.currentTime=1500;const middle=e.getBoundingClientRect().x;
+          a.currentTime=2999;const end=e.getBoundingClientRect().right;
+          return {start,middle,end,duration:a.effect.getTiming().duration,
                   pointer:getComputedStyle(e.parentElement).pointerEvents};}""")
-        self.assertNotEqual(frames["start"],frames["middle"])
-        self.assertEqual(frames["duration"],2400)
+        self.assertAlmostEqual(frames["start"],bounds["x"],delta=2)
+        self.assertGreater(frames["middle"],frames["start"]+100)
+        self.assertAlmostEqual(frames["end"],bounds["x"]+bounds["width"],delta=2)
+        self.assertEqual(frames["duration"],3000)
         self.assertEqual(frames["pointer"],"none")
         after=form.bounding_box()
         for key in ("x","y","width","height"):
@@ -537,9 +541,9 @@ class BrowserRegressionTests(unittest.TestCase):
         for width in (1280,700):
             self.page.set_viewport_size({"width":width,"height":800})
             self.page.wait_for_function("""()=>{const f=document.querySelector('#chatForm'),w=f.querySelector('.composer-heartbeat');
-              return Math.abs(w.viewBox.baseVal.width-(f.clientWidth-24))<1;}""")
+              return Math.abs(w.viewBox.baseVal.width-(f.clientWidth-2))<1;}""")
             bounds=form.bounding_box();w=wave.bounding_box()
-            self.assertAlmostEqual(w["width"],bounds["width"]-24,delta=3)
+            self.assertAlmostEqual(w["width"],bounds["width"]-2,delta=3)
         self.page.add_init_script("window.AiMateFeatures={composerGlow:false}")
         self.page.reload()
         self.assertEqual(self.page.locator("#composerGlowColour,.composer-heartbeat").count(),0)

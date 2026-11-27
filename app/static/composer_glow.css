@@ -14,9 +14,9 @@
   18% { opacity: .84; }
 }
 .composer-heartbeat {
-  display: none; position: absolute; top: -13px; left: 12px;
-  width: calc(100% - 24px); height: 26px;
-  overflow: visible; pointer-events: none; z-index: 3;
+  display: none; position: absolute; top: -13px; left: 1px;
+  width: calc(100% - 2px); height: 26px;
+  overflow: hidden; pointer-events: none; z-index: 3;
   color: var(--composer-activity-color);
 }
 .composer-generating .composer-heartbeat { display: block; }
@@ -24,14 +24,13 @@
   fill: none; stroke: currentColor; stroke-width: 2;
   stroke-linecap: round; stroke-linejoin: round;
 }
-.heartbeat-track { opacity: .7; }
 .heartbeat-trace {
-  stroke-dasharray: 24 76; stroke-dashoffset: 100;
   filter: drop-shadow(0 0 3px currentColor);
-  animation: composer-heartbeat-trace 2.4s linear infinite;
+  animation: composer-heartbeat-trace 3s linear infinite;
 }
 @keyframes composer-heartbeat-trace {
-  to { stroke-dashoffset: 0; }
+  from { transform: translateX(0); }
+  to { transform: translateX(var(--heartbeat-travel)); }
 }
 .composer-glow-setting {
   display: flex; align-items: center; gap: 10px; margin: 20px 0 12px;
@@ -45,6 +44,7 @@
 .composer-glow-colour button { padding: 5px 9px; font-size: 11px; }
 @media (prefers-reduced-motion: reduce) {
   .composer-generating::after { animation: none; opacity: .9; }
-  .heartbeat-track { opacity: .9; }
-  .heartbeat-trace { animation: none; stroke-dasharray: none; filter: none; }
+  .heartbeat-trace {
+    animation: none; transform: translateX(calc(var(--heartbeat-travel) / 2)); filter: none;
+  }
 }

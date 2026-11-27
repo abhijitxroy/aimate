@@ -1,10 +1,11 @@
 # Expanded askbar
 
 While AiMate works, the red border includes a pulse wave across its upper edge.
-The bright trace follows repeated up/down peaks every 2.4 seconds; the editor does
-not move. The wave disappears on completion, cancellation or switching to an
+One small heartbeat moves from the left corner to the right corner over three
+seconds, then repeats. There is no row of pre-drawn peaks; the editor does
+not move. The heartbeat disappears on completion, cancellation or switching to an
 idle chat. Appearance → Reply border light turns both effects off. Reduced motion
-shows a steady wave instead of animation.
+shows one steady heartbeat at the centre instead of animation.
 Choose **Heartbeat colour** in Appearance to change the pulse and border colour.
 **Default** restores the current theme's red. The colour is saved in this browser,
 like the theme and border-light switch; it is not an AI connection or server setting.
@@ -30,8 +31,8 @@ quiet pause while the visible chat prepares its reply. The cycle lasts three
 seconds and never flashes to darkness. Beige uses a darker red for visibility.
 It stops on completion, cancellation, error or navigation to an idle chat.
 File imports alone do not trigger it. Reduced-motion preferences use a steady
-border and wave; hidden tabs pause the effect. The border changes opacity and
-the bright trace follows the small wave; neither effect moves the editor.
+border and single heartbeat; hidden tabs pause the effect. The border changes
+opacity and the single heartbeat travels left to right; neither effect moves the editor.
 
 Turn it off in **Appearance → Reply border light**. This is a browser preference,
 like the selected theme; it persists on reload and is not part of the portable
