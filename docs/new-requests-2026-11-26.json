@@ -243,5 +243,12 @@
     "completed": true,
     "type": "enhancement",
     "priority": "P1"
+  },
+  {
+    "id": "answer-progress-assessment",
+    "title": "P1 · WIP — Compact progress summaries and assessment/result pills\n\nParent: search-quality-11. Optional numbered progress layout with bold headings, short evidence and connected detail lines; explicitly toned assessment-table result cells become compact vibrant pills. Preserve ordinary lists/tables, source copy/export, safe Markdown and disabled fallback. Guidance for substantial reviews/investigations/fixes distinguishes source/local/live/untested outcomes and respects brief requests. Remark: local browser validation passed; required source CI and installed verification pending.",
+    "completed": false,
+    "type": "enhancement",
+    "priority": "P1"
   }
 ]

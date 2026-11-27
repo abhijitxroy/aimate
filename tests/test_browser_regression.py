@@ -544,6 +544,51 @@ class BrowserRegressionTests(unittest.TestCase):
         self.page.reload()
         self.assertEqual(self.page.locator("#composerGlowColour,.composer-heartbeat").count(),0)
 
+    def test_progress_summary_preserves_evidence_plain_lists_and_disabled_fallback(self):
+        source = (
+            "> [!PROGRESS] SSL fix progress\n>\n"
+            "> 1. **TLS support**\n>\n"
+            ">    [tone:success]Existing[/tone]\n>\n"
+            ">    `DMS_CA_BUNDLE` is present. [Evidence](https://example.com/source)\n>\n"
+            "> 2. **Runtime check**\n>\n"
+            ">    [tone:warning]Pending[/tone]\n>\n"
+            ">    <img src=x onerror=alert(1)> remains unverified.\n\n"
+            "1. Ordinary list item\n2. Another ordinary item\n\n"
+            "```text\n[!PROGRESS] Literal code\n```\n\n"
+            "| Area | Result |\n| --- | --- |\n"
+            "| Local check | [tone:success]Passed locally[/tone] |\n"
+            "| Live check | [tone:warning]Not tested[/tone] |\n"
+            "| Plain text | Passed |\n"
+        )
+        self.page.evaluate(
+            "text=>{const msg=addMessage('assistant',text);msg.root.id='progress-check';}", source)
+        root = self.page.locator("#progress-check")
+        self.expect(root.locator(".answer-progress")).to_have_count(1)
+        self.expect(root.locator(".answer-progress-step")).to_have_count(2)
+        self.expect(root.locator(".answer-progress-status")).to_have_count(4)
+        self.expect(root.locator("td .answer-progress-status")).to_have_count(2)
+        self.expect(root.locator("td").filter(has_text="Passed").last).to_have_text("Passed")
+        self.expect(root.locator(".answer-progress a")).to_have_attribute(
+            "href", "https://example.com/source")
+        self.expect(root.locator("img")).to_have_count(0)
+        self.expect(root.locator("pre")).to_contain_text("[!PROGRESS] Literal code")
+        self.expect(root.locator("ol:not(.answer-progress-steps)")).to_have_count(1)
+        for theme in ("navy", "beige", "black-blue", "life", "brown-gold"):
+            self.page.evaluate("theme=>AiMateAppearance.apply(theme)", theme)
+            self.assertEqual(root.locator(".answer-progress-status").first.evaluate(
+                "e=>getComputedStyle(e).borderRadius"), "999px")
+        self.page.set_viewport_size({"width": 390, "height": 800})
+        self.assertTrue(root.locator(".answer-progress").evaluate(
+            "e=>e.scrollWidth<=e.clientWidth"))
+        self.page.evaluate("window.AiMateFeatures={answerProgress:false}")
+        self.page.evaluate(
+            "text=>{const msg=addMessage('assistant',text);msg.root.id='progress-off';}", source)
+        self.expect(self.page.locator("#progress-off .answer-progress")).to_have_count(0)
+        self.expect(self.page.locator("#progress-off td .answer-progress-status")).to_have_count(0)
+        self.expect(self.page.locator("#progress-off blockquote")).to_contain_text("[!PROGRESS]")
+        self.expect(self.page.locator("#progress-off a")).to_have_attribute(
+            "href", "https://example.com/source")
+
     def test_result_status_cards_use_crisp_icons_and_keep_tables_and_code(self):
         sample="## Final status\\n\\n> [!SUCCESS] **Checks passed**\\n> Synthetic test example.\\n\\n| Item | Status |\\n|---|---|\\n| Test | Passed |\\n\\n```json\\n{\"result\":\"passed\"}\\n```\\n\\n> [!WARNING] Example risk.\\n\\n> [!NOTE] Earlier validation."
         self.page.evaluate("text=>addMessage('assistant',text).root.id='status-sample'",sample.replace("\\n","\n"))

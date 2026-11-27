@@ -1,0 +1,34 @@
+.body .answer-progress {
+  margin: 16px 0; padding: 14px 16px; border: 1px solid var(--line);
+  border-radius: 16px; background: transparent; min-width: 0;
+  overflow-wrap: anywhere;
+}
+.body .answer-progress-title { margin: 0 0 12px; font-size: 14px; font-weight: 650; }
+.body .answer-progress-steps { margin: 0; padding-left: 25px; }
+.body .answer-progress-step { padding-left: 7px; margin: 0 0 14px; }
+.body .answer-progress-step::marker { color: var(--muted); font-size: 12px; }
+.body .answer-progress-step > p:first-child { margin: 0 0 8px; font-weight: 600; }
+.body .answer-progress-step > :not(:first-child) {
+  border-left: 1px solid var(--line); margin: 0; padding: 4px 0 5px 12px;
+}
+.body .answer-progress-step:last-child { margin-bottom: 0; }
+.body .answer-progress-status {
+  display: inline-block; border-radius: 999px; padding: 1px 7px;
+  font-size: 11px; line-height: 1.55; font-weight: 650;
+  background: color-mix(in srgb, currentColor 14%, transparent);
+}
+.body .answer-progress-status.answer-tone-success { color: var(--label-green, #31dc79); }
+.body .answer-progress-status.answer-tone-info { color: var(--label-blue, #4daeff); }
+.body .answer-progress-status.answer-tone-warning { color: var(--label-orange, #ffab36); }
+.body .answer-progress-status.answer-tone-danger { color: var(--label-red, #ff7389); }
+:root[data-theme="beige"] .body .answer-progress-status.answer-tone-success { color: var(--label-green, #006a33); }
+:root[data-theme="beige"] .body .answer-progress-status.answer-tone-info { color: var(--label-blue, #005ec4); }
+:root[data-theme="beige"] .body .answer-progress-status.answer-tone-warning { color: var(--label-orange, #943e00); }
+:root[data-theme="beige"] .body .answer-progress-status.answer-tone-danger { color: var(--label-red, #bb1230); }
+@media (max-width: 650px) {
+  .body .answer-progress { padding: 12px; }
+  .body .answer-progress-steps { padding-left: 21px; }
+}
+@media print {
+  .body .answer-progress-status { color: #000 !important; background: transparent; }
+}

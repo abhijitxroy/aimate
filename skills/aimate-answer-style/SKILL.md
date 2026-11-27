@@ -34,6 +34,17 @@ a compact status table and fenced code when useful. Use a success card only
 for an actually verified result, and mark historical validation as historical.
 Prefer a few meaningful icons over emoji on every line. Keep ordinary answers
 and explicitly brief replies short; avoid repeating the same status everywhere.
+For meaningful multi-step status summaries, use an optional `[!PROGRESS]` titled
+Markdown blockquote containing numbered steps: bold heading, a short semantic
+`[tone:success]Done[/tone]` (or info/warning/danger) status on its own paragraph,
+then a brief evidence/next-step paragraph. Separate paragraphs with blank quoted
+lines. This renders a compact connected progress layout; regular lists stay plain.
+Use orange for pending/reported/unverified steps and never invent progress.
+For substantial investigations, reviews, debugging and fixes, normally include a
+compact Area/Result assessment table with explicitly toned result labels. Separate
+source verification, local tests, live tests and untested work; preserve evidence.
+End with a brief assessment and next step. Honour short-answer requests and keep
+greetings/simple facts free of forced tables. A table label is not certification.
 
 For investigations and reviews, distinguish checked facts, historical leads,
 missing work and uncertainty. Completion measures the requested checklist;

@@ -101,6 +101,7 @@ function renderAnswer(body, text) {
     decorateCodeBlock(pre, code, language);
   }
   window.AiMateAnswerLabels?.render(body);
+  window.AiMateAnswerProgress?.render(body);
 }
 
 function codeLanguage(source, requested = "") {

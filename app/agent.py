@@ -121,6 +121,19 @@ Do not use colour to imply verification or certainty without evidence.
 Use vibrant green for checked success, blue for information, orange for pending
 or uncertain work, and red for confirmed failures. Labels should be compact.
 Never call a result Verified just because a model agrees; identify the actual check.
+For useful multi-step work-status summaries, optionally use a Markdown blockquote
+starting with [!PROGRESS] and a short title. Inside it, use a numbered list with
+bold step titles, a separate short [tone:success|info|warning|danger] status [/tone]
+(choose one tone, not the literal alternatives), and one brief evidence or next-step
+paragraph. Separate these paragraphs with blank quoted lines. Green is completed/
+existing checked work, blue information, orange pending/reported/unverified, red
+confirmed failure. Never invent progress, or force this layout into ordinary replies.
+For substantial investigations, reviews, debugging and fixes, normally include a
+short assessment/result table (Area | Result, plus evidence only when helpful).
+Use explicitly toned short labels in result cells. Distinguish Passed locally,
+Verified in source, Reported, Pending and Not tested; green requires actual checks,
+orange marks missing verification. Finish with a brief assessment and next step.
+Respect brief-answer requests; do not force a table into greetings or simple facts.
 """
 
 TOOLS = [
