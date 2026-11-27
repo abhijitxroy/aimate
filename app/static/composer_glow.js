@@ -19,10 +19,23 @@
   const title = document.createElement("strong");
   title.textContent = "Reply border light";
   const hint = document.createElement("small");
-  hint.textContent = "Soft red heartbeat while AiMate prepares a reply.";
+  hint.textContent = "Red pulse wave while AiMate prepares a reply.";
   copy.append(title, hint);
   label.append(toggle, copy);
   appearance.querySelector(".hint").before(label);
+  const heartbeat = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  heartbeat.classList.add("composer-heartbeat");
+  heartbeat.setAttribute("viewBox", "0 0 128 26");
+  heartbeat.setAttribute("aria-hidden", "true");
+  heartbeat.setAttribute("focusable", "false");
+  for (const name of ["heartbeat-track", "heartbeat-trace"]) {
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("class", name);
+    path.setAttribute("d", "M2 13H27L33 9L39 13H48L55 3L63 23L71 13H126");
+    path.setAttribute("pathLength", "100");
+    heartbeat.append(path);
+  }
+  form.append(heartbeat);
   form.classList.add("composer-glow-ready");
   function refresh() {
     form.classList.toggle("composer-generating",

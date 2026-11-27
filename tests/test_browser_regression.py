@@ -449,6 +449,42 @@ class BrowserRegressionTests(unittest.TestCase):
         self.page.evaluate("document.querySelector('#stop').hidden=true")
         self.expect(form).not_to_have_class(re.compile(r"composer-generating"))
 
+    def test_reply_heartbeat_wave_is_visible_centered_and_stops_without_layout_shift(self):
+        form=self.page.locator("#chatForm")
+        wave=form.locator(".composer-heartbeat")
+        self.expect(wave).to_be_hidden()
+        before=form.bounding_box()
+        self.page.emulate_media(reduced_motion="no-preference")
+        self.page.evaluate("document.querySelector('#stop').hidden=false")
+        self.expect(wave).to_be_visible()
+        bounds=wave.bounding_box()
+        self.assertAlmostEqual(bounds["x"]+bounds["width"]/2,before["x"]+before["width"]/2,delta=1)
+        self.assertEqual(bounds["height"],26)
+        self.assertEqual(wave.locator("path").first.get_attribute("d"),
+                         "M2 13H27L33 9L39 13H48L55 3L63 23L71 13H126")
+        trace=wave.locator(".heartbeat-trace")
+        frames=trace.evaluate("""e=>{const a=e.getAnimations()[0];a.pause();
+          a.currentTime=0;const start=getComputedStyle(e).strokeDashoffset;
+          a.currentTime=1200;const middle=getComputedStyle(e).strokeDashoffset;
+          return {start,middle,duration:a.effect.getTiming().duration,
+                  pointer:getComputedStyle(e.parentElement).pointerEvents};}""")
+        self.assertNotEqual(frames["start"],frames["middle"])
+        self.assertEqual(frames["duration"],2400)
+        self.assertEqual(frames["pointer"],"none")
+        after=form.bounding_box()
+        for key in ("x","y","width","height"):
+            self.assertAlmostEqual(before[key],after[key],delta=1)
+        self.page.emulate_media(reduced_motion="reduce")
+        self.assertEqual(trace.evaluate("e=>getComputedStyle(e).animationName"),"none")
+        self.page.evaluate("""()=>{const t=document.querySelector('#composerGlowToggle');
+            t.checked=false;t.dispatchEvent(new Event('change'));}""")
+        self.expect(wave).to_be_hidden()
+        self.page.evaluate("""()=>{const t=document.querySelector('#composerGlowToggle');
+            t.checked=true;t.dispatchEvent(new Event('change'));}""")
+        self.expect(wave).to_be_visible()
+        self.page.evaluate("document.querySelector('#stop').hidden=true")
+        self.expect(wave).to_be_hidden()
+
     def test_result_status_cards_use_crisp_icons_and_keep_tables_and_code(self):
         sample="## Final status\\n\\n> [!SUCCESS] **Checks passed**\\n> Synthetic test example.\\n\\n| Item | Status |\\n|---|---|\\n| Test | Passed |\\n\\n```json\\n{\"result\":\"passed\"}\\n```\\n\\n> [!WARNING] Example risk.\\n\\n> [!NOTE] Earlier validation."
         self.page.evaluate("text=>addMessage('assistant',text).root.id='status-sample'",sample.replace("\\n","\n"))
@@ -669,6 +705,7 @@ class BrowserRegressionTests(unittest.TestCase):
         self.page.add_init_script("window.AiMateFeatures={composerGlow:false}")
         self.page.reload()
         self.assertEqual(self.page.locator("#composerGlowToggle").count(), 0)
+        self.assertEqual(self.page.locator(".composer-heartbeat").count(), 0)
         self.page.evaluate("document.querySelector('#stop').hidden=false")
         self.assertNotIn("composer-generating", self.page.locator("#chatForm").get_attribute("class"))
 
