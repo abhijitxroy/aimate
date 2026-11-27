@@ -51,7 +51,9 @@ def integer(value, low, high, label):
 
 def merged_size(ranges):
     end, total = 0, 0
-    for start, stop in sorted(ranges):
+    # JSON restores pairs as lists; newly read pairs are tuples. Order by their
+    # numeric bounds so persisted and in-memory ranges can safely coexist.
+    for start, stop in sorted(ranges, key=lambda pair: (pair[0], pair[1])):
         total += max(0, stop - max(start, end))
         end = max(end, stop)
     return total
@@ -59,7 +61,7 @@ def merged_size(ranges):
 
 def first_unread(ranges, total):
     cursor = 0
-    for start, stop in sorted(ranges):
+    for start, stop in sorted(ranges, key=lambda pair: (pair[0], pair[1])):
         if start > cursor:
             break
         cursor = max(cursor, stop)

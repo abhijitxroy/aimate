@@ -212,6 +212,45 @@ class ReviewTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(reader.coverage()["data"]["source_count"], 0)
         self.assertEqual(reader.coverage()["data"]["missing_source_count"], 2)
 
+    async def test_restored_partial_ranges_can_be_reread_and_finished_after_restart(self):
+        text="".join(f"line {i}: Unicode φ and review evidence\n" for i in range(900))
+        with tempfile.TemporaryDirectory() as directory:
+            store=Store(directory)
+            services=self.make_reader(text).services
+            store.save_config(services.config)
+            cid=store.new_conversation()
+            args={"repo":"team/repo","path":"file-0.py","ref":HEAD,"start_line":1,"end_line":30}
+            try:
+                first=await read(services,"read_github_file",args,store,cid)
+                self.assertFalse(first["data"]["read_complete"])
+                encrypted=store.rows("SELECT encrypted FROM review_sessions WHERE conversation=?",(cid,))[0]["encrypted"]
+                progress=json.loads(store.cipher.decrypt(encrypted.encode()))
+                self.assertIsInstance(progress["files"][0]["ranges"][0],list)
+                store.db.close()
+                store=Store(directory)
+                resumed=self.make_reader(text).services
+                repeated=await read(resumed,"read_github_file",args,store,cid)
+                self.assertEqual(repeated["data"]["text"],first["data"]["text"])
+                parts=[first["data"]["text"]]
+                data=repeated["data"]
+                while not data["read_complete"]:
+                    page=await read(resumed,"read_github_file",{
+                        "repo":"team/repo","path":"file-0.py","ref":HEAD,
+                        "start_line":data["next_line"],"start_column":data["next_column"]
+                    },store,cid)
+                    data=page["data"];parts.append(data["text"])
+                self.assertEqual("".join(parts),text)
+                self.assertEqual(len(self.calls),1,"One pinned fetch per resumed service.")
+                coverage=await read(resumed,"review_coverage",{},store,cid)
+                self.assertEqual(coverage["data"]["files"][0]["read_characters"],len(text))
+                store.db.close()
+                store=Store(directory)
+                fresh=self.make_reader(text).services
+                overlap=await read(fresh,"read_github_file",{**args,"start_line":20,"end_line":40},store,cid)
+                self.assertTrue(overlap["data"]["read_complete"])
+            finally:
+                store.db.close()
+
     async def test_legacy_contents_read_marks_truncation(self):
         reader = self.make_reader("x" * 50000)
         result = await reader.services.read("github", "/repos/team/repo/contents/code.py")

@@ -16,6 +16,11 @@ the derived coverage. Editing/deleting a chat clears its checkpoint. Private cha
 keep review state only for the active turn.
 Use `reset=true` on manifest page 1 for a new independent review at the same head.
 
+Saved range pairs can be JSON lists while new reads use tuples. Their numeric
+bounds are now sorted consistently, so rereading or continuing after restart
+does not fail with a mixed-list/tuple TypeError. Existing encrypted checkpoints
+remain usable without clearing the review or starting a new chat.
+
 Limits remain explicit: GitHub's 3,000-file PR API cap, a 1.4 MB individual
 contents-response limit, 100 cached files / approximately 8 MB per turn, and the
 model's tool-round/context limits. These boundaries produce incomplete coverage,
