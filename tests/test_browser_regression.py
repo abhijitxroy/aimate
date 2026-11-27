@@ -255,6 +255,58 @@ class BrowserRegressionTests(unittest.TestCase):
         self.page.evaluate("document.querySelector('#stop').hidden=false")
         self.expect(form).not_to_have_class(re.compile(r"composer-generating"))
 
+    def test_neon_reply_border_is_visible_thin_and_does_not_move_the_composer(self):
+        form=self.page.locator("#chatForm")
+        before=form.bounding_box()
+        self.page.emulate_media(reduced_motion="reduce")
+        self.page.evaluate("document.querySelector('#stop').hidden=false")
+        self.expect(form).to_have_class(re.compile(r"composer-generating"))
+        for theme in ("navy","beige","black-blue","life","brown-gold"):
+            self.page.evaluate("theme=>window.AiMateAppearance.apply(theme)",theme)
+            style=form.evaluate("""e=>{const s=getComputedStyle(e,'::after');return {
+              opacity:Number(s.opacity),border:s.borderTopWidth,shadow:s.boxShadow,
+              pointer:s.pointerEvents,animation:s.animationName};}""")
+            self.assertGreaterEqual(style["opacity"],.85)
+            self.assertEqual(style["border"],"1px")
+            self.assertNotEqual(style["shadow"],"none")
+            self.assertEqual(style["pointer"],"none")
+            self.assertEqual(style["animation"],"none")
+        after=form.bounding_box()
+        for key in ("x","y","width","height"):
+            self.assertAlmostEqual(before[key],after[key],delta=1)
+        self.page.evaluate("document.querySelector('#stop').hidden=true")
+        self.expect(form).not_to_have_class(re.compile(r"composer-generating"))
+
+    def test_classification_labels_are_safe_theme_aware_and_responsive(self):
+        source="### Findings\\n\\n> [!KEEP] **Core flow** — needed and tested.\\n\\n> [!CHECK] Validate the assumption.\\n\\n> [!REMOVE] Confirmed unused helper.\\n\\n> [!OPTIONAL] Nice to have.\\n\\nEvidence: [source](https://github.com/example/repo)."
+        self.page.evaluate("text=>{addMessage('assistant',text).root.id='label-review';}",source.replace("\\n","\n"))
+        root=self.page.locator("#label-review")
+        self.expect(root.locator(".answer-classification")).to_have_count(4)
+        self.assertEqual(root.locator(".answer-classification-label").all_text_contents(),["KEEP","CHECK","REMOVE","OPTIONAL"])
+        self.expect(root.locator("strong")).to_have_text("Core flow")
+        self.expect(root.locator("a")).to_have_attribute("href","https://github.com/example/repo")
+        colours=root.locator(".answer-classification-label").evaluate_all("items=>items.map(e=>getComputedStyle(e).color)")
+        self.assertEqual(len(set(colours)),4)
+        self.page.evaluate("""()=>addMessage('assistant',
+          '> [!KEEP] <img src=x onerror=alert(1)>\\n\\n> [!REMOVE onclick=evil] Invalid\\n\\n```text\\n> [!KEEP] literal\\n```').root.id='label-unsafe'""")
+        unsafe=self.page.locator("#label-unsafe")
+        self.expect(unsafe.locator("img,script")).to_have_count(0)
+        self.expect(unsafe.locator(".answer-classification")).to_have_count(1)
+        self.expect(unsafe.locator("pre code")).to_contain_text("[!KEEP] literal")
+        for theme in ("navy","beige","black-blue","life","brown-gold"):
+            self.page.evaluate("theme=>window.AiMateAppearance.apply(theme)",theme)
+            self.expect(root.locator(".answer-classification").first).to_be_visible()
+        self.page.set_viewport_size({"width":420,"height":800})
+        cards=root.locator(".answer-classification").evaluate_all("items=>items.map(e=>e.getBoundingClientRect().x)")
+        self.assertEqual(len(set(cards)),1)
+        self.page.evaluate("""()=>{
+          window.AiMateFeatures={answerLabels:false};
+          addMessage('assistant','> [!KEEP] Readable fallback').root.id='label-disabled';
+        }""")
+        fallback=self.page.locator("#label-disabled")
+        self.expect(fallback.locator(".answer-classification")).to_have_count(0)
+        self.expect(fallback).to_contain_text("[!KEEP] Readable fallback")
+
     def test_message_rail_hover_tapers_without_moving_content(self):
         self.page.locator("#newChat").click()
         self.page.evaluate("""() => {

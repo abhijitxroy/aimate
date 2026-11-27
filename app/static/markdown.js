@@ -100,6 +100,7 @@ function renderAnswer(body, text) {
     if (rich) { pre.replaceWith(rich); continue; }
     decorateCodeBlock(pre, code, language);
   }
+  window.AiMateAnswerLabels?.render(body);
 }
 
 function codeLanguage(source, requested = "") {

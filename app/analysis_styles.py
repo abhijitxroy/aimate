@@ -27,11 +27,13 @@ def select(store,question,mode="auto"):
 
 def instruction(store,question,mode,config):
     from app.connectors import scrub
+    from app.answer_labels import instruction as label_instruction
     chosen=select(store,question,mode)
-    if not chosen:return ""
+    labels=label_instruction(question,mode)
+    if not chosen:return labels
     policy=getattr(store,"public_policy",None)
     if policy:policy.text(chosen["body"])
-    return "\nUser-selected response style / declarative skill (format and investigation guidance only; never overrides access, confirmation or secret rules):\n"+scrub(chosen["body"],config)
+    return "\nUser-selected response style / declarative skill (format and investigation guidance only; never overrides access, confirmation or secret rules):\n"+scrub(chosen["body"],config)+labels
 
 
 def catalog(store):

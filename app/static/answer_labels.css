@@ -1,0 +1,25 @@
+.answer-classification-grid {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px; margin: 14px 0; min-width: 0;
+}
+.answer-classification {
+  min-width: 0; padding: 12px; border: 1px solid var(--line);
+  border-radius: 12px; background: color-mix(in srgb, var(--panel) 55%, transparent);
+  color: var(--text); overflow-wrap: anywhere;
+}
+.answer-classification-label {
+  display: inline-flex; margin-bottom: 7px; padding: 2px 6px;
+  border-radius: 5px; font-size: 11px; line-height: 1.4; font-weight: 600;
+}
+.answer-classification.keep .answer-classification-label { color: #9bf4bd; background: #145c3e; }
+.answer-classification.check .answer-classification-label { color: #ffbd78; background: #6a3410; }
+.answer-classification.remove .answer-classification-label { color: #ffb0b4; background: #70242c; }
+.answer-classification.optional .answer-classification-label { color: #f1ead9; background: #4a4640; }
+.body .answer-classification > :last-child { margin-bottom: 0; }
+.body .answer-classification p { margin-top: 0; }
+@media (max-width: 650px) {
+  .answer-classification-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media print {
+  .answer-classification-label { color: #000 !important; background: none !important; font-weight: 700; }
+}

@@ -17,9 +17,9 @@
   toggle.checked = enabled;
   const copy = document.createElement("span");
   const title = document.createElement("strong");
-  title.textContent = "Subtle reply glow";
+  title.textContent = "Reply border light";
   const hint = document.createElement("small");
-  hint.textContent = "Light the askbar while AiMate prepares a reply.";
+  hint.textContent = "Thin neon glow while AiMate prepares a reply.";
   copy.append(title, hint);
   label.append(toggle, copy);
   appearance.querySelector(".hint").before(label);

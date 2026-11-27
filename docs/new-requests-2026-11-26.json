@@ -113,10 +113,10 @@
   },
   {
     "id": "askbar-reply-glow",
-    "title": "P2 · Done — Subtle askbar glow during generation\n\nTheme-aware border light while the visible chat prepares a reply; stop immediately on completion/cancel/error or idle-chat navigation. Appearance off switch persists per browser. Reduced motion uses a steady border; hidden tabs pause animation. No glow on file import alone, no flashing/rotating gradients; independently disableable. Remark: implementation under browser/CI validation; not completed yet.\n\nVerified 27 November 2026: enabled/disabled, draft/selection/attachment retention, responsive layout, compact and dense rail navigation, generation/cancel/idle-chat states, saved Appearance preference and reduced motion passed browser tests. All seven workflows passed at de76c3f. Installed UI checked without AI invocation or chat submission; verified source copied into the OneDrive migration code kit. Initial compact-layout regression was fixed before installation. CI: https://github.com/abhijitxroy/aimate/actions/runs/45926370114",
-    "completed": true,
+    "title": "P2 · WIP — Subtle askbar glow during generation\n\nTheme-aware border light while the visible chat prepares a reply; stop immediately on completion/cancel/error or idle-chat navigation. Appearance off switch persists per browser. Reduced motion uses a steady border; hidden tabs pause animation. No glow on file import alone, no flashing/rotating gradients; independently disableable. Remark: implementation under browser/CI validation; not completed yet.\n\nVerified 27 November 2026: enabled/disabled, draft/selection/attachment retention, responsive layout, compact and dense rail navigation, generation/cancel/idle-chat states, saved Appearance preference and reduced motion passed browser tests. All seven workflows passed at de76c3f. Installed UI checked without AI invocation or chat submission; verified source copied into the OneDrive migration code kit. Initial compact-layout regression was fixed before installation. CI: https://github.com/abhijitxroy/aimate/actions/runs/45926370114\n\n27 November visibility follow-up: the old outline was too faint. Raised the one-pixel border and soft halo brightness, retaining slow opacity-only animation, pointer transparency, five-theme styling, no layout shift, reduced motion and saved off preference. Four local browser checks passed for glow and classification presentation. Required workflows, installed view and refreshed Nexus checks pending.",
+    "completed": false,
     "type": "enhancement",
-    "priority": "P2"
+    "priority": "P1"
   },
   {
     "id": "clarify-before-source-fetch",
@@ -144,6 +144,13 @@
     "title": "P1 · Done — Keep bold visible and exit formatting with Space\n\nFix the caret boundary after bold/italic/underline/foreground so a trailing space lands outside closing markers, keeping the word styled and following text plain. Preserve nested formatting, internal spaces, literal code, Undo and disabled mode. Reproduced the original bold trap; focused browser checks passed locally. Remark: required workflows and installed browser validation pending.\n\nVerified 27 November: reproduced the original bold caret trap; bold-to-plain Space, nested styles, internal spaces, literal code, Undo, disabled mode and existing format/browser regressions passed. All seven workflows passed at 7079195. Installed live browser retained **Bold word** normal, rendered only the word bold and hid marker characters. Local app and OneDrive migration kit updated. CI: https://github.com/abhijitxroy/aimate/actions/runs/45937448256",
     "completed": true,
     "type": "bug",
+    "priority": "P1"
+  },
+  {
+    "id": "reply-classification-labels",
+    "title": "P1 · WIP — Colour-labelled classification cards in AiMate replies\n\nConditional KEEP/CHECK/REMOVE/OPTIONAL Markdown labels, compact two-column cards with mobile stacking and high-contrast badges. Preserve original text, evidence and links; no arbitrary HTML or forced cards for short/greeting replies. Separate disabled UI/policy modes. Shared native/Responses style guidance, safe renderer and three policy checks plus browser checks passed locally. Required source workflows, installed renderer and a real supplied-only model response still pending. Parent: SQ-11 compact presentation.",
+    "completed": false,
+    "type": "enhancement",
     "priority": "P1"
   }
 ]

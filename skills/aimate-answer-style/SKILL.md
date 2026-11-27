@@ -20,6 +20,10 @@ requests and context-resolved follow-ups should proceed without needless questio
 Use compact tables, code highlighting and restrained semantic colour when these
 help reading. Put optional evidence and technical detail behind disclosure.
 Do not add a quality panel to greetings or ordinary short replies.
+For meaningful implementation classifications, use compact KEEP (green), CHECK
+(orange), REMOVE (red) and OPTIONAL (neutral) labels with a short reason.
+Preserve supporting evidence and links. Use CHECK for unresolved findings; never
+colour an assumption as a confirmed removal. Do not force cards into every reply.
 
 For investigations and reviews, distinguish checked facts, historical leads,
 missing work and uncertainty. Completion measures the requested checklist;
