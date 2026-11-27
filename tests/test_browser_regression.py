@@ -50,8 +50,10 @@ class BrowserRegressionTests(unittest.TestCase):
             from playwright.sync_api import expect
             cls.login_states=[]
             cls.context_counter=0
-            # Independent sessions keep the real login/chat rate limits enabled.
-            for _ in range(4):
+            # The growing suite can send >10 requests per reused session within
+            # a minute on fast runners. Isolate more sessions without weakening
+            # the real chat limit or exceeding the eight-login allowance.
+            for _ in range(8):
                 login_context = cls.browser.new_context()
                 login_page = login_context.new_page()
                 login_page.goto(cls.url)
@@ -84,6 +86,9 @@ class BrowserRegressionTests(unittest.TestCase):
         type(self).context_counter+=1
         self.context = self.browser.new_context(viewport={"width": 1280, "height": 800}, storage_state=state)
         self.page = self.context.new_page()
+        self.page.on("response", lambda response: print(
+            f"Fixture chat error: HTTP {response.status} {response.text()}",
+            file=sys.stderr) if response.url.endswith("/api/chat") and response.status >= 400 else None)
         if self._testMethodName == "test_generated_panels_expand_editor_and_reveal_insertions":
             # Keep legacy textarea geometry covered alongside new inline-editor checks.
             self.page.add_init_script("window.AiMateFeatures={richComposer:false}")
