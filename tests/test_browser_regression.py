@@ -351,6 +351,55 @@ class BrowserRegressionTests(unittest.TestCase):
         self.page.evaluate("document.querySelector('#stop').hidden=false")
         self.expect(form).not_to_have_class(re.compile(r"composer-generating"))
 
+    def test_conversation_width_preserves_draft_sidebar_and_reload(self):
+        self.page.set_viewport_size({"width": 1920, "height": 1000})
+        self.page.evaluate("addMessage('assistant','## Width example\\n\\n| Column | Result |\\n|---|---|\\n| Synthetic | Preserved |').root.id='width-example'")
+        self.page.locator("#question").fill("Keep **my draft** and | table | data |")
+        draft = self.page.locator("#question").evaluate("node=>node.value")
+        self.assertIn("my draft", draft)
+        self.page.locator("#openAppearance").click()
+        self.expect(self.page.locator('[data-chat-width-choice="current"]')).to_have_attribute("aria-pressed", "true")
+        self.page.locator('[data-close="appearanceDialog"]').click()
+        measure = """()=>({sidebar:document.querySelector('#sidebar').getBoundingClientRect().width,
+          padding:parseFloat(getComputedStyle(document.querySelector('#messages')).paddingLeft),
+          composer:document.querySelector('#chatForm').getBoundingClientRect().width})"""
+        before = self.page.evaluate(measure)
+        self.page.locator("#openAppearance").click()
+        self.page.locator('[data-chat-width-choice="wide"]').click()
+        self.expect(self.page.locator('[data-chat-width-choice="wide"]')).to_have_attribute("aria-pressed", "true")
+        self.page.locator('[data-close="appearanceDialog"]').click()
+        after = self.page.evaluate(measure)
+        self.assertAlmostEqual(after["sidebar"], before["sidebar"], delta=1)
+        self.assertGreater(after["composer"], before["composer"] + 200)
+        self.assertLess(after["padding"], before["padding"])
+        self.expect(self.page.locator("#width-example table")).to_contain_text("Preserved")
+        self.assertEqual(self.page.locator("#question").evaluate("node=>node.value"), draft)
+        self.page.reload()
+        self.expect(self.page.locator("html")).to_have_attribute("data-chat-width", "wide")
+        self.page.locator("#openAppearance").click()
+        self.page.locator('[data-chat-width-choice="current"]').click()
+        self.page.locator('[data-close="appearanceDialog"]').click()
+        restored = self.page.evaluate(measure)
+        self.assertAlmostEqual(restored["composer"], before["composer"], delta=1)
+        self.page.reload()
+        self.expect(self.page.locator("html")).to_have_attribute("data-chat-width", "current")
+
+    def test_conversation_width_small_screens_and_disabled_module(self):
+        self.page.evaluate("addMessage('assistant','Synthetic width example')")
+        self.page.locator("#openAppearance").click()
+        self.page.locator('[data-chat-width-choice="wide"]').click()
+        self.page.locator('[data-close="appearanceDialog"]').click()
+        self.page.set_viewport_size({"width": 480, "height": 850})
+        widths = self.page.evaluate("""()=>({page:document.documentElement.scrollWidth,viewport:innerWidth,
+          padding:parseFloat(getComputedStyle(document.querySelector('#messages')).paddingLeft)})""")
+        self.assertLessEqual(widths["page"], widths["viewport"] + 1)
+        self.assertEqual(widths["padding"], 18)
+        self.page.add_init_script("window.AiMateFeatures={conversationWidth:false}")
+        self.page.reload()
+        self.expect(self.page.locator("html")).to_have_attribute("data-chat-width", "current")
+        self.assertEqual(self.page.locator("#conversationWidthOptions").count(), 0)
+        self.assertEqual(self.page.evaluate("localStorage.getItem('aimate.chat-width')"), "wide")
+
     def test_neon_reply_border_is_visible_thin_and_does_not_move_the_composer(self):
         form=self.page.locator("#chatForm")
         before=form.bounding_box()

@@ -215,5 +215,12 @@
     "completed": true,
     "type": "enhancement",
     "priority": "P1"
+  },
+  {
+    "id": "conversation-width-view",
+    "title": "P2 · WIP — Current and Wide conversation views\n\nRemark: Keep the existing readable width as default; add an optional wider conversation body and aligned askbar, controlled from Appearance. Remember this browser preference, preserve sidebar/drafts/formatting and test wide desktop, narrow screens, reload and feature disable.",
+    "completed": false,
+    "type": "enhancement",
+    "priority": "P2"
   }
 ]

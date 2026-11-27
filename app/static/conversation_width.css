@@ -1,0 +1,22 @@
+/* Current mode inherits the existing layout exactly. Wide never resizes the sidebar. */
+html[data-chat-width="wide"] #messages,
+html[data-chat-width="wide"] .composer-wrap {
+  padding-left: max(28px, calc((100% - 1440px) / 2));
+  padding-right: max(28px, calc((100% - 1440px) / 2));
+}
+.chat-width-options {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px; border: 0; padding: 0; margin: 10px 0 20px; min-width: 0;
+}
+.chat-width-options legend { padding: 0 0 9px; font-size: 13px; font-weight: 600; }
+.chat-width-options button { min-width: 0; display: grid; gap: 4px; text-align: left; }
+.chat-width-options button[aria-pressed="true"] {
+  border-color: var(--accent); color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--panel));
+}
+.chat-width-options small { color: var(--muted); font-size: 11px; font-weight: 400; }
+.chat-width-options[hidden] { display: none; }
+@media (max-width: 650px) {
+  html[data-chat-width="wide"] #messages,
+  html[data-chat-width="wide"] .composer-wrap { padding-left: 18px; padding-right: 18px; }
+}
