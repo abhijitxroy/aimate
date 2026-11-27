@@ -72,6 +72,16 @@ class AI:
 
     def stream(self, **kwargs):
         question=str(kwargs["messages"][-1]["content"])
+        if question == "Clarify fixture":
+            class ClarifyStream(Stream):
+                async def get_final_message(self):
+                    class Tool:
+                        def model_dump(self, **unused):
+                            return {"type": "tool_use", "id": "clarify", "name": "ask_user",
+                                    "input": {"question": "Which build should I review?",
+                                              "kind": "single", "options": ["Build 11", "Build 12"]}}
+                    return SimpleNamespace(content=[Tool()], usage=SimpleNamespace(input_tokens=10, output_tokens=12))
+            return ClarifyStream(kwargs["model"], "")
         if question == "Output limit fixture":
             return Stream(kwargs["model"], "Synthetic partial answer.", stop="max_tokens")
         if question == "Empty final fixture":

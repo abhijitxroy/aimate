@@ -279,6 +279,51 @@ class BrowserRegressionTests(unittest.TestCase):
         markers.nth(0).press("Escape")
         self.expect(self.page.locator(".message-rail-preview")).to_be_hidden()
 
+    def test_clarification_choices_wait_for_user_keep_draft_and_reload(self):
+        self.page.locator("#newChat").click()
+        self.page.locator("#question").fill("Clarify fixture")
+        self.page.locator("#send").click()
+        self.expect(self.page.locator("#activity")).to_have_text("Waiting for your answer")
+        self.expect(self.page.locator("#messages")).to_contain_text("Which build should I review?")
+        choices = self.page.locator(".clarification-choices")
+        self.expect(choices).to_be_visible()
+        self.page.reload()
+        self.expect(choices).to_be_visible()
+        self.page.locator("#question").fill("Keep this note.")
+        choices.get_by_role("button", name="Build 11", exact=True).click()
+        self.assertTrue(self.page.locator("#question").evaluate("(n)=>n.value").startswith("Keep this note.\n\nRegarding"))
+        self.assertIn("Build 11", self.page.locator("#question").evaluate("(n)=>n.value"))
+        self.expect(choices).to_contain_text("Review and send.")
+        self.expect(self.page.locator("#send")).to_be_enabled()
+
+    def test_modern_tables_use_subtle_rows_and_keep_scrolling_and_fallback(self):
+        self.page.locator("#newChat").click()
+        self.page.evaluate("""() => addMessage("assistant",
+            "| Check | Result |\\n| --- | --- |\\n| Linux | Passed |\\n| Windows | Review |")""")
+        table = self.page.locator("#messages .answer-table").last
+        self.expect(table).to_have_class(re.compile(r"answer-table-modern"))
+        for theme in ("navy", "beige", "black-blue", "brown-gold", "life"):
+            self.page.evaluate("t=>window.AiMateAppearance.apply(t)", theme)
+            self.expect(table).to_have_css("border-top-width", "0px")
+            self.expect(table.locator("td").first).to_have_css("border-left-width", "0px")
+            self.expect(table.locator("td").first).to_have_css("border-bottom-width", "1px")
+            self.expect(table.locator("th").first).to_have_css("color",
+                self.page.locator("body").evaluate("(n)=>getComputedStyle(n).color"))
+        self.page.evaluate("""() => {
+            const headings=Array.from({length:20},(_,i)=>"Column"+i).join(" | ");
+            const rules=Array(20).fill("---").join(" | ");
+            const values=Array(20).fill("A long value").join(" | ");
+            addMessage("assistant","| "+headings+" |\\n| "+rules+" |\\n| "+values+" |");
+        }""")
+        wide = self.page.locator("#messages .answer-table").last
+        self.assertGreater(wide.evaluate("(n)=>n.scrollWidth"), wide.evaluate("(n)=>n.clientWidth"))
+        self.page.evaluate("""() => {
+            window.AiMateFeatures={modernTables:false};
+            addMessage("assistant","| A | B |\\n| --- | --- |\\n| C | D |");
+        }""")
+        fallback = self.page.locator("#messages .answer-table").last
+        self.assertNotIn("answer-table-modern", fallback.get_attribute("class"))
+
     def test_reply_glow_real_stream_stops_and_optional_module_can_be_disabled(self):
         self.page.locator("#newChat").click()
         self.page.locator("#question").fill("Glow held fixture")

@@ -951,9 +951,11 @@ async function loadConversation(id, title, version) {
     if (bot && turn.usage?.model) {
       updateModelInfo(bot, turn.usage);
     }
+    if (bot) window.AiMateClarification?.render(bot, turn.usage?.completion);
     if(bot) window.AiMateMessageFavorites?.update(bot,"assistant",turn.usage?.favorite_roles?.includes("assistant"));
     for (const msg of turn.messages) {
       if (!Array.isArray(msg.content)) continue;
+      if (turn.usage?.completion?.status === "awaiting_input") continue;
       for (const block of msg.content) {
         if (block.type === "tool_use" && bot) addTool(bot, block.name, block.input);
         if (block.type === "responses" && bot) {
@@ -1106,7 +1108,9 @@ async function ask(question) {
           if (bot.modelDetails) updateModelInfo(bot, {...bot.modelDetails, usage:event.usage, quality:event.quality,
             ...(event.completion ? {completion:event.completion, notice:event.completion.notice} : {})});
           activity(event.completion?.status === "incomplete" ? "Investigation incomplete · checkpoint saved" :
+            event.completion?.status === "awaiting_input" ? "Waiting for your answer" :
             event.completion?.status === "partial" ? "Findings ready · review evidence gaps" : "Answer complete");
+          window.AiMateClarification?.render(bot, event.completion);
         }
         if(cid===run.cid) scrollMessages();
       }

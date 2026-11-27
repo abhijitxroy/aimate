@@ -256,7 +256,7 @@ class ChatGPTTests(unittest.TestCase):
         events = asyncio.run(run())
         payload = json.loads(next(r.content for r in self.requests if r.url.path == "/v1/responses"))
         self.assertEqual({tool["name"] for tool in payload["tools"][0]["tools"]},
-                         {"read_attachment", "assess_answer"})
+                         {"read_attachment", "assess_answer", "ask_user"})
         self.assertNotIn("Configured sources:", payload["instructions"])
         self.assertNotIn("github.example", payload["instructions"])
         self.assertEqual(events[-1]["quality"]["input_evidence"], "input:current-message")
@@ -280,7 +280,7 @@ class ChatGPTTests(unittest.TestCase):
                          ["api_read", "configure_repository", "search_knowledge", "read_past_conversation",
                           "read_knowledge_record", "read_saved_turn",
                           "read_github_file", "read_pr_manifest", "review_coverage", "read_attachment", "read_requested_repository",
-                          "find_repository_files", "search_repository_text"])
+                          "find_repository_files", "search_repository_text", "ask_user"])
         instructions = payload["instructions"]
         self.assertIn('"change_proposals_enabled": false', instructions)
         self.assertIn('"github": false', instructions)

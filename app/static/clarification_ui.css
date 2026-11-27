@@ -1,0 +1,5 @@
+.clarification-choices { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.clarification-choices button { font-size: 12px; padding: 6px 10px; background: transparent; border-radius: 16px; }
+.clarification-choices label { display: flex; align-items: center; gap: 5px; font-size: 12px; margin: 0; }
+.clarification-choices input { accent-color: var(--accent); }
+.clarification-choices small { flex-basis: 100%; color: var(--muted); font-size: 11px; }

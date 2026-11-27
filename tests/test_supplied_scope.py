@@ -59,7 +59,7 @@ class ScopeIntegrationTests(unittest.TestCase):
         self.assertFalse(any(e["event"] in {"source", "action"} for e in events))
         failed = [e for e in events if e["event"] == "tool_done" and not e["ok"]]
         self.assertEqual(len(failed), 2)
-        self.assertEqual({t["name"] for t in seen[0]["tools"]}, {"read_attachment", "assess_answer"})
+        self.assertEqual({t["name"] for t in seen[0]["tools"]}, {"read_attachment", "assess_answer", "ask_user"})
         self.assertNotIn("Configured sources:", seen[0]["system"])
         self.assertNotIn("github.example", seen[0]["system"])
         self.assertLess(len(seen[0]["system"]), 5000)

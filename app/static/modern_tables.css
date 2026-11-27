@@ -1,0 +1,15 @@
+/* Optional border-light tables; semantic table markup and scrolling stay intact. */
+.answer-table.answer-table-modern { border: 0; border-radius: 0; background: transparent; box-shadow: none; margin: 16px 0; }
+.answer-table.answer-table-modern table { border-collapse: collapse; font-size: 12px; }
+:root .answer-table.answer-table-modern th,
+:root .answer-table.answer-table-modern td {
+  border: 0; border-bottom: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
+  padding: 10px 14px; line-height: 1.55; vertical-align: top;
+}
+:root .answer-table.answer-table-modern th {
+  background: color-mix(in srgb, var(--accent) 6%, var(--bg));
+  color: var(--text); font-weight: 600; min-width: 96px;
+}
+.answer-table.answer-table-modern tbody tr:nth-child(even) { background: color-mix(in srgb, var(--text) 2%, transparent); }
+.answer-table.answer-table-modern tbody tr:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+:root .answer-table.answer-table-modern tbody tr:last-child td { border-bottom: 0; }

@@ -74,6 +74,7 @@ function renderAnswer(body, text) {
   }
   for (const table of body.querySelectorAll("table")) {
     const scroll = document.createElement("div"); scroll.className = "answer-table"; scroll.tabIndex = 0;
+    if (window.AiMateFeatures?.modernTables !== false) scroll.classList.add("answer-table-modern");
     scroll.setAttribute("aria-label", "Scrollable table");
     table.replaceWith(scroll); scroll.append(table);
   }

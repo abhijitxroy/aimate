@@ -23,6 +23,7 @@ from app.local_evidence import TOOL as LOCAL_TOOL, LocalEvidence, enabled as loc
 from app.knowledge_index import TOOLS as KNOWLEDGE_TOOLS, Index as KnowledgeIndex, enabled as knowledge_enabled
 from app.investigation_completion import reason as completion_reason, checkpoint as completion_checkpoint
 from app.answer_synthesis import SYSTEM as SYNTHESIS_SYSTEM, packet as synthesis_packet, enabled as synthesis_enabled, recovered as synthesis_recovered
+from app.clarification import TOOL as CLARIFICATION_TOOL, POLICY as CLARIFICATION_POLICY, enabled as clarification_enabled, request as clarification_request, text as clarification_text
 
 SYSTEM = """You are AiMate, a project assistant for GitHub, Jira and Jenkins, created by Abhijit Roy.
 When asked your name, answer: "My name is AiMate, and my creator is Abhijit Roy."
@@ -389,6 +390,9 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
     from app.answer_preference import prepare as answer_preference
     preference, presentation = answer_preference(store, cid, question)
     system += presentation
+    if clarification_enabled():
+        system += CLARIFICATION_POLICY
+        available_tools = [*available_tools, CLARIFICATION_TOOL]
     from app.usage_meter import MeteredClient
     client = MeteredClient(await asyncio.to_thread(client_factory, config), store, config, "Chat / routing")
     answer = ""
@@ -446,6 +450,17 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
             add_usage(usage, by_model, msg.model if getattr(msg, "model", None) else selection["model"],
                       anthropic_usage(msg.usage))
             calls = [block for block in blocks if block["type"] == "tool_use"]
+            clarification = clarification_request(scrub(calls, config))
+            if clarification:
+                # Resolve every call ID but execute none, including a mixed batch.
+                messages.append({"role": "user", "content": [
+                    {"type": "tool_result", "tool_use_id": call["id"], "is_error": True,
+                     "content": "Not executed: waiting for the user's clarification."} for call in calls]})
+                prompt = clarification_text(clarification)
+                messages.append({"role": "assistant", "content": prompt})
+                yield {"event": "text", "delta": ("\n\n" if answer else "") + prompt}
+                completion, final_quality, completed = clarification, None, True
+                break
             pause = completion_reason(round_no, calls, getattr(msg, "stop_reason", None),
                                       any(b.get("type") == "text" and b.get("text", "").strip() for b in blocks))
             if pause:
@@ -673,6 +688,9 @@ async def _run_chatgpt_turn(store, cid, question, connection, services_factory, 
     from app.answer_preference import prepare as answer_preference
     preference, presentation = answer_preference(store, cid, question)
     instructions += presentation
+    if clarification_enabled():
+        instructions += CLARIFICATION_POLICY
+        tools = [*tools, CLARIFICATION_TOOL]
     namespace = {"type": "namespace", "name": "project", "description": "Scoped engineering project tools",
                  "tools": [{"type": "function", "name": t["name"], "description": t["description"],
                             "parameters": t["input_schema"], "strict": False} for t in tools]}
@@ -740,6 +758,23 @@ async def _run_chatgpt_turn(store, cid, question, connection, services_factory, 
         if text:
             blocks.append({"type": "text", "text": text.strip()})
         saved.append({"role": "assistant", "content": blocks})
+        clarification = clarification_request(scrub(calls, config), responses=True)
+        if clarification:
+            if access_check:
+                access_check()
+            saved.append({"role": "user", "content": [
+                {"type": "tool_result", "tool_use_id": call["call_id"], "is_error": True,
+                 "content": "Not executed: waiting for the user's clarification."} for call in calls]})
+            prompt = clarification_text(clarification)
+            saved.append({"role": "assistant", "content": prompt})
+            store.save_turn(cid, scrub(saved, config), {"model": model, "mode": model_mode,
+                "route": selection["route"], "usage": usage, "by_model": by_model,
+                "answer_preference": preference, "quality": None, "completion": clarification,
+                "notice": clarification["notice"]})
+            yield {"event": "text", "delta": ("\n\n" if text else "") + prompt}
+            yield {"event": "done", "usage": usage, "model": model, "mode": model_mode,
+                   "by_model": by_model, "quality": None, "completion": clarification}
+            return
         pause = completion_reason(round_no, calls, final_text=bool(text.strip()))
         if pause:
             if calls:
