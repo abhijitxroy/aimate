@@ -3,6 +3,7 @@ import asyncio
 import copy
 import json
 import re
+from urllib.parse import quote, urlsplit
 
 from app.connectors import scrub
 from app.final_review_panel import enabled, profiles, preference, selected_panel, fingerprint
@@ -26,13 +27,25 @@ def escape(text):
     return re.sub(r"([\\`*_\[\]<>|])", r"\\\1", str(text)).replace("\n", " ")
 
 
+def source_link(packet, source, line):
+    parsed = urlsplit(source["url"])
+    if parsed.hostname == "api.github.com":
+        base = "https://github.com"
+    elif "/api/v3/repos/" in parsed.path:
+        prefix = parsed.path.split("/api/v3/repos/", 1)[0]
+        base = f"{parsed.scheme}://{parsed.netloc}{prefix}"
+    else:
+        return source["url"]
+    return f"{base}/{packet['repo']}/blob/{source['commit']}/{quote(source['path'], safe='/')}#L{line}"
+
+
 def render(report, packet, results, lead):
     rows = ["## Final PR review", escape(report["summary"]),
             f"\nPinned head: `{packet['head']}` · {packet['changed_files']} changed files.",
             "\n| Reviewer | Result |", "| --- | --- |"]
     for value in results:
         rows.append(f"| {escape(value['name'])} · {escape(value['model'])} | "
-                    f"{'Report checked' if value.get('report') else 'Incomplete'} |")
+                    f"{'Citations matched' if value.get('report') else 'Incomplete'} |")
     rows.append("\n### Findings")
     if not report["findings"]:
         rows.append("No source-grounded findings were retained by the lead. This is not proof that the PR is bug-free.")
@@ -43,7 +56,7 @@ def render(report, packet, results, lead):
                  f"Source: `{escape(finding['path'])}:{finding['line']}` at `{finding['commit']}`.",
                  escape(finding["scenario"]), "**Suggested correction:** " + escape(finding["suggestion"])]
         # API URL is constructed by the scoped reader, never by the model.
-        rows.append(f"[Pinned source]({source['url']})")
+        rows.append(f"[Pinned source]({source_link(packet, source, finding['line'])})")
     gaps = list(report["gaps"])
     gaps.extend(f"{value['name']}: reviewer did not finish a valid report."
                 for value in results if not value.get("report"))
@@ -123,9 +136,12 @@ async def run(store, cid, question, *, client_factory, services_factory, chatgpt
                     result["error"] = "Reviewer returned no completed, source-cited report."
                     if isinstance(exc, TimeoutError):
                         result["error"] = "Reviewer timed out."
-                except Exception:
+                except Exception as exc:
                     check()
                     result["error"] = "Reviewer connection failed; its findings were not included."
+                    if getattr(exc, "status_code", None) in {400, 401, 403, 404, 429}:
+                        from app.agent import ai_error
+                        result["error"] = ai_error(exc)
                 return result
 
         tasks = [asyncio.create_task(review(profile)) for profile in panel]

@@ -150,6 +150,13 @@ class PanelTests(unittest.TestCase):
                 capture(store, {"name": "Not approved", "scope": "organization"})
             with self.assertRaisesRegex(ValueError, "credential"):
                 capture(store, {"name": "Mistyped secret", "scope": "non-intel", "model": "changed-secret"})
+            config = store.config()
+            config["ai"].update(aws_secret_key="unused-aws-secret", gcp_credentials="unused-google-secret")
+            store.save_config(config)
+            own = capture(store, {"name": "Active provider only", "scope": "non-intel"})
+            saved = profiles(store)[own["id"]]["ai"]
+            self.assertNotIn("aws_secret_key", saved)
+            self.assertNotIn("gcp_credentials", saved)
             store.db.close()
 
     def test_routes_check_access_save_and_disabled_mode(self):
@@ -184,6 +191,16 @@ class PanelTests(unittest.TestCase):
                 self.assertIn("ZeroDivisionError", response.text)
                 self.assertEqual(len(calls), 5)
                 self.assertTrue(all(request.method == "GET" for request in requests))
+                class Denied(Exception):
+                    status_code = 403
+                    body = {"message": "Provider body must not escape: ai-private-token"}
+                with patch("app.final_review_calls.call", side_effect=Denied()):
+                    failed = client.post(f"/api/settings/final-review/profiles/{ids[0]}/test", headers=headers)
+                self.assertEqual(failed.status_code, 400)
+                self.assertIn("AI access denied", failed.text)
+                self.assertNotIn("ai-private-token", failed.text)
+                state = client.get("/api/settings/final-review").json()
+                self.assertFalse(next(row for row in state["profiles"] if row["id"] == ids[0])["ready"])
             with patch.dict("os.environ", {"AIMATE_FINAL_REVIEW_ENABLED": "0"}):
                 with TestClient(create_app(store)) as client:
                     client.post("/api/login", json={"password": store.password})
@@ -227,6 +244,8 @@ class FinalReviewTests(unittest.IsolatedAsyncioTestCase):
         metadata = json.loads(self.store.rows("SELECT metadata FROM turn_usage")[0]["metadata"])
         self.assertEqual(metadata["final_review"]["snapshot"], inputs[0]["evidence"])
         self.assertEqual(metadata["usage"]["input_tokens"], 120)
+        answer = next(event["delta"] for event in events if event["event"] == "text")
+        self.assertIn(f"https://github.com/team/repo/blob/{HEAD}/code.py#L2", answer)
         self.assertTrue(all(client.closed for client, _ in self.calls))
 
     async def test_empty_optional_keys_do_not_corrupt_source_metadata_or_redaction(self):

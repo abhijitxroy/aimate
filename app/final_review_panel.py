@@ -65,7 +65,9 @@ def require_current_credentials(store, value):
     same = active.get("provider") == saved["provider"] or {
         active.get("provider"), saved["provider"]} <= shared_bedrock
     if same:
-        fields = ("api_key", "aws_access_key", "aws_secret_key", "aws_session_token") if saved["provider"] != "gemini" else ("gcp_credentials",)
+        fields = ("gcp_credentials",) if saved["provider"] == "gemini" else (
+            ("aws_access_key", "aws_secret_key", "aws_session_token")
+            if saved["provider"] == "bedrock" and saved.get("bedrock_auth") == "iam" else ("api_key",))
         if any(active.get(key, "") != saved.get(key, "") for key in fields):
             raise ValueError("This profile uses an older credential. Save the refreshed connection as this profile and check it again.")
 
@@ -99,8 +101,10 @@ def capture(store, body, chatgpt=None):
         validate({**ai, "model": model, "analysis_model": ""})
     # Keep only the active provider's credentials, never other retained keys.
     fields = {"provider", "region", "model", "bedrock_endpoint", "bedrock_auth", "bedrock_mode"}
-    if provider in {"bedrock", "bedrock-openai", "opencode", "anthropic"}:
-        fields |= {"api_key", "aws_access_key", "aws_secret_key", "aws_session_token"}
+    if provider == "bedrock" and ai.get("bedrock_auth") == "iam":
+        fields |= {"aws_access_key", "aws_secret_key", "aws_session_token"}
+    elif provider in {"bedrock", "bedrock-openai", "opencode", "anthropic"}:
+        fields.add("api_key")
     elif provider == "gemini":
         fields |= {"gcp_credentials", "gcp_project", "gcp_location"}
     ai = {key: value for key, value in ai.items() if key in fields}
@@ -236,8 +240,13 @@ def register(app, store, auth, config_lock, client_factory, chatgpt, lease_facto
         put_profile(store, ident, {k: v for k, v in value.items() if k != "verified"})
         # Explicit button, not a background paid call. No user/PR content.
         check = lease_factory(session)
-        await call(store, value, "Reply with OK.", "Connection check only.", client_factory, chatgpt,
-                   check, max_tokens=256, origin="Final review access check")
+        try:
+            await call(store, value, "Reply with OK.", "Connection check only.", client_factory, chatgpt,
+                       check, max_tokens=256, origin="Final review access check")
+        except Exception as exc:
+            check()
+            from app.agent import ai_error
+            raise ValueError(ai_error(exc)) from None
         check()
         async with config_lock:
             current = profiles(store).get(ident)

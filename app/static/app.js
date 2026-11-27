@@ -214,8 +214,8 @@ function shortModelName(model) {
 }
 
 function updateModelInfo(message, used) {
-  const route = used.route === "manual" ? "Manual" : used.route === "analysis" ? "Analysis" : "Standard";
-  const mode = used.mode?.startsWith("auto") ? "Auto" : route;
+  const route = used.mode === "final-review" ? "Final review" : used.route === "manual" ? "Manual" : used.route === "analysis" ? "Analysis" : "Standard";
+  const mode = used.mode === "final-review" ? "Final" : used.mode?.startsWith("auto") ? "Auto" : route;
   const total = used.usage ? ["input_tokens","output_tokens","cache_read_input_tokens","cache_creation_input_tokens"]
     .reduce((sum,key)=>sum+(used.usage[key] || 0),0) : null;
   const label = `${mode}${total === null ? "" : ` · 🔥 ${total.toLocaleString()}`}`;

@@ -142,11 +142,14 @@ class BrowserRegressionTests(unittest.TestCase):
         self.page.evaluate("""() => {
           const msg=addMessage('assistant','Final review summary');
           msg.root.id='final-review-browser';
+          updateModelInfo(msg,{mode:'final-review',route:'Final PR review',model:'analysis-fixture',
+            usage:{input_tokens:4240,output_tokens:2351}});
           AiMateFinalReview.render(msg,{reviewers:[{name:'Independent model',model:'analysis-fixture',
             report:{summary:'Concrete review.',findings:[{severity:'P2',path:'code.py',line:2,
               claim:'A check is missing.',scenario:'The caller passes zero.'}],gaps:['Runtime not executed.']}}]});
         }""")
         reports=self.page.locator("#final-review-browser .final-review-reports")
+        self.expect(self.page.locator("#final-review-browser .model-info .model-name").first).to_have_text("Final")
         self.expect(reports).not_to_have_attribute("open","")
         reports.locator("summary").first.click()
         reports.locator("details summary").click()
