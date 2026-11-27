@@ -1,0 +1,19 @@
+.composer-glow-ready { position: relative; }
+.composer-generating::after {
+  content: ""; position: absolute; inset: -1px; pointer-events: none;
+  border-radius: inherit; border: 1px solid var(--accent);
+  box-shadow: 0 0 9px color-mix(in srgb, var(--accent) 22%, transparent),
+    inset 0 0 5px color-mix(in srgb, var(--accent) 8%, transparent);
+  opacity: .45; animation: composer-reply-glow 4.4s ease-in-out infinite;
+}
+@keyframes composer-reply-glow { 0%, 100% { opacity: .32; } 50% { opacity: .62; } }
+.composer-glow-setting {
+  display: flex; align-items: center; gap: 10px; margin: 20px 0 12px;
+  padding: 12px 0; border-top: 1px solid var(--line); cursor: pointer;
+}
+.composer-glow-setting input { width: 16px; height: 16px; accent-color: var(--accent); }
+.composer-glow-setting strong { display: block; font-size: 13px; font-weight: 500; }
+.composer-glow-setting small { display: block; font-size: 11px; color: var(--muted); margin-top: 4px; }
+@media (prefers-reduced-motion: reduce) {
+  .composer-generating::after { animation: none; opacity: .45; }
+}

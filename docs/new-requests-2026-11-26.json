@@ -110,5 +110,12 @@
     "completed": false,
     "type": "enhancement",
     "priority": "P2"
+  },
+  {
+    "id": "askbar-reply-glow",
+    "title": "P2 · WIP — Subtle askbar glow during generation\n\nTheme-aware border light while the visible chat prepares a reply; stop immediately on completion/cancel/error or idle-chat navigation. Appearance off switch persists per browser. Reduced motion uses a steady border; hidden tabs pause animation. No glow on file import alone, no flashing/rotating gradients; independently disableable. Remark: implementation under browser/CI validation; not completed yet.",
+    "completed": false,
+    "type": "enhancement",
+    "priority": "P2"
   }
 ]

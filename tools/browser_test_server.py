@@ -42,7 +42,10 @@ class Stream:
     @property
     def text_stream(self):
         async def chunks():
-            if self.slow:
+            if self.slow == "glow":
+                # Independent held stream: other tests may release parallel jobs.
+                await asyncio.Event().wait()
+            elif self.slow:
                 await parallel_release.wait()
             yield self.text
         return chunks()
@@ -73,6 +76,8 @@ class AI:
             return Stream(kwargs["model"], "Synthetic partial answer.", stop="max_tokens")
         if question == "Empty final fixture":
             return Stream(kwargs["model"], "")
+        if question == "Glow held fixture":
+            return Stream(kwargs["model"], slow="glow")
         if question.startswith("Parallel "):
             return Stream(kwargs["model"],"Reply: "+question,slow=True)
         if "Which ticket" in str(kwargs["messages"][-1]["content"]):
