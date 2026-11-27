@@ -204,6 +204,8 @@ function shortModelName(model) {
   if(local) return "Qwen3 "+local[1].toUpperCase();
   const claude = model.match(/claude-(haiku|sonnet|opus|fable)-(\d+)(?:[-.](\d{1,2})(?!\d))?/i);
   if (claude) return `${claude[1][0].toUpperCase() + claude[1].slice(1)} ${claude[2]}${claude[3] ? "." + claude[3] : ""}`;
+  const legacyClaude = model.match(/claude-(\d+)(?:-(\d))?-(haiku|sonnet|opus)/i);
+  if (legacyClaude) return `${legacyClaude[3][0].toUpperCase() + legacyClaude[3].slice(1)} ${legacyClaude[1]}${legacyClaude[2] ? "." + legacyClaude[2] : ""}`;
   if(model.startsWith("gemini-")) return model.split("-").map(word=>word[0].toUpperCase()+word.slice(1)).join(" ");
   const gpt=model.match(/gpt-(\d+)(?:[.-](\d+))?-(sol|terra|luna|astra)/i);
   if (gpt) return `GPT-${gpt[1]}${gpt[2] ? "."+gpt[2] : ""} ${gpt[3][0].toUpperCase()+gpt[3].slice(1)}`;
@@ -212,7 +214,7 @@ function shortModelName(model) {
 }
 
 function updateModelInfo(message, used) {
-  const route = used.route === "analysis" ? "Analysis" : "Standard";
+  const route = used.route === "manual" ? "Manual" : used.route === "analysis" ? "Analysis" : "Standard";
   const mode = used.mode?.startsWith("auto") ? "Auto" : route;
   const total = used.usage ? ["input_tokens","output_tokens","cache_read_input_tokens","cache_creation_input_tokens"]
     .reduce((sum,key)=>sum+(used.usage[key] || 0),0) : null;
@@ -272,19 +274,22 @@ document.addEventListener("keydown", event => {
 });
 
 function renderModelSelection(event = null) {
+  window.AiMateManualModels?.syncActive();
   const mode = $("#modelMode").value;
+  const manualId = $("#modelMode").selectedOptions[0]?.dataset.manualModel;
   const selectedAI=window.AiMateLocalAI?.active() ? {provider:"ollama",model:window.AiMateLocalAI.model(),analysis_model:""} : config.ai;
   const key = JSON.stringify([mode, selectedAI?.provider, selectedAI?.model, selectedAI?.analysis_model, demo]);
   if (event) activeModelSelection = {key, route: event.route, model: event.model};
   if (activeModelSelection?.key !== key) activeModelSelection = null;
-  const route = activeModelSelection?.route || (["analysis","auto-quality"].includes(mode) ? "analysis" : "standard");
-  const model = activeModelSelection?.model || (route === "analysis" ? selectedAI?.analysis_model : selectedAI?.model);
+  const route = activeModelSelection?.route || (manualId ? "manual" : ["analysis","auto-quality"].includes(mode) ? "analysis" : "standard");
+  const model = activeModelSelection?.model || manualId || (route === "analysis" ? selectedAI?.analysis_model : selectedAI?.model);
   const unavailable = demo || !selectedAI?.analysis_model;
   const picker = $("#modelMode");
   for (const option of picker.options) {
+    if (option.dataset.manualModel) continue;
     const label = option.value === "auto" ? "Auto · Balanced" : option.value === "auto-quality" ? "Auto · Quality" :
       option.value === "auto-economy" ? "Auto · Economy" : option.value === "analysis" ? "Analysis" : "Standard";
-    const selectedModel = option.value === "auto" ? model : ["analysis","auto-quality"].includes(option.value) ? selectedAI?.analysis_model : selectedAI?.model;
+    const selectedModel = option.value === "auto" ? (mode === "auto" ? model : selectedAI?.model) : ["analysis","auto-quality"].includes(option.value) ? selectedAI?.analysis_model : selectedAI?.model;
     option.textContent = pagesPreview ? label : demo ? `${label} · Demo` : `${label} · ${shortModelName(selectedModel)}`;
     option.disabled = ["analysis","auto-quality"].includes(option.value) && unavailable;
     option.title = option.value === "auto" ? "Balanced: AI chooses Standard or Analysis within your selected provider." :
@@ -1050,7 +1055,10 @@ async function ask(question) {
     pendingAttachments = []; renderPendingAttachments();
     activity("Reading your question…");
     const response = await api("/api/chat", {
-      method: "POST", body: JSON.stringify({conversation: run.cid, question: submittedQuestion, model_mode: $("#modelMode").value,template_mode:$("#analysisStyle").value,
+      method: "POST", body: JSON.stringify({conversation: run.cid, question: submittedQuestion,
+        model_mode: $("#modelMode").value.startsWith("manual:") ? "manual" : $("#modelMode").value,
+        ...( $("#modelMode").selectedOptions[0]?.dataset.manualModel ? {manual_model:$("#modelMode").selectedOptions[0].dataset.manualModel} : {}),
+        template_mode:$("#analysisStyle").value,
         local_ai:run.local,local_model:run.localModel,request_id:run.requestId,
         attachments:attachments.filter(file=>file.kind !== "image").map(({name,size})=>({name,size})),
         documents:attachments.filter(file=>file.kind !== "image").map(file=>({name:file.name,size:file.size,text:file.text,kind:file.kind || "text",notice:file.notice || ""})),
