@@ -229,5 +229,12 @@
     "completed": true,
     "type": "bug",
     "priority": "P0"
+  },
+  {
+    "id": "windows-proxy-restart-non-recurrence",
+    "title": "P0 · WIP — Prevent Jira/Jenkins proxy-routing failures after restart\n\nCause: inherited HTTPS_PROXY skipped Windows PAC direct-route handling, producing Jira redirects and Jenkins proxy-denied responses. Recheck direct routes on every launch, including inherited HTTPS_PROXY/ALL_PROXY; preserve explicit proxy values and existing bypasses, localhost access, TLS and authentication. Optional AIMATE_PROXY_ROUTING=0 retains managed environment. Add repeated-start, inherited-proxy, ALL_PROXY, disabled and resolver-failure regressions.\n\nRemark 27 November: heartbeat installed-view recheck passed. Current saved Jira and Jenkins connections both pass live read checks (284 projects / 16 top-level folders). Fix is under local/CI validation; controlled restart with inherited proxy and post-start service checks required before completion. No credential changes or AI inference.",
+    "completed": false,
+    "type": "bug",
+    "priority": "P0"
   }
 ]

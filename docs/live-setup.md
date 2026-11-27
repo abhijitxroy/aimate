@@ -2,8 +2,9 @@
 
 1. Run `.\run_aimate.ps1` and open `http://127.0.0.1:8765`.
    The Windows launcher detects the system HTTPS proxy when no explicit proxy
-   environment variable is set. Direct server commands need their own proxy
-   configuration where required.
+   environment variable is set. It also refreshes direct routes for saved service
+   URLs when a proxy is inherited from the parent shell. Direct server commands
+   need their own proxy configuration where required.
 2. Local development opens directly. Use `.\run_aimate.ps1 -Secure` for authenticator
    sign-in (or `.data/access-password.txt` before enrolling an authenticator).
 3. Open **Connections & settings**. Choose **ChatGPT account** and
@@ -187,6 +188,15 @@ References: [AWS bearer-key permissions](https://docs.aws.amazon.com/bedrock/lat
 
 Jira Simple setup needs only the site URL and a Data Center PAT. Save & connect verifies the account and discovers visible project keys and names. The assistant can access projects/issues permitted by that account; Jira permissions still apply. Advanced setup supports Cloud email + API token and optional selected-project restrictions. Restrictions use keys (for example ONEAPICI), not display names. Existing API configurations without an access setting remain restricted to their project list.
 
-On Windows, service connections validate TLS against the Windows certificate store. The launcher preserves direct routes for saved intranet URLs while using the Windows proxy for external sites. Restart run_aimate.ps1 after adding a new intranet host so its proxy route is refreshed.
+On Windows, service connections validate TLS against the Windows certificate store.
+The launcher refreshes Windows PAC direct routes for saved service URLs on every
+start, including when `HTTPS_PROXY` or `ALL_PROXY` was inherited. Existing proxy
+values and `NO_PROXY` entries are preserved. Restart `run_aimate.ps1` after adding
+a new intranet host so its route is refreshed. Set `AIMATE_PROXY_ROUTING=0` to
+disable this optional module and use an explicitly managed environment unchanged.
+This only affects the launched app process; the parent environment is restored
+when it exits. Routing errors are reported rather than silently guessing a route.
+Authentication failures still require valid service credentials; bypassing a proxy
+does not bypass authentication, certificate checks or access controls.
 
 Jenkins Simple setup stores the controller URL and Jenkins username once under Controller & account; only the API token needs replacing. Local setup suggests the current Windows username (confirm it matches your Jenkins account), and JENKINS_URL can provide a default controller. Job names are optional: Simple mode discovers visible root jobs/folders and can read nested jobs/builds through account permissions. Advanced can restrict access to selected job names. Connection checks never trigger or abort a build.

@@ -13,34 +13,22 @@ $previousDevLogin = $env:AIMATE_DEV_LOGIN
 try {
     if ($Secure) { $env:AIMATE_DEV_LOGIN = "0" }
     else { $env:AIMATE_DEV_LOGIN = "1"; Write-Host "Local dev mode: login bypass enabled. Use .\run.ps1 -Secure for authenticator/password sign-in." }
-    # HTTPX uses proxy environment variables, not Windows' automatic proxy settings.
-    if (-not $env:HTTPS_PROXY -and -not $env:ALL_PROXY) {
-        $githubUri = [uri]"https://api.github.com"
-        $proxyResolver = [System.Net.WebRequest]::GetSystemWebProxy()
-        $systemProxy = $proxyResolver.GetProxy($githubUri)
-        if ($systemProxy -and $systemProxy.AbsoluteUri -ne $githubUri.AbsoluteUri) {
-            $env:HTTPS_PROXY = $systemProxy.AbsoluteUri
-            # Preserve the system PAC's direct route for configured intranet services.
-            $directHosts = @("127.0.0.1", "localhost")
-            $connectionUrls = @'
+    # Recheck intranet bypasses even when the parent shell already set a proxy.
+    if ($env:AIMATE_PROXY_ROUTING -ne "0") {
+        . (Join-Path $PSScriptRoot "tools\proxy_routing.ps1")
+        $connectionUrls = @'
 import json
 from app.store import Store
 store = Store()
 print(json.dumps([source.get("url", "") for source in store.config().values() if isinstance(source, dict)]))
 store.db.close()
 '@ | & $pythonPath -
-            if ($LASTEXITCODE -ne 0) { throw "Cannot read saved connection URLs for proxy routing." }
-            foreach ($connectionUrl in ($connectionUrls | ConvertFrom-Json)) {
-                if (-not $connectionUrl) { continue }
-                $connectionUri = [uri]$connectionUrl
-                $connectionProxy = $proxyResolver.GetProxy($connectionUri)
-                if (-not $connectionProxy -or $connectionProxy.AbsoluteUri -eq $connectionUri.AbsoluteUri) {
-                    $directHosts += $connectionUri.Host
-                }
-            }
-            $env:NO_PROXY = (@($previousNoProxy) + $directHosts | Where-Object { $_ } | Select-Object -Unique) -join ","
-            Write-Host "Using the Windows-configured HTTPS proxy."
-        }
+        if ($LASTEXITCODE -ne 0) { throw "Cannot read saved connection URLs for proxy routing." }
+        $routes = Get-AiMateProxyRoutes -ConnectionUrls ($connectionUrls | ConvertFrom-Json) `
+            -HttpsProxy $env:HTTPS_PROXY -AllProxy $env:ALL_PROXY -NoProxy $env:NO_PROXY
+        $env:HTTPS_PROXY = $routes.HttpsProxy
+        $env:NO_PROXY = $routes.NoProxy
+        Write-Host "Windows proxy routing checked; direct service routes preserved."
     }
     & $pythonPath -m uvicorn app.main:app --host 127.0.0.1 --port 8765
 } finally {
