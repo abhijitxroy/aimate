@@ -248,6 +248,46 @@ class FinalReviewTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn(f"https://github.com/team/repo/blob/{HEAD}/code.py#L2", answer)
         self.assertTrue(all(client.closed for client, _ in self.calls))
 
+    async def test_comparison_and_frozen_source_survive_reopening_without_new_fetches(self):
+        await self.test_independent_same_packet_lead_usage_and_saved_report()
+        before = len(self.requests)
+        original = json.loads(self.store.rows("SELECT metadata FROM turn_usage")[0]["metadata"])
+        comparison = original["final_review"]["comparison"]
+        self.assertEqual(comparison["counts"]["retained"], 1)
+        self.assertEqual(len(comparison["entries"][0]["reviewers"]), 2)
+        self.store.db.close()
+        self.store = Store(self.directory.name)
+        restored = json.loads(self.store.rows("SELECT metadata FROM turn_usage")[0]["metadata"])
+        self.assertEqual(restored["final_review"], original["final_review"])
+        self.assertEqual(before, len(self.requests))
+        import hashlib
+        packet = restored["final_review"]["snapshot"]
+        self.assertTrue(packet["coverage"]["complete_pr_read"])
+        self.assertTrue(packet["coverage"]["manifest_complete"])
+        self.assertEqual(packet["coverage"]["source_count"], 2)
+        self.assertEqual(packet["coverage"]["missing_source_count"], 0)
+        self.assertEqual(packet["hash"], hashlib.sha256(json.dumps(
+            {k: v for k, v in packet.items() if k != "hash"}, sort_keys=True).encode()).hexdigest())
+        for source in packet["sources"]:
+            self.assertEqual(source["sha256"], hashlib.sha256("\n".join(source["lines"]).encode()).hexdigest())
+        self.assertFalse((self.store.directory / "app.sqlite3").read_bytes().startswith(b"SQLite format 3"))
+
+    async def test_partial_reviewer_cannot_turn_omissions_into_complete_validation(self):
+        events = [event async for event in self.stream(
+            factory=lambda config: Model(config, self.calls,
+                invalid=config["ai"]["model"] == "model-one"))]
+        self.assertFalse(events[-1]["completion"]["complete"])
+        audit = events[-1]["final_review"]["comparison"]
+        self.assertEqual(len(audit["incomplete_reviewers"]), 1)
+        self.assertEqual(audit["counts"]["retained"], 1)
+        self.assertEqual(len(self.calls), 3)
+
+    async def test_disabled_comparison_keeps_final_review_functional(self):
+        with patch.dict("os.environ", {"AIMATE_FINAL_COMPARISON_ENABLED": "0"}):
+            events = [event async for event in self.stream()]
+        self.assertTrue(events[-1]["completion"]["complete"])
+        self.assertIsNone(events[-1]["final_review"]["comparison"])
+
     async def test_empty_optional_keys_do_not_corrupt_source_metadata_or_redaction(self):
         for ident, value in profiles(self.store).items():
             value["ai"].update(aws_secret_key="", aws_session_token="")

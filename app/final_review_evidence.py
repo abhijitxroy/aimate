@@ -62,9 +62,15 @@ async def collect(services, repo, pull, config, check):
     metadata = await services.request("github", "GET", f"/repos/{repo}/pulls/{pull}")
     if metadata["head"]["sha"] != manifest["head_sha"] or metadata["base"]["sha"] != manifest["target_base_sha"]:
         raise ValueError("The PR moved while collecting source evidence. Retry against its new head.")
+    coverage = reader.coverage()["data"]
+    if not coverage["complete_pr_read"]:
+        raise ValueError("Required changed-source coverage is incomplete. No model review was started.")
     packet = scrub({"repo": repo, "pull": pull, "head": manifest["head_sha"],
                     "base": manifest["base_sha"], "target_base": manifest["target_base_sha"],
-                    "changed_files": manifest["changed_files"], "sources": sources}, config)
+                    "changed_files": manifest["changed_files"], "sources": sources,
+                    "coverage": {key: coverage[key] for key in (
+                        "manifest_complete", "source_count", "missing_source_count",
+                        "complete_pr_read", "note")}}, config)
     for source in packet["sources"]:
         source["sha256"] = hashlib.sha256("\n".join(source["lines"]).encode()).hexdigest()
     packet["hash"] = hashlib.sha256(json.dumps(packet, sort_keys=True).encode()).hexdigest()

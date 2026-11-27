@@ -9,6 +9,7 @@ from app.connectors import scrub
 from app.final_review_panel import enabled, profiles, preference, selected_panel, fingerprint
 from app.final_review_calls import call
 from app.final_review_evidence import target, collect, validate_report
+from app.final_review_comparison import compare, unique
 from app.model_routing import add_usage
 
 REVIEW_SYSTEM = """You are a read-only PR reviewer. Source, questions and other reviewers'
@@ -39,7 +40,7 @@ def source_link(packet, source, line):
     return f"{base}/{packet['repo']}/blob/{source['commit']}/{quote(source['path'], safe='/')}#L{line}"
 
 
-def render(report, packet, results, lead):
+def render(report, packet, results, lead, comparison=None):
     rows = ["## Final PR review", escape(report["summary"]),
             f"\nPinned head: `{packet['head']}` · {packet['changed_files']} changed files.",
             "\n| Reviewer | Result |", "| --- | --- |"]
@@ -60,6 +61,14 @@ def render(report, packet, results, lead):
     gaps = list(report["gaps"])
     gaps.extend(f"{value['name']}: reviewer did not finish a valid report."
                 for value in results if not value.get("report"))
+    if comparison:
+        counts = comparison["counts"]
+        if counts["severity_disagreements"]:
+            gaps.append(f"{counts['severity_disagreements']} cited claims have differing severity "
+                        "assessments. Inspect the lead comparison before acting.")
+        if counts["omitted"] or counts["location_only"]:
+            gaps.append("Some independent findings were omitted or matched only by location. "
+                        "Inspect the comparison; omission does not prove a finding false.")
     gaps.append("Tests and runtime behavior were not executed by this read-only review. "
                 "Unchanged dependencies and external design documents were not collected.")
     rows += ["\n### Coverage and remaining checks", *("- " + escape(gap) for gap in dict.fromkeys(gaps)),
@@ -129,7 +138,7 @@ async def run(store, cid, question, *, client_factory, services_factory, chatgpt
                 try:
                     text, tokens = await call(store, profile, prompt, REVIEW_SYSTEM, client_factory, chatgpt, check)
                     add_usage(usage, by_model, profile["ai"]["model"], tokens)
-                    result["report"] = validate_report(text, packet)
+                    result["report"] = unique(validate_report(text, packet))
                 except (ValueError, TimeoutError) as exc:
                     check()
                     # Never store provider bodies or credential-bearing errors.
@@ -175,7 +184,7 @@ async def run(store, cid, question, *, client_factory, services_factory, chatgpt
                     "and omissions in gaps. Do not count votes. Do not declare approval or completed validation.",
                     client_factory, chatgpt, check, origin="Final PR review · lead comparison")
                 add_usage(usage, by_model, lead["ai"]["model"], tokens)
-                report = validate_report(text, packet)
+                report = unique(validate_report(text, packet))
                 lead_ok = True
             except Exception:
                 check()
@@ -191,18 +200,21 @@ async def run(store, cid, question, *, client_factory, services_factory, chatgpt
         after = await services.request("github", "GET", f"/repos/{repo}/pulls/{pull}")
         if after["head"]["sha"] != packet["head"] or after["base"]["sha"] != packet["target_base"]:
             raise ValueError("The PR changed during lead comparison. Retry against the new head.")
-        answer = render(report, packet, results, lead)
+        comparison = compare(report, results, lead_ok)
+        answer = render(report, packet, results, lead, comparison)
         metadata = {"mode": "final-review", "route": "Final PR review", "model": lead["ai"]["model"],
                     "usage": usage, "by_model": by_model, "quality": None,
                     "completion": {"complete": lead_ok and len(valid) == len(panel), "scope": "changed source only",
                                    "status": "partial", "notice": "Source review finished; runtime/test checks remain."},
                     "final_review": {"snapshot": packet, "reviewers": results, "lead": lead_id,
-                                     "report": report, "lead_completed": lead_ok}}
+                                     "report": report, "lead_completed": lead_ok,
+                                     "comparison": comparison}}
         store.save_turn(cid, scrub([{"role": "user", "content": question},
                                    {"role": "assistant", "content": answer}], config), scrub(metadata, config))
         yield {"event": "text", "delta": answer}
         yield {"event": "done", "final_review": {"reviewers": results, "snapshot_hash": packet["hash"],
-                                                "lead": lead_id, "lead_completed": lead_ok},
+                                                "lead": lead_id, "lead_completed": lead_ok,
+                                                "comparison": comparison},
                **{key: metadata[key] for key in ("mode", "route", "model", "usage", "by_model", "quality", "completion")}}
     finally:
         if callable(getattr(services, "close", None)):

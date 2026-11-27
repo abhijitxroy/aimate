@@ -31,6 +31,15 @@ Reports, disagreements, gaps and the packet are saved with the encrypted chat.
 Temporary chats keep this material in memory. Expand **Independent reviewers** to
 read individual reports after completion or reopening.
 
+**Lead comparison → finding provenance** shows which cited claims were retained,
+omitted, matched only by location, or added by the lead. Exact duplicate reports
+do not inflate these counts. Different severities remain visible. Matching a
+location does not establish that two descriptions refer to the same defect;
+omission does not prove a concern false. Failed reviewers and an unfinished lead
+stay explicit. The comparison and frozen evidence survive reopening without
+fetching or invoking models again. Disable only this comparison module with
+`AIMATE_FINAL_COMPARISON_ENABLED=0`; the saved panel remains usable.
+
 The current packet limit is 180,000 serialized source characters, eighty changed
 files and one hundred source versions. Binary/unreadable files and an incomplete
 manifest stop collection before model calls. Exceeding a limit reports the actual

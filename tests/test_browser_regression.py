@@ -156,6 +156,35 @@ class BrowserRegressionTests(unittest.TestCase):
         self.expect(reports).to_contain_text("code.py:2")
         self.expect(reports).to_contain_text("Runtime not executed")
 
+    def test_final_review_comparison_is_disclosed_safe_and_distinguishes_omitted_claims(self):
+        self.page.evaluate("""()=>{
+          const message=addMessage('assistant','Source review');message.root.id='comparison-browser';
+          AiMateFinalReview.render(message,{reviewers:[{name:'First',model:'fixture',report:{
+            summary:'Independent report',findings:[],gaps:[]}}],
+            comparison:{note:'Omission is not proof of correctness.',entries:[
+              {path:'code.py',line:2,claim:'<img src=x onerror=alert(1)>',status:'omitted',
+               reviewers:[{name:'First',severity:'P1'}],lead_severity:null,severity_disagreement:false},
+              {path:'other.py',line:3,claim:'Same source, distinct concern',status:'location_only',
+               reviewers:[],lead_severity:null,severity_disagreement:true}],
+               incomplete_reviewers:[{name:'Second'}]}});
+        }""")
+        outer=self.page.locator("#comparison-browser .final-review-reports")
+        self.expect(outer).not_to_have_attribute("open","")
+        outer.locator("summary").first.click()
+        audit=outer.locator("details").first
+        audit.locator("summary").click()
+        self.expect(audit).to_contain_text("Not retained; not disproven")
+        self.expect(audit).to_contain_text("Same location; claims may differ")
+        self.expect(audit).to_contain_text("Severity differs")
+        self.expect(audit).to_contain_text("Second: no completed independent report")
+        self.expect(audit.locator("img")).to_have_count(0)
+        self.expect(audit).to_contain_text("<img src=x onerror=alert(1)>")
+        self.page.evaluate("""()=>{
+          const msg=addMessage('assistant','Legacy panel');msg.root.id='legacy-comparison';
+          AiMateFinalReview.render(msg,{reviewers:[]});
+        }""")
+        self.expect(self.page.locator("#legacy-comparison .final-review-reports details")).to_have_count(0)
+
     def test_bundled_typography_loads_locally_and_preserves_code_fonts(self):
         self.page.route(re.compile(r"^https://"), lambda route: route.abort())
         self.page.reload()

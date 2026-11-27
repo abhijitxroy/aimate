@@ -111,6 +111,36 @@
     const details=document.createElement("details");details.className="final-review-reports";
     const title=document.createElement("summary");title.textContent=`Independent reviewers · ${data.reviewers.length}`;
     details.append(title);
+    if(data.comparison && Array.isArray(data.comparison.entries)) {
+      const audit=document.createElement("details");
+      const heading=document.createElement("summary");heading.textContent="Lead comparison · finding provenance";
+      const body=document.createElement("div");body.className="message-body";
+      const note=document.createElement("p");note.className="hint";note.textContent=data.comparison.note;
+      const table=document.createElement("table"),head=document.createElement("thead"),labels=document.createElement("tr");
+      for(const text of ["Finding","Independent assessments","Lead comparison"]) {
+        const cell=document.createElement("th");cell.textContent=text;labels.append(cell);
+      }
+      head.append(labels);table.append(head);
+      const rows=document.createElement("tbody");
+      const statuses={retained:"Same cited claim retained",location_only:"Same location; claims may differ",
+        omitted:"Not retained; not disproven",unresolved:"Unresolved; lead incomplete",lead_only:"Added by lead"};
+      for(const entry of data.comparison.entries) {
+        const row=document.createElement("tr");row.dataset.comparisonStatus=entry.status;
+        const values=[`${entry.path}:${entry.line} — ${entry.claim}`,
+          (entry.reviewers || []).map(value=>`${value.name} · ${value.severity}`).join("; ") || "None",
+          (statuses[entry.status] || "Unresolved")+
+            (entry.lead_severity ? ` · ${entry.lead_severity}` : "")+
+            (entry.severity_disagreement ? " · Severity differs" : "")];
+        for(const value of values) {const cell=document.createElement("td");cell.textContent=value;row.append(cell);}
+        rows.append(row);
+      }
+      table.append(rows);body.append(note,table);
+      for(const reviewer of data.comparison.incomplete_reviewers || []) {
+        const gap=document.createElement("p");gap.className="hint";
+        gap.textContent=`${reviewer.name}: no completed independent report.`;body.append(gap);
+      }
+      audit.append(heading,body);details.append(audit);
+    }
     for(const result of data.reviewers) {
       const child=document.createElement("details");
       const heading=document.createElement("summary");heading.textContent=`${result.name} · ${shortModelName(result.model)}`;

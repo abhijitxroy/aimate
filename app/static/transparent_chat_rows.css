@@ -1,0 +1,19 @@
+.transparent-chat-rows #conversations :is(
+  .conversation-row, .conversation-row:hover, .conversation-row.active,
+  .conversation-group > summary, .conversation-group > summary:hover,
+  .conversation-row > button, .conversation-more:hover
+) {
+  background: transparent; background-image: none; box-shadow: none;
+}
+.transparent-chat-rows #conversations .conversation-row:hover .conversation-label {
+  color: var(--text);
+}
+.transparent-chat-rows #conversations .conversation-row.active .conversation-label {
+  color: var(--accent); font-weight: 600;
+}
+.transparent-chat-rows #conversations .conversation-group > summary:hover .group-name {
+  color: var(--accent);
+}
+.transparent-chat-rows #conversations .conversation-row:focus-within .conversation-label {
+  text-decoration: underline; text-underline-offset: 3px;
+}

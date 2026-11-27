@@ -15,6 +15,7 @@ UNIT_CLASSES = {
     "test_retrieval_rank.RankTests",
     "test_supplied_scope.ScopeTests",
     "test_proxy_routing.ProxyRoutingTests",
+    "test_final_review_comparison.ComparisonTests",
 }
 UNIT_METHODS = {
     "test_model_routing.RoutingTests." + name for name in (
