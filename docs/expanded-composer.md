@@ -26,3 +26,12 @@ Turn it off in **Appearance → Subtle reply glow**. This is a browser preferenc
 like the selected theme; it persists on reload and is not part of the portable
 user-data backup. Set `window.AiMateFeatures.composerGlow = false` before loading
 the module to remove the effect and its setting independently.
+
+## Compact message rail
+
+Markers sit vertically centered in the left chat gutter. Hovering or focusing
+a marker widens its line; neighbouring lines taper smoothly toward their normal
+size. This changes only the marker drawing, so the chat content does not move.
+The preview, click-to-jump and bookmark controls retain their existing behaviour.
+Escape or moving away clears the preview and hover emphasis. Reduced motion
+disables the width transition.

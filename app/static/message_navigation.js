@@ -17,7 +17,21 @@ function installMessageNavigation() {
   const text=document.createElement("p");preview.append(heading,text);main.append(rail,preview);
   let roots=[], markers=[], active=null, frame=0, timer=0;
   const valid=root=>root?.isConnected && root.parentElement===box;
-  function close() {clearTimeout(timer);active=null;preview.hidden=true;}
+  function close() {
+    clearTimeout(timer);active=null;preview.hidden=true;
+    for (const marker of markers) {
+      marker.style.removeProperty("--rail-marker-width");
+      marker.style.removeProperty("--rail-marker-opacity");
+    }
+  }
+  function highlight(marker) {
+    const center=markers.indexOf(marker), widths=[28,20,14,9,6];
+    markers.forEach((node,index)=>{
+      const distance=Math.abs(index-center);
+      node.style.setProperty("--rail-marker-width",(widths[distance] || 4)+"px");
+      node.style.setProperty("--rail-marker-opacity",String(distance<5 ? .9-distance*.1 : .45));
+    });
+  }
   function updatePreview() {
     if (!valid(active)) {close();return;}
     title.textContent=active.classList.contains("user") ? "You" : "AiMate";
@@ -32,7 +46,7 @@ function installMessageNavigation() {
   }
   function show(root,marker) {
     if (!valid(root) || !enabled()) return;
-    clearTimeout(timer);active=root;preview.hidden=false;updatePreview();
+    clearTimeout(timer);active=root;preview.hidden=false;updatePreview();highlight(marker);
     const mark=marker.getBoundingClientRect(), region=main.getBoundingClientRect();
     const width=Math.min(300,Math.max(180,region.width-45));
     preview.style.width=width+"px";
@@ -75,9 +89,10 @@ function installMessageNavigation() {
       });
     }
     const bounds=box.getBoundingClientRect(), parent=main.getBoundingClientRect();
-    rail.style.top=(bounds.top-parent.top+12)+"px";
     // Keep short chats compact; dense histories compress into the available gutter.
-    rail.style.height=Math.min(roots.length*10,Math.max(0,bounds.height-24))+"px";
+    const height=Math.min(roots.length*10,Math.max(0,bounds.height-24));
+    rail.style.top=(bounds.top-parent.top+(bounds.height-height)/2)+"px";
+    rail.style.height=height+"px";
     rail.hidden=roots.length<2 || bounds.height<80;
     let nearest=0, distance=Infinity;
     roots.forEach((root,index)=>{

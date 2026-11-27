@@ -203,6 +203,10 @@ class BrowserRegressionTests(unittest.TestCase):
         self.expect(rail).to_be_visible()
         markers = rail.locator("button")
         self.assertLessEqual(rail.bounding_box()["height"], 20)
+        bounds = rail.bounding_box()
+        messages = self.page.locator("#messages").bounding_box()
+        self.assertAlmostEqual(bounds["y"] + bounds["height"] / 2,
+                               messages["y"] + messages["height"] / 2, delta=1)
         self.assertLessEqual(markers.nth(1).bounding_box()["y"] - markers.first.bounding_box()["y"], 10)
         self.page.evaluate("""() => {
             for(let i=0;i<150;i++) addMessage("assistant","Message "+i);
@@ -210,6 +214,8 @@ class BrowserRegressionTests(unittest.TestCase):
         self.expect(markers).to_have_count(152)
         bounds = rail.bounding_box()
         messages = self.page.locator("#messages").bounding_box()
+        self.assertAlmostEqual(bounds["y"] + bounds["height"] / 2,
+                               messages["y"] + messages["height"] / 2, delta=1)
         self.assertLessEqual(bounds["y"] + bounds["height"], messages["y"] + messages["height"])
         markers.first.focus()
         markers.first.press("End")
@@ -243,6 +249,30 @@ class BrowserRegressionTests(unittest.TestCase):
         self.page.locator('[data-close="appearanceDialog"]').click()
         self.page.evaluate("document.querySelector('#stop').hidden=false")
         self.expect(form).not_to_have_class(re.compile(r"composer-generating"))
+
+    def test_message_rail_hover_tapers_without_moving_content(self):
+        self.page.locator("#newChat").click()
+        self.page.evaluate("""() => {
+            for(let i=0;i<15;i++) addMessage("assistant","Preview "+i);
+        }""")
+        markers = self.page.locator(".message-rail button")
+        self.expect(markers).to_have_count(15)
+        self.page.emulate_media(reduced_motion="reduce")
+        before = self.page.locator("#messages").bounding_box()
+        markers.nth(7).hover()
+        self.expect(self.page.locator(".message-rail-preview")).to_contain_text("Preview 7")
+        widths = [markers.nth(i).evaluate("(n)=>parseFloat(getComputedStyle(n,'::after').width)")
+                  for i in (3, 4, 5, 6, 7, 8, 9, 10, 11)]
+        self.assertEqual(widths, [6, 9, 14, 20, 28, 20, 14, 9, 6])
+        self.assertEqual(self.page.locator("#messages").bounding_box(), before)
+        self.page.locator("#question").click()
+        self.expect(self.page.locator(".message-rail-preview")).to_be_hidden()
+        self.assertEqual(markers.nth(7).evaluate("(n)=>n.style.getPropertyValue('--rail-marker-width')"), "")
+        self.assertIn(markers.nth(7).evaluate("(n)=>getComputedStyle(n,'::after').width"), ("4px", "8px"))
+        markers.nth(0).focus()
+        self.assertEqual(markers.nth(0).evaluate("(n)=>getComputedStyle(n,'::after').width"), "28px")
+        markers.nth(0).press("Escape")
+        self.expect(self.page.locator(".message-rail-preview")).to_be_hidden()
 
     def test_reply_glow_real_stream_stops_and_optional_module_can_be_disabled(self):
         self.page.locator("#newChat").click()
