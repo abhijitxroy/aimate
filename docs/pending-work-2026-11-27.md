@@ -1,8 +1,10 @@
 # Pending AiMate work — 27 November 2026
 
-Current live list: **102 completed, 51 open**. Completed items are backed by their individual remarks; this is not a claim that the whole roadmap is finished.
+Current live list: **104 completed, 50 open**. Completed items are backed by their individual remarks; this is not a claim that the whole roadmap is finished.
 
 Verified in this batch: inherited-proxy restart recurrence guard (seven routing regressions, all seven code workflows and live Jira/Jenkins after restart); visible red heartbeat wave; the resumed-file-reader crash; clarification-before-fetch status; border-light table status. Source/reader tests and all seven workflows passed. The Dashboard checkout was inspected read-only; no files, staging, branches, merges or database content were changed.
+
+Also verified: final-review finding provenance comparison (exact claims, disagreements, omissions and failed reviewers); transparent sidebar rows; configurable full-width heartbeat colour/reset; five-theme vibrant semantic pills. Seven source workflows passed for each code batch, and installed UI checks passed. These do not certify factual review accuracy or complete large-PR coverage.
 
 Next implementation order: P0 investigation/context and complete source coverage; domain/artifact evidence and reconciliation; retained snapshots and safe chat deletion; then P1 reusable cases, cache/ranking, quotas and export. User-deferred work and missing live prerequisites remain open.
 
@@ -29,7 +31,6 @@ Next implementation order: P0 investigation/context and complete source coverage
 | P0 | Auto routing across validated AI connection profiles (`cross-provider-auto-routing`) | In progress | Finish implementation and task-specific checks; retain separate live-validation gaps. |
 | P0 | Final PR review with independent models and lead reconciliation (`final-pr-multi-model-review`) | In progress | Finish implementation and task-specific checks; retain separate live-validation gaps. |
 | P0 | Final review: frozen shared PR evidence (`final-pr-review-evidence`) | In progress | Finish implementation and task-specific checks; retain separate live-validation gaps. |
-| P0 | Final review: independent findings and lead comparison (`final-pr-review-reconcile`) | In progress | Finish implementation and task-specific checks; retain separate live-validation gaps. |
 | P1 | Validate/extract/search/analyse ZIP (`audit-ac198fd1721c14e5f01a8e84`) | In progress | Finish implementation and task-specific checks; retain separate live-validation gaps. |
 | P1 | On 404, ask to add repository if appropriate (`audit-153cc4e2f6af2319c269b0a8`) | In progress | Finish implementation and task-specific checks; retain separate live-validation gaps. |
 | P1 | Modular code and useful logging (`audit-4e74cf072dc30234a10e3170`) | In progress | Finish implementation and task-specific checks; retain separate live-validation gaps. |
@@ -51,7 +52,7 @@ Next implementation order: P0 investigation/context and complete source coverage
 | P1 | Administrator-configurable chat limits (`admin-chat-limits`) | Planned | Finish implementation and task-specific checks; retain separate live-validation gaps. |
 | P1 | Nexus AiMate copy: CI needs an approved runner (`nexus-aimate-sync`) | Blocked | Approved runner needed; hosted checkout is rejected by the organization IP allowlist. |
 | P1 | Final review: UI, persistence and validation (`final-pr-review-validation`) | In progress | Finish implementation and task-specific checks; retain separate live-validation gaps. |
-| P1 | Final review: large PR batches and wider evidence (`final-pr-review-expanded-coverage`) | Planned | Finish implementation and task-specific checks; retain separate live-validation gaps. |
+| P0 | Final review: large PR batches and wider evidence (`final-pr-review-expanded-coverage`) | Planned; next source-coverage priority | Real configured PRs exceeded the 180,000-character packet; implement shared frozen batches, citation offsets, full coverage and budget/stop guards. |
 | P2 | To-do notifications (`backlog-8bb6922758ad870f844ad0b4`) | Planned | Finish implementation and task-specific checks; retain separate live-validation gaps. |
 | P2 | Share tasks, chats and diary records (`backlog-91000211a030b0606ddd9258`) | Planned | Finish implementation and task-specific checks; retain separate live-validation gaps. |
 | P2 | Idle-time improvement and healing proposals (`backlog-14d968b6da8ae6c7f704e597`) | Planned | Finish implementation and task-specific checks; retain separate live-validation gaps. |

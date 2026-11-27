@@ -204,10 +204,10 @@
   },
   {
     "id": "final-pr-review-expanded-coverage",
-    "title": "P1 · Planned — Final review: large PR batches and wider evidence\n\nParent: final-pr-multi-model-review. Extend the current bounded source packet with automatic shared batches, complete coverage accounting, unchanged dependency/design/test/CI evidence and a final cross-batch reconciliation. Preserve pinned heads, exact source citations, data permissions, budget and stop controls. Validate against a real user-selected PR and selected provider panel; never label source-only assessment as complete integration validation. Remark: explicit remaining scope after the configure-once milestone; not implemented.",
+    "title": "P0 · Planned — Final review: large PR batches and wider evidence\n\nParent: final-pr-multi-model-review. Extend the current bounded source packet with automatic shared batches, complete coverage accounting, unchanged dependency/design/test/CI evidence and a final cross-batch reconciliation. Preserve pinned heads, exact source citations, data permissions, budget and stop controls. Validate against a real user-selected PR and selected provider panel; never label source-only assessment as complete integration validation. Remark: explicit remaining scope after the configure-once milestone; not implemented.\n\nPriority audit, 27 Nov: known configured CI PR #1257 and DMS PR #75 both exceeded the 180,000-character complete source packet during read-only collection. No partial packet sent and no paid review invoked. Elevate to P0: frozen shared source batches with citation offsets, aggregate coverage, cross-batch reconciliation, cancellation and explicit budget limits. Current limits remain 80 changed files / 100 source versions; this task is not implemented or complete.",
     "completed": false,
     "type": "enhancement",
-    "priority": "P1"
+    "priority": "P0"
   },
   {
     "id": "clean-model-picker-fable",
