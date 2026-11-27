@@ -1,8 +1,8 @@
 # Pending AiMate work — 27 November 2026
 
-Current live list: **101 completed, 51 open**. Completed items are backed by their individual remarks; this is not a claim that the whole roadmap is finished.
+Current live list: **102 completed, 51 open**. Completed items are backed by their individual remarks; this is not a claim that the whole roadmap is finished.
 
-Verified in this batch: soft-red heartbeat; the resumed-file-reader crash; clarification-before-fetch status; border-light table status. Source/reader tests and all seven workflows passed. The Dashboard checkout was inspected read-only; no files, staging, branches, merges or database content were changed.
+Verified in this batch: inherited-proxy restart recurrence guard (seven routing regressions, all seven code workflows and live Jira/Jenkins after restart); visible red heartbeat wave; the resumed-file-reader crash; clarification-before-fetch status; border-light table status. Source/reader tests and all seven workflows passed. The Dashboard checkout was inspected read-only; no files, staging, branches, merges or database content were changed.
 
 Next implementation order: P0 investigation/context and complete source coverage; domain/artifact evidence and reconciliation; retained snapshots and safe chat deletion; then P1 reusable cases, cache/ranking, quotas and export. User-deferred work and missing live prerequisites remain open.
 
