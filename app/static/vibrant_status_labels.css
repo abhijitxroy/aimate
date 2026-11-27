@@ -1,0 +1,47 @@
+:root.vibrant-status-labels {
+  --label-green: #31dc79; --label-blue: #4daeff;
+  --label-red: #ff7389; --label-orange: #ffab36;
+}
+:root.vibrant-status-labels[data-theme="beige"] {
+  --label-green: #006a33; --label-blue: #005ec4;
+  --label-red: #bb1230; --label-orange: #943e00;
+}
+.vibrant-status-labels .answer-classification .answer-classification-label {
+  border-radius: 999px; padding: 2px 8px; font-weight: 650; letter-spacing: .1px;
+  background: color-mix(in srgb, currentColor 16%, transparent);
+}
+.vibrant-status-labels .answer-classification.keep .answer-classification-label { color: var(--label-green); }
+.vibrant-status-labels .answer-classification.check .answer-classification-label { color: var(--label-orange); }
+.vibrant-status-labels .answer-classification.remove .answer-classification-label { color: var(--label-red); }
+.vibrant-status-labels .answer-classification.optional .answer-classification-label { color: var(--label-blue); }
+:root.vibrant-status-labels .body.answer-presented .answer-callout { --callout: var(--label-blue); }
+:root.vibrant-status-labels .body.answer-presented .answer-callout.success,
+:root.vibrant-status-labels .body.answer-presented .answer-callout.tip { --callout: var(--label-green); }
+:root.vibrant-status-labels .body.answer-presented .answer-callout.warning { --callout: var(--label-orange); }
+:root.vibrant-status-labels .body.answer-presented .answer-callout.danger { --callout: var(--label-red); }
+.vibrant-status-labels .body.answer-presented .callout-title {
+  width: fit-content; padding: 2px 8px; border-radius: 999px;
+  background: color-mix(in srgb, currentColor 14%, transparent);
+}
+.vibrant-status-labels .answer-tone-success,
+.vibrant-status-labels .quality-score:is([data-band="high"],[data-band="good"]) { color: var(--label-green); }
+.vibrant-status-labels .answer-tone-info,
+.vibrant-status-labels .quality-score[data-band="unknown"] { color: var(--label-blue); }
+.vibrant-status-labels .answer-tone-warning,
+.vibrant-status-labels .quality-score[data-band="partial"] { color: var(--label-orange); }
+.vibrant-status-labels .answer-tone-danger,
+.vibrant-status-labels .quality-score[data-band="low"] { color: var(--label-red); }
+:root.vibrant-status-labels .quality-info.model-info > summary,
+.vibrant-status-labels .quality-score {
+  border: 0; border-radius: 999px; padding: 1px 5px;
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+.vibrant-status-labels .quality-info[data-confidence="high"] > summary { color: var(--label-green); }
+.vibrant-status-labels .quality-info[data-confidence="medium"] > summary { color: var(--label-orange); }
+.vibrant-status-labels .quality-info[data-confidence="low"] > summary { color: var(--label-red); }
+.vibrant-status-labels .quality-info[data-confidence="unknown"] > summary { color: var(--label-blue); }
+@media print {
+  .vibrant-status-labels :is(.answer-classification-label,.callout-title,.quality-info > summary,.quality-score) {
+    color: #000 !important; background: transparent !important;
+  }
+}

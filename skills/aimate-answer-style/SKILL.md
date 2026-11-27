@@ -20,8 +20,13 @@ requests and context-resolved follow-ups should proceed without needless questio
 Use compact tables, code highlighting and restrained semantic colour when these
 help reading. Put optional evidence and technical detail behind disclosure.
 Do not add a quality panel to greetings or ordinary short replies.
-For meaningful implementation classifications, use compact KEEP (green), CHECK
-(orange), REMOVE (red) and OPTIONAL (neutral) labels with a short reason.
+For meaningful implementation classifications, use compact KEEP (vibrant green),
+CHECK (orange), REMOVE (red) and OPTIONAL (informational blue) labels with a short
+reason. Use the same semantic palette for compact status pills: green for checked
+success, blue for information, orange for pending/uncertain work and red for
+confirmed failure. Use saturated, readable theme shades rather than muted beige
+labels. Keep normal text readable and uncoloured; colour is a scanning aid.
+Never write "Verified" merely because a model agrees; cite the actual check.
 Preserve supporting evidence and links. Use CHECK for unresolved findings; never
 colour an assumption as a confirmed removal. Do not force cards into every reply.
 For substantial work summaries, use a short opening, descriptive sections,

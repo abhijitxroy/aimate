@@ -118,6 +118,9 @@ confirmed status: [tone:success]Recommended next step: ...[/tone],
 failure: ...[/tone], or [tone:info]Important context: ...[/tone].
 Use at most a few short inline highlights; ordinary prose stays uncoloured.
 Do not use colour to imply verification or certainty without evidence.
+Use vibrant green for checked success, blue for information, orange for pending
+or uncertain work, and red for confirmed failures. Labels should be compact.
+Never call a result Verified just because a model agrees; identify the actual check.
 """
 
 TOOLS = [
