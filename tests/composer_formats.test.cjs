@@ -6,6 +6,17 @@ const path=require("node:path");
 const context=vm.createContext({window:{}});
 vm.runInContext(fs.readFileSync(path.join(__dirname,"../app/static/composer_formats.js"),"utf8"),context);
 const inspect=context.window.AiMateComposerFormats.inspect;
+const {clean:cleanPaste}=require("../app/static/paste_cleanup.js");
+test("clipboard prose cleanup preserves paragraphs, nested lists and literal evidence",()=>{
+  assert.equal(cleanPaste("\r\nReview:\r\n\r\n\r\n1. First\r\n\r\n2. Second\r\n\r\n\r\nEnd.\r\n"),
+    "Review:\n\n1. First\n2. Second\n\nEnd.");
+  for(const source of ["First paragraph.\n\nSecond paragraph.",
+    "```python\nx=1\n\n\nprint(x)\n```",
+    "{\n  \"lines\": [1,\n\n2]\n}", "    code\n\n\n    more code",
+    "- Parent\n  - Child\n\n    Continued child paragraph."]) {
+    assert.equal(cleanPaste(source),source);
+  }
+});
 const {change:foreground}=require("../app/static/foreground_format.js");
 
 function applyForeground(source,word,colour) {

@@ -17,6 +17,10 @@ Pasted prose removes empty bullets and repeated blank lines, and closes extra
 spacing between list items. Paragraph breaks stay readable. Fenced/indented code,
 JSON, uploaded files and large clipboard attachments keep their contents.
 Set `window.AiMateFeatures.pasteCleanup=false` to disable this optional cleanup.
+Formatted user messages use Markdown layout rather than displaying the
+renderer’s HTML line breaks as extra empty rows. Lists stay compact; separate
+paragraphs, plain-text line breaks and literal code spacing remain readable.
+Existing saved messages also benefit without rewriting their stored text.
 
 Blue buttons indicate the format at the current caret/selection. Moving into plain text clears the relevant highlight. Preview, Wrap and More show their actual on/open state. Bold, italic and underline can be toggled off without removing other inline formats. Insert-only actions such as paragraph breaks and outdent do not pretend to be persistent modes.
 

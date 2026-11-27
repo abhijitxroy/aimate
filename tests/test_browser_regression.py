@@ -773,6 +773,35 @@ class BrowserRegressionTests(unittest.TestCase):
         self.expect(root.locator(".quality-details")).to_contain_text("not independently measured accuracy")
         self.expect(root.locator(".quality-details")).to_contain_text("Pending: Run live tests")
 
+    def test_pasted_numbered_prompt_has_compact_layout_without_losing_intentional_breaks(self):
+        source = "Review the flow.\n\n\n1. Read the journal.\n\n2. Check `package_failure_import.py`.\n\n3. Verify storage.\n\n\nKeep separate paragraphs.\n\nAnd literal code:\n\n```python\nx=1\n\n\nprint(x)\n```"
+        self.page.evaluate("""source => {
+            const data=new DataTransfer();data.setData('text/plain',source);
+            document.querySelector('#question .cm-line').dispatchEvent(new ClipboardEvent('paste',
+              {clipboardData:data,bubbles:true,cancelable:true}));
+        }""", source)
+        field = self.page.locator("#question")
+        value = field.evaluate("e=>e.value")
+        self.assertIn("1. Read the journal.\n2. Check", value)
+        self.assertIn("storage.\n\nKeep separate paragraphs.\n\nAnd literal", value)
+        self.assertIn("x=1\n\n\nprint(x)", value)
+        # Also render the original loose-list source, as already saved chats
+        # must improve without modifying the user's historical records.
+        self.page.evaluate("""source => {
+            addMessage('user',source).root.id='spacing-saved';
+            addMessage('user','First line.\\n\\nSecond paragraph.').root.id='spacing-plain';
+        }""", source)
+        root = self.page.locator("#spacing-saved")
+        self.expect(root.locator("li")).to_have_count(3)
+        self.assertEqual(root.locator(".body").evaluate("e=>getComputedStyle(e).whiteSpace"), "normal")
+        distance = root.locator("li").evaluate_all("""items=>
+            items[1].getBoundingClientRect().top-items[0].getBoundingClientRect().top""")
+        self.assertLess(distance, 36)
+        self.expect(root.locator("pre code")).to_have_text("x=1\n\n\nprint(x)\n")
+        self.assertEqual(self.page.locator("#spacing-plain .body").evaluate(
+            "e=>getComputedStyle(e).whiteSpace"), "pre-wrap")
+        self.expect(self.page.locator("#spacing-plain .body")).to_have_text("First line.\n\nSecond paragraph.")
+
     def test_pasted_prose_removes_empty_bullets_and_excess_spacing_but_preserves_code(self):
         field=self.page.locator("#question")
         field.fill("")

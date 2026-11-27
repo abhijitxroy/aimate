@@ -155,7 +155,11 @@ function renderDataValue(body, text) {
 }
 
 function renderPrompt(body, text) {
-  if (/(\*\*|__|\+\+|\[colour:|(^|\s)\*[^*]+\*(?=\s|$)|^#{1,6} |^> |^\s*[-*] |^\d+\. |^```|^ {4}\S|^\|.*\||^---$)/m.test(text)) renderAnswer(body, text);
+  const formatted = /(\*\*|__|\+\+|\[colour:|(^|\s)\*[^*]+\*(?=\s|$)|^#{1,6} |^> |^\s*[-*] |^\d+\. |^```|^ {4}\S|^\|.*\||^---$)/m.test(text);
+  // Markdown emits layout newlines between HTML blocks. They are not additional
+  // user-authored breaks; raw prose and code still retain their own whitespace.
+  body.classList?.toggle("formatted-prompt", formatted);
+  if (formatted) renderAnswer(body, text);
   else renderDataValue(body, text);
 }
 

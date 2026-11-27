@@ -329,6 +329,8 @@ header .eyebrow { margin-bottom: 7px; }
 .body ul, .body ol { padding-left: 23px; margin: 0 0 16px; }
 .body li { padding-left: 3px; margin: 5px 0; }
 .body li > p { margin-bottom: 8px; }
+.body li > p:last-child { margin-bottom: 0; }
+.user .body.formatted-prompt { white-space: normal; }
 .body a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
 .body code { font-family: Consolas, ui-monospace, monospace; font-size: .88em; padding: 2px 5px; border-radius: 5px; background: #091a2b90; }
 .body pre { overflow: auto; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: #081a2eb0; white-space: pre; }
