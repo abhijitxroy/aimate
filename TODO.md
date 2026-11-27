@@ -1,7 +1,7 @@
 # AiMate — next work on the new laptop
 
 Current recheck on **27 November 2026**: the live To-do list contains
-**96 completed and 53 open** tasks. The original audited app list has 32 completed
+**97 completed and 53 open** tasks. The original audited app list has 32 completed
 and 12 open records; the live total also includes later requests and legacy
 user-added entries. Incomplete live validation remains open.
 Six legacy duplicates were merged with encrypted history retained; nine new tasks were added.

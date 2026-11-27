@@ -211,8 +211,8 @@
   },
   {
     "id": "clean-model-picker-fable",
-    "title": "P1 · WIP — Clean model names and verify Fable selection\n\nRemark: Remove duplicate visible Auto/Standard/Analysis entries while retaining the saved routing policy internally; show latest Claude family names with concise guidance. Verify direct Fable request, reload, source/route preservation and feature switch. No premium invocation just for menu verification. Live entitlement remains separate.",
-    "completed": false,
+    "title": "P1 · Done — Clean model names and verify Fable selection\n\nRemark: Remove duplicate visible Auto/Standard/Analysis entries while retaining the saved routing policy internally; show latest Claude family names with concise guidance. Verify direct Fable request, reload, source/route preservation and feature switch. No premium invocation just for menu verification. Live entitlement remains separate.\n\nVerified: eight model-menu unit checks, three focused browser regressions and all seven GitHub workflows passed at 469db53. Direct Fable request/reload verified with fixtures; no claim of live premium entitlement. Installed UI showed exactly four distinct latest Claude choices, with Opus selection retained and no visible Auto entry.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45982411521",
+    "completed": true,
     "type": "enhancement",
     "priority": "P1"
   }
