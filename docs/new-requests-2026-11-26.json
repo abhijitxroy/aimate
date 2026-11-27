@@ -152,5 +152,12 @@
     "completed": false,
     "type": "enhancement",
     "priority": "P1"
+  },
+  {
+    "id": "modern-ui-typography",
+    "title": "P2 · WIP — Clean macOS-style interface typography\n\nUse native San Francisco on macOS and bundled variable Inter on Windows/Linux for chat, askbar, controls and small labels. Keep code/logs monospace and emoji in their platform font. Fonts load locally, work offline and preserve theme sizes. Independently disableable stylesheet with system-font fallback. Remark: local browser test passed for local font load, inherited controls, monospace code, mobile width and disable fallback. Quality and full source workflows plus installed view pending.",
+    "completed": false,
+    "type": "enhancement",
+    "priority": "P2"
   }
 ]

@@ -103,6 +103,33 @@ class BrowserRegressionTests(unittest.TestCase):
         self.page.locator('[name="ai.provider"]').select_option("local")
         self.expect(self.page.locator("#localAISettings")).to_be_visible()
 
+    def test_bundled_typography_loads_locally_and_preserves_code_fonts(self):
+        self.page.route(re.compile(r"^https://"), lambda route: route.abort())
+        self.page.reload()
+        self.expect(self.page.locator("#workspace")).to_be_visible()
+        fonts = self.page.evaluate("""async () => {
+          await document.fonts.ready;
+          return {loaded:[...document.fonts].some(f => f.family === 'AiMate Inter' && f.status === 'loaded'),
+            family:getComputedStyle(document.documentElement).fontFamily,
+            button:getComputedStyle(document.querySelector('#send')).fontFamily};
+        }""")
+        self.assertTrue(fonts["loaded"])
+        self.assertIn("AiMate Inter", fonts["family"])
+        self.assertEqual(fonts["family"], fonts["button"])
+        self.page.evaluate("""() => {
+          const el=document.createElement('div'); el.id='fontCodeProbe';
+          el.className='body'; el.innerHTML='<code>const x = 1;</code>';
+          document.querySelector('#messages').append(el);
+        }""")
+        self.assertIn("monospace", self.page.locator("#fontCodeProbe code").evaluate(
+            "el => getComputedStyle(el).fontFamily"))
+        self.page.set_viewport_size({"width": 390, "height": 844})
+        self.assertLessEqual(self.page.evaluate(
+            "() => document.documentElement.scrollWidth"), 390)
+        self.page.evaluate("() => document.documentElement.dataset.typography='system'")
+        self.assertNotIn("AiMate Inter", self.page.locator("#send").evaluate(
+            "el => getComputedStyle(el).fontFamily"))
+
     def test_incomplete_answer_checkpoint_is_visible_and_survives_reload(self):
         self.page.locator("#question").fill("Output limit fixture")
         self.page.locator("#send").click()

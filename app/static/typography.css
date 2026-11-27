@@ -1,0 +1,17 @@
+/* Native San Francisco on macOS; bundled Inter on Windows and Linux. */
+@font-face {
+  font-family: "AiMate Inter";
+  src: url("./vendor/fonts/InterVariable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+:root:not([data-typography="system"]) {
+  --ui-font: -apple-system, BlinkMacSystemFont, "AiMate Inter",
+    "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  font-family: var(--ui-font);
+  font-optical-sizing: auto;
+}
+:root:not([data-typography="system"]) .conversation-monogram {
+  font-family: var(--ui-font);
+}
