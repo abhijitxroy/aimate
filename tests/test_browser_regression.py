@@ -422,6 +422,33 @@ class BrowserRegressionTests(unittest.TestCase):
         self.page.evaluate("document.querySelector('#stop').hidden=true")
         self.expect(form).not_to_have_class(re.compile(r"composer-generating"))
 
+    def test_reply_border_has_soft_red_double_heartbeat(self):
+        form=self.page.locator("#chatForm")
+        before=form.bounding_box()
+        self.page.emulate_media(reduced_motion="no-preference")
+        self.page.evaluate("document.querySelector('#stop').hidden=false")
+        self.expect(form).to_have_class(re.compile(r"composer-generating"))
+        for theme in ("navy","beige","black-blue","life","brown-gold"):
+            self.page.evaluate("theme=>window.AiMateAppearance.apply(theme)",theme)
+            animation=form.evaluate("""e=>{
+              const a=e.getAnimations({subtree:true}).find(a=>a.animationName==='composer-reply-glow');
+              const s=getComputedStyle(e,'::after');
+              return {name:s.animationName,color:s.borderTopColor,
+                frames:a.effect.getKeyframes().map(f=>({offset:f.offset,opacity:Number(f.opacity)})),
+                duration:a.effect.getTiming().duration};}""")
+            self.assertEqual(animation["name"],"composer-reply-glow")
+            self.assertEqual(animation["duration"],3000)
+            channels=[int(n) for n in re.findall(r"\d+",animation["color"])[:3]]
+            self.assertGreater(channels[0],channels[1])
+            self.assertGreater(channels[0],channels[2])
+            self.assertEqual([f["offset"] for f in animation["frames"] if f["opacity"]==1],[.1,.27])
+            self.assertGreaterEqual(min(f["opacity"] for f in animation["frames"]),.75)
+        after=form.bounding_box()
+        for key in ("x","y","width","height"):
+            self.assertAlmostEqual(before[key],after[key],delta=1)
+        self.page.evaluate("document.querySelector('#stop').hidden=true")
+        self.expect(form).not_to_have_class(re.compile(r"composer-generating"))
+
     def test_result_status_cards_use_crisp_icons_and_keep_tables_and_code(self):
         sample="## Final status\\n\\n> [!SUCCESS] **Checks passed**\\n> Synthetic test example.\\n\\n| Item | Status |\\n|---|---|\\n| Test | Passed |\\n\\n```json\\n{\"result\":\"passed\"}\\n```\\n\\n> [!WARNING] Example risk.\\n\\n> [!NOTE] Earlier validation."
         self.page.evaluate("text=>addMessage('assistant',text).root.id='status-sample'",sample.replace("\\n","\n"))

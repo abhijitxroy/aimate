@@ -16,8 +16,10 @@ the module loads. The normal askbar and all existing controls remain usable.
 
 ## Reply glow
 
-A visible, thin theme-coloured neon border glows while the visible chat is preparing its
-reply. It stops on completion, cancellation, error or navigation to an idle chat.
+A visible, thin soft-red border gives two gentle heartbeat pulses followed by a
+quiet pause while the visible chat prepares its reply. The cycle lasts three
+seconds and never flashes to darkness. Beige uses a darker red for visibility.
+It stops on completion, cancellation, error or navigation to an idle chat.
 File imports alone do not trigger it. Reduced-motion preferences use a steady
 border; hidden tabs pause the effect. Only opacity animates, without flashing or
 moving gradients.

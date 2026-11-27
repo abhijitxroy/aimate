@@ -19,7 +19,7 @@
   const title = document.createElement("strong");
   title.textContent = "Reply border light";
   const hint = document.createElement("small");
-  hint.textContent = "Thin neon glow while AiMate prepares a reply.";
+  hint.textContent = "Soft red heartbeat while AiMate prepares a reply.";
   copy.append(title, hint);
   label.append(toggle, copy);
   appearance.querySelector(".hint").before(label);

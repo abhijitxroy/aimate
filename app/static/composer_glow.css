@@ -1,12 +1,18 @@
-.composer-glow-ready { position: relative; }
+.composer-glow-ready { position: relative; --composer-activity-color: #e97b87; }
+:root[data-theme="beige"] .composer-glow-ready { --composer-activity-color: #b94c60; }
 .composer-generating::after {
   content: ""; position: absolute; inset: -1px; pointer-events: none;
-  border-radius: inherit; border: 1px solid color-mix(in srgb, var(--accent) 75%, white);
-  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 55%, transparent),
-    inset 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent);
-  z-index: 2; opacity: .9; animation: composer-reply-glow 4.4s ease-in-out infinite;
+  border-radius: inherit; border: 1px solid var(--composer-activity-color);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--composer-activity-color) 45%, transparent),
+    inset 0 0 4px color-mix(in srgb, var(--composer-activity-color) 16%, transparent);
+  z-index: 2; opacity: .9; animation: composer-reply-glow 3s ease-in-out infinite;
 }
-@keyframes composer-reply-glow { 0%, 100% { opacity: .78; } 50% { opacity: 1; } }
+/* Two soft beats, then a quiet pause. No size change or flashing to darkness. */
+@keyframes composer-reply-glow {
+  0%, 45%, 100% { opacity: .78; }
+  10%, 27% { opacity: 1; }
+  18% { opacity: .84; }
+}
 .composer-glow-setting {
   display: flex; align-items: center; gap: 10px; margin: 20px 0 12px;
   padding: 12px 0; border-top: 1px solid var(--line); cursor: pointer;
