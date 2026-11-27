@@ -2,6 +2,8 @@
 
 OpenCode with the shared Bedrock key: [setup and model routes](docs/opencode.md).
 
+Final PR review: [configure your own saved multi-model panel](docs/final-pr-review.md).
+
 Gemini / Antigravity via Google Cloud: [secure Vertex AI setup](docs/gemini-antigravity.md).
 
 Admin / Developer: [measured performance and before/after baselines](docs/performance.md).

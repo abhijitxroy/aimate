@@ -12,6 +12,11 @@ def select(store,question,mode="auto"):
     if not isinstance(mode,str) or len(mode)>80:
         raise ValueError("Choose a valid analysis style.")
     if mode=="plain":return None
+    if mode=="final-review":
+        from app.final_review_panel import enabled
+        if not enabled():
+            raise ValueError("Final PR review is disabled.")
+        return {"id":mode,"title":"Final PR review","kind":"review-panel","body":""}
     if mode=="auto":
         query=question.split("\n\nUntrusted attachment manifest",1)[0]
         mode=("review" if re.search(r"\b(review|audit)\b",query,re.I) else
@@ -37,5 +42,7 @@ def instruction(store,question,mode,config):
 
 
 def catalog(store):
-    return [{"id":ident,"title":item["title"],"kind":item["kind"]} for ident,item in PRESETS.items()]+store.rows(
+    from app.final_review_panel import enabled
+    panel = [{"id":"final-review","title":"Final PR review","kind":"review-panel"}] if enabled() else []
+    return panel+[{"id":ident,"title":item["title"],"kind":item["kind"]} for ident,item in PRESETS.items()]+store.rows(
         "SELECT id,title,kind FROM library_items WHERE kind IN ('template','skill') ORDER BY updated DESC")

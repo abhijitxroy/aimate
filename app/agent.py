@@ -322,6 +322,14 @@ async def propose(store, config, services, cid, args, access_check=None):
 async def run_turn(store, cid, question, *, client_factory=ai_client, services_factory=Services, chatgpt=None, model_mode="auto", manual_model=None, images=None, role="admin", vault_access=None, access_check=None, template_mode="auto", local_access=False):
     if access_check:
         access_check()
+    if template_mode == "final-review":
+        if images:
+            raise ValueError("Final PR review uses pinned source evidence. Use normal review for images.")
+        from app.final_review import run as final_review
+        async for event in final_review(store, cid, question, client_factory=client_factory,
+                services_factory=services_factory, chatgpt=chatgpt, access_check=access_check or (lambda: None)):
+            yield event
+        return
     config = store.config()
     if model_mode == "manual":
         from app.claude_catalog import enabled as manual_enabled, model_id

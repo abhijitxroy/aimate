@@ -103,6 +103,56 @@ class BrowserRegressionTests(unittest.TestCase):
         self.page.locator('[name="ai.provider"]').select_option("local")
         self.expect(self.page.locator("#localAISettings")).to_be_visible()
 
+    def test_final_review_panel_selection_persists_and_reports_are_disclosed(self):
+        self.page.evaluate("""async () => {
+          await api('/api/settings',{method:'PUT',body:JSON.stringify({allow_writes:false,
+            ai:{provider:'anthropic',model:'standard-fixture',analysis_model:'analysis-fixture',
+                api_key:'synthetic-fixture'},github:{},jira:{},jenkins:{}})});
+          await refreshState();
+        }""")
+        self.page.locator("#headerSettings").click()
+        panel = self.page.locator("#finalReviewSettings")
+        self.expect(panel).to_be_visible()
+        panel.locator("summary").first.click()
+        for name, model in (("Fixture primary", "standard-fixture"), ("Fixture lead", "analysis-fixture")):
+            self.page.locator("#finalReviewName").fill(name)
+            self.page.locator("#finalReviewModel").select_option(model)
+            self.page.locator("#finalReviewScope").select_option("non-intel")
+            panel.get_by_role("button", name="Save current connection as profile").click()
+            self.expect(panel.locator(".knowledge-card").filter(has_text=name)).to_be_visible()
+            row = panel.locator(".knowledge-card").filter(has_text=name)
+            row.get_by_role("button", name="Check access").click()
+            self.expect(row.locator('input[type="checkbox"]')).to_be_enabled()
+        checks = panel.locator('input[type="checkbox"]')
+        checks.nth(0).check(); checks.nth(1).check()
+        lead_id = checks.nth(1).input_value()
+        self.page.locator("#finalReviewLead").select_option(lead_id)
+        panel.get_by_role("button", name="Save panel", exact=True).click()
+        self.expect(self.page.locator("#finalReviewStatus")).to_contain_text("reuse this panel")
+        self.page.reload()
+        self.expect(self.page.locator("#workspace")).to_be_visible()
+        self.page.locator("#headerSettings").click()
+        panel = self.page.locator("#finalReviewSettings")
+        panel.locator("summary").first.click()
+        self.expect(panel.locator('input[type="checkbox"]:checked')).to_have_count(2)
+        self.expect(self.page.locator("#finalReviewLead")).to_have_value(lead_id)
+        self.page.locator('[data-close="settingsDialog"]').click()
+        self.page.locator("#analysisStyle").select_option("final-review")
+        self.expect(self.page.locator("#analysisStyle")).to_have_value("final-review")
+        self.page.evaluate("""() => {
+          const msg=addMessage('assistant','Final review summary');
+          msg.root.id='final-review-browser';
+          AiMateFinalReview.render(msg,{reviewers:[{name:'Independent model',model:'analysis-fixture',
+            report:{summary:'Concrete review.',findings:[{severity:'P2',path:'code.py',line:2,
+              claim:'A check is missing.',scenario:'The caller passes zero.'}],gaps:['Runtime not executed.']}}]});
+        }""")
+        reports=self.page.locator("#final-review-browser .final-review-reports")
+        self.expect(reports).not_to_have_attribute("open","")
+        reports.locator("summary").first.click()
+        reports.locator("details summary").click()
+        self.expect(reports).to_contain_text("code.py:2")
+        self.expect(reports).to_contain_text("Runtime not executed")
+
     def test_bundled_typography_loads_locally_and_preserves_code_fonts(self):
         self.page.route(re.compile(r"^https://"), lambda route: route.abort())
         self.page.reload()

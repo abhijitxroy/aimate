@@ -957,6 +957,7 @@ async function loadConversation(id, title, version) {
       updateModelInfo(bot, turn.usage);
     }
     if (bot) window.AiMateClarification?.render(bot, turn.usage?.completion);
+    if (bot) window.AiMateFinalReview?.render(bot, turn.usage?.final_review);
     if(bot) window.AiMateMessageFavorites?.update(bot,"assistant",turn.usage?.favorite_roles?.includes("assistant"));
     for (const msg of turn.messages) {
       if (!Array.isArray(msg.content)) continue;
@@ -1120,6 +1121,7 @@ async function ask(question) {
             event.completion?.status === "awaiting_input" ? "Waiting for your answer" :
             event.completion?.status === "partial" ? "Findings ready · review evidence gaps" : "Answer complete");
           window.AiMateClarification?.render(bot, event.completion);
+          window.AiMateFinalReview?.render(bot, event.final_review);
         }
         if(cid===run.cid) scrollMessages();
       }

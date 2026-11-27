@@ -55,6 +55,8 @@ document.addEventListener("DOMContentLoaded",()=>{
     } catch(error) {status.textContent=error.message;status.className="hint warning";}
     finally {button.disabled=false;}
   };
-  document.addEventListener("aimate:state",()=>{section.hidden=!access.knowledge_index;});
+  const syncAccess=()=>{section.hidden=!access.knowledge_index;};
+  document.addEventListener("aimate:state",syncAccess);
+  syncAccess();
   section.addEventListener("toggle",()=>{if(section.open)void refresh();});
 });

@@ -220,6 +220,9 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
     register_favorites(app,store,auth,config_lock)
     from app.feedback_review import register as register_feedback_review
     register_feedback_review(app,store,auth,config_lock)
+    from app.final_review_panel import register as register_final_review
+    register_final_review(app, store, auth, config_lock, client_factory, chatgpt,
+                          lambda session: request_lease(owner_store, sessions, session))
     from app.temporary_chats import register as register_temporary_chats
     register_temporary_chats(app,auth)
     from app.performance import register as register_performance
@@ -1023,6 +1026,8 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
         elif manual_model is not None:
             raise ValueError("Choose Manual mode to select a specific Claude model.")
         template_mode=body.get("template_mode","auto")
+        if template_mode == "final-review" and (demo or local_model):
+            raise ValueError("Final PR review needs your saved online review panel.")
         from app.analysis_styles import select as select_style
         select_style(chat_store,question,template_mode)
         recent = [t for t in chat_limits.get(session["token"], []) if now - t < 60]
@@ -1093,7 +1098,7 @@ def create_app(store=None, services_factory=Services, client_factory=ai_client, 
                                 store.execute("INSERT OR REPLACE INTO attachment_previews VALUES (?,?)", (turn_id, encrypted))
                     if event["event"] == "model":
                         selected_model = event["model"]
-                    if not demo and not local_model and event["event"] == "done" and event.get("model"):
+                    if not demo and not local_model and event["event"] == "done" and event.get("model") and event.get("mode") != "final-review":
                         store.record_ai_activity(turn_config, event["model"])
                     yield "data: " + json.dumps(event, ensure_ascii=False) + "\n\n"
             except asyncio.CancelledError:

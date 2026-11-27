@@ -5,7 +5,9 @@ document.addEventListener("DOMContentLoaded",()=>{
   open.id="openLocalEvidence";open.type="button";open.textContent="Local evidence";open.hidden=true;
   document.querySelector("#openMaintenance")?.after(open);
   const dialog=document.querySelector("#localEvidenceDialog");
-  document.addEventListener("aimate:state",()=>{open.hidden=!access.local_evidence;});
+  const syncAccess=()=>{open.hidden=!access.local_evidence;};
+  document.addEventListener("aimate:state",syncAccess);
+  syncAccess();
   function render() {
     const list=document.querySelector("#localEvidenceSources");list.replaceChildren();
     for(const source of sources) {
