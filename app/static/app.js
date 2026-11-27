@@ -299,6 +299,7 @@ function renderModelSelection(event = null) {
   }
   picker.title = pagesPreview ? "Backend not connected. No AI model is running." : demo ? "Scripted demo" : `${mode === "auto" ? "Auto: AiMate chooses Standard for lookups and Analysis for debugging or complex tasks.\n" : ""}${model || "No model configured"}${mode === "auto" && activeModelSelection ? " · Auto selected " + route : ""}${unavailable ? "\nAnalysis unavailable: configure it in Settings → AI model → Advanced." : ""}`;
   picker.setAttribute("aria-label", `Model selection: ${mode === "auto" ? "Auto · " + shortModelName(model) : picker.selectedOptions[0].textContent}`);
+  if (!demo && !pagesPreview) window.AiMateLatestModels?.compactPicker(picker, {...selectedAI,currentModel:model}, shortModelName);
 }
 const savedModelMode = localStorage.getItem("aimate-model-mode");
 if ([...$("#modelMode").options].some(option => option.value === savedModelMode)) $("#modelMode").value = savedModelMode;

@@ -22,7 +22,7 @@ window.AiMateManualModels = (() => {
       picker.querySelector("[data-manual-models]")?.remove();
       if (!result.manual_enabled) { renderModelSelection(); return; }
       const group = document.createElement("optgroup");
-      group.label = window.AiMateFeatures?.latestModelChoices === false ? "Claude · direct selection" : "Claude · latest models";
+      group.label = "Claude";
       group.dataset.manualModels = "true";
       const models = [...new Map([...result.presets, ...result.models].map(row => [row.id, row])).values()];
       // Settings may already be open with the fallback presets. Refresh its

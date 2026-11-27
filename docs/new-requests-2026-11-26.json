@@ -208,5 +208,12 @@
     "completed": false,
     "type": "enhancement",
     "priority": "P1"
+  },
+  {
+    "id": "clean-model-picker-fable",
+    "title": "P1 · WIP — Clean model names and verify Fable selection\n\nRemark: Remove duplicate visible Auto/Standard/Analysis entries while retaining the saved routing policy internally; show latest Claude family names with concise guidance. Verify direct Fable request, reload, source/route preservation and feature switch. No premium invocation just for menu verification. Live entitlement remains separate.",
+    "completed": false,
+    "type": "enhancement",
+    "priority": "P1"
   }
 ]
