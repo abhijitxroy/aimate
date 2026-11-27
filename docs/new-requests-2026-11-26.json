@@ -134,15 +134,15 @@
   },
   {
     "id": "claude-direct-all-models",
-    "title": "P0 · WIP — Opus, Fable and full Claude catalog in askbar and Settings\n\nOrganization presets plus active AWS catalog models/profiles; exact direct selection per request without changing Standard/Analysis slots. Credential/region/endpoint-isolated five-minute memory cache; fallback presets, disabled mode, routing and reload tested locally. Listing is not invocation proof. Remark: all seven workflows, installation and live catalog/UI validation pending. Cross-provider Auto remains a separate open task.",
-    "completed": false,
+    "title": "P0 · Done — Opus, Fable and full Claude catalog in askbar and Settings\n\nOrganization presets plus active AWS catalog models/profiles; exact direct selection per request without changing Standard/Analysis slots. Credential/region/endpoint-isolated five-minute memory cache; fallback presets, disabled mode, routing and reload tested locally. Listing is not invocation proof. Remark: all seven workflows, installation and live catalog/UI validation pending. Cross-provider Auto remains a separate open task.\n\nVerified 27 November: credential-scope/expiry/bounds/fallback/disabled tests, exact Opus/Fable request routing and unchanged slots passed. All seven workflows passed at 7079195. Installed saved-account catalog returned 47 unique choices; live askbar and Advanced Settings included Opus 5.5 and Fable 5.2. No premium inference was invoked just to test the list. Invocation permission remains checked when each selected model is used. CI: https://github.com/abhijitxroy/aimate/actions/runs/45937448256",
+    "completed": true,
     "type": "feature",
     "priority": "P0"
   },
   {
     "id": "inline-format-space-boundary",
-    "title": "P1 · WIP — Keep bold visible and exit formatting with Space\n\nFix the caret boundary after bold/italic/underline/foreground so a trailing space lands outside closing markers, keeping the word styled and following text plain. Preserve nested formatting, internal spaces, literal code, Undo and disabled mode. Reproduced the original bold trap; focused browser checks passed locally. Remark: required workflows and installed browser validation pending.",
-    "completed": false,
+    "title": "P1 · Done — Keep bold visible and exit formatting with Space\n\nFix the caret boundary after bold/italic/underline/foreground so a trailing space lands outside closing markers, keeping the word styled and following text plain. Preserve nested formatting, internal spaces, literal code, Undo and disabled mode. Reproduced the original bold trap; focused browser checks passed locally. Remark: required workflows and installed browser validation pending.\n\nVerified 27 November: reproduced the original bold caret trap; bold-to-plain Space, nested styles, internal spaces, literal code, Undo, disabled mode and existing format/browser regressions passed. All seven workflows passed at 7079195. Installed live browser retained **Bold word** normal, rendered only the word bold and hid marker characters. Local app and OneDrive migration kit updated. CI: https://github.com/abhijitxroy/aimate/actions/runs/45937448256",
+    "completed": true,
     "type": "bug",
     "priority": "P1"
   }
