@@ -1,10 +1,10 @@
 # Pending AiMate work — 27 November 2026
 
-Current live list: **104 completed, 50 open**. Completed items are backed by their individual remarks; this is not a claim that the whole roadmap is finished.
+Current live list: **105 completed, 50 open**. Completed items are backed by their individual remarks; this is not a claim that the whole roadmap is finished.
 
 Verified in this batch: inherited-proxy restart recurrence guard (seven routing regressions, all seven code workflows and live Jira/Jenkins after restart); visible red heartbeat wave; the resumed-file-reader crash; clarification-before-fetch status; border-light table status. Source/reader tests and all seven workflows passed. The Dashboard checkout was inspected read-only; no files, staging, branches, merges or database content were changed.
 
-Also verified: final-review finding provenance comparison (exact claims, disagreements, omissions and failed reviewers); transparent sidebar rows; configurable full-width heartbeat colour/reset; five-theme vibrant semantic pills. Seven source workflows passed for each code batch, and installed UI checks passed. These do not certify factual review accuracy or complete large-PR coverage.
+Also verified: final-review finding provenance comparison (exact claims, disagreements, omissions and failed reviewers); transparent sidebar rows; configurable full-width heartbeat colour/reset; five-theme vibrant semantic pills; compact numbered progress summaries and assessment/result table pills (safe links, ordinary-list preservation, mobile and disabled checks). Seven source workflows passed for each code batch, and installed UI checks passed. These do not certify factual review accuracy or complete large-PR coverage.
 
 Next implementation order: P0 investigation/context and complete source coverage; domain/artifact evidence and reconciliation; retained snapshots and safe chat deletion; then P1 reusable cases, cache/ranking, quotas and export. User-deferred work and missing live prerequisites remain open.
 
