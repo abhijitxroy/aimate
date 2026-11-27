@@ -268,6 +268,8 @@ async def response_events(connection, payload, expected_account=None):
                     if raw == "[DONE]":
                         continue
                     event = json.loads(raw)
+                    from app.output_continuation import normalize_event
+                    event = normalize_event(event)
                     kind = event.get("type")
                     if kind in {"error", "response.failed", "response.incomplete"}:
                         code = event.get("response", {}).get("error", {}).get("code", "")

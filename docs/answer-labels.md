@@ -28,3 +28,14 @@ markers stay readable as ordinary Markdown; HTML remains escaped.
 Disable the UI with `window.AiMateFeatures.answerLabels=false`, or the shared
 model guidance with `AIMATE_ANSWER_LABELS_ENABLED=0`. The renderer/policy modules
 are independent of tools, permissions, write confirmation and quality scores.
+
+Substantial result summaries can use a short opening, descriptive sections,
+an Item/Status table and fenced code. Status callouts use uniform thin outlines
+and crisp, coloured vector icons. `[!SUCCESS]` is for verified success;
+`[!WARNING]` marks a material risk and `[!NOTE]` provides context. Fresh and
+historical validation must stay distinct. The policy avoids repeated summaries,
+excessive emoji and claims of tests or actions that did not happen.
+
+The local Inter font makes controls, prose and small labels consistent.
+Code retains its monospace font. The current theme controls the surrounding
+palette; no new theme is forced by an answer.

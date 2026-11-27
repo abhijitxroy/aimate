@@ -1,6 +1,7 @@
 """Isolated browser-test server: synthetic models, no service credentials."""
 import argparse
 import asyncio
+import json
 import os
 import sys
 import tempfile
@@ -18,6 +19,7 @@ os.environ.pop("APP_PUBLIC_URL", None)
 
 from app.main import create_app, app as import_app
 from app.store import Store
+from app.output_continuation import INSTRUCTION as OUTPUT_CONTINUE
 import app.claude_catalog as claude_catalog_module
 
 
@@ -30,6 +32,7 @@ async def fixture_claude_catalog(ai):
 
 claude_catalog_module.discover_models = fixture_claude_catalog
 parallel_release = asyncio.Event()
+output_release = asyncio.Event()
 
 
 class Block:
@@ -56,6 +59,8 @@ class Stream:
             if self.slow == "glow":
                 # Independent held stream: other tests may release parallel jobs.
                 await asyncio.Event().wait()
+            elif self.slow == "output":
+                await output_release.wait()
             elif self.slow:
                 await parallel_release.wait()
             yield self.text
@@ -76,6 +81,9 @@ class AI:
 
     async def create(self, **kwargs):
         if kwargs.get("system", "").startswith("Produce the final answer now"):
+            if json.loads(kwargs["messages"][0]["content"]).get("question") == "Output limit fixture":
+                return SimpleNamespace(content=[], stop_reason="max_tokens",
+                                       usage=SimpleNamespace(input_tokens=20, output_tokens=12))
             return SimpleNamespace(content=[SimpleNamespace(type="text", text="Synthetic recovered findings; runtime cause remains unverified.")],
                                    stop_reason="end_turn", usage=SimpleNamespace(input_tokens=20, output_tokens=12))
         return SimpleNamespace(content=[SimpleNamespace(type="text", text='{"route":"analysis"}')],
@@ -83,6 +91,8 @@ class AI:
 
     def stream(self, **kwargs):
         question=str(kwargs["messages"][-1]["content"])
+        current_question=next((row["content"] for row in reversed(kwargs["messages"])
+            if row["role"]=="user" and isinstance(row["content"],str) and row["content"]!=OUTPUT_CONTINUE),question)
         if question == "Clarify fixture":
             class ClarifyStream(Stream):
                 async def get_final_message(self):
@@ -93,8 +103,13 @@ class AI:
                                               "kind": "single", "options": ["Build 11", "Build 12"]}}
                     return SimpleNamespace(content=[Tool()], usage=SimpleNamespace(input_tokens=10, output_tokens=12))
             return ClarifyStream(kwargs["model"], "")
-        if question == "Output limit fixture":
+        if current_question == "Output limit fixture":
             return Stream(kwargs["model"], "Synthetic partial answer.", stop="max_tokens")
+        if current_question == "Automatic output recovery fixture":
+            if question == "Automatic output recovery fixture":
+                output_release.clear()
+                return Stream(kwargs["model"], "Preparing the diagram.", stop="max_tokens")
+            return Stream(kwargs["model"], "Final diagram: Client → API → database.", slow="output")
         if question == "Empty final fixture":
             return Stream(kwargs["model"], "")
         if question == "Glow held fixture":
@@ -132,6 +147,10 @@ if __name__ == "__main__":
     async def release_parallel():
         parallel_release.set()
         return {"released":True}
+    @fixture.post("/api/test/output/release")
+    async def release_output():
+        output_release.set()
+        return {"released": True}
     try:
         uvicorn.run(fixture, host="127.0.0.1", port=args.port,
                     log_level="warning")

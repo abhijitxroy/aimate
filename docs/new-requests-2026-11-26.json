@@ -148,7 +148,7 @@
   },
   {
     "id": "reply-classification-labels",
-    "title": "P1 · WIP — Colour-labelled classification cards in AiMate replies\n\nConditional KEEP/CHECK/REMOVE/OPTIONAL Markdown labels, compact two-column cards with mobile stacking and high-contrast badges. Preserve original text, evidence and links; no arbitrary HTML or forced cards for short/greeting replies. Separate disabled UI/policy modes. Shared native/Responses style guidance, safe renderer and three policy checks plus browser checks passed locally. Required source workflows, installed renderer and a real supplied-only model response still pending. Parent: SQ-11 compact presentation.",
+    "title": "P1 · WIP — Colour-labelled classification cards in AiMate replies\n\nConditional KEEP/CHECK/REMOVE/OPTIONAL Markdown labels, compact two-column cards with mobile stacking and high-contrast badges. Preserve original text, evidence and links; no arbitrary HTML or forced cards for short/greeting replies. Separate disabled UI/policy modes. Shared native/Responses style guidance, safe renderer and three policy checks plus browser checks passed locally. Required source workflows, installed renderer and a real supplied-only model response still pending. Parent: SQ-11 compact presentation.\n\n27 November result-layout follow-up: added conditional work-summary guidance, uniform status-card outlines, crisp coloured SVG status icons, fresh-versus-historical validation wording, existing compact tables/highlighted code and local Inter typography. Validation in progress; do not invent success or format every short reply as a report.\n\nLive Standard Haiku check, 27 November: deliberately limited the first response to 64 tokens; one automatic continuation and three total model requests returned a completed draw.io XML diagram, table and KEEP/CHECK cards. Zero external source reads. Test used a temporary in-memory chat with a supplied synthetic architecture; no user conversation added. All local recovery, policy, provider and relevant browser checks passed. Required source workflows and installation pending.",
     "completed": false,
     "type": "enhancement",
     "priority": "P1"
@@ -159,5 +159,12 @@
     "completed": false,
     "type": "enhancement",
     "priority": "P2"
+  },
+  {
+    "id": "automatic-output-continuation",
+    "title": "P0 · WIP — Finish output-truncated investigations automatically\n\nParent: search-quality-08. Replace the fixed small response allowance for supported modern models, retain partial evidence in the same turn and continue automatically (two bounded extra responses). Skip truncated tool/actions with paired results; count usage and recheck access/cancellation. Recover final findings with one tool-free synthesis if needed. Preserve explicit gaps; never label unfinished work complete. Support native Claude, Bedrock GPT, account Responses, OpenCode and Gemini truncation signals without confusing network/refusal errors with output exhaustion. Local AI gets no extra automatic work. Remark: seventeen checkpoint/recovery tests and forty provider tests passed locally; real HTTP/SSE fixtures and browser continuation/glow checks passed. Full workflows and installed/live model validation pending.\n\nLive Standard Haiku check, 27 November: deliberately limited the first response to 64 tokens; one automatic continuation and three total model requests returned a completed draw.io XML diagram, table and KEEP/CHECK cards. Zero external source reads. Test used a temporary in-memory chat with a supplied synthetic architecture; no user conversation added. All local recovery, policy, provider and relevant browser checks passed. Required source workflows and installation pending.",
+    "completed": false,
+    "type": "bug",
+    "priority": "P0"
   }
 ]

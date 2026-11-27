@@ -1,3 +1,24 @@
+/* Uniform status-card outlines; retain safe Markdown and theme text. */
+.body.answer-presented .answer-callout {
+  --callout: #82c3ff; margin: 16px 0; padding: 12px 14px;
+  border: 1px solid var(--line); border-radius: 14px;
+  background: color-mix(in srgb, var(--panel) 45%, transparent);
+}
+.body.answer-presented .answer-callout.success,
+.body.answer-presented .answer-callout.tip { --callout: #52dd98; }
+.body.answer-presented .answer-callout.warning { --callout: #ffb86b; }
+.body.answer-presented .answer-callout.danger { --callout: #ff969d; }
+.body.answer-presented .callout-title {
+  display: flex; align-items: center; gap: 7px; font-size: 12px; line-height: 1.5;
+}
+.body.answer-presented .callout-title svg { width: 16px; height: 16px; flex-shrink: 0; }
+.body.answer-presented .answer-callout > :last-child { margin-bottom: 0; }
+.body.answer-presented .answer-callout.success > p { color: var(--callout); }
+:root[data-theme="beige"] .body.answer-presented .answer-callout { --callout: #245c89; }
+:root[data-theme="beige"] .body.answer-presented .answer-callout.success,
+:root[data-theme="beige"] .body.answer-presented .answer-callout.tip { --callout: #187146; }
+:root[data-theme="beige"] .body.answer-presented .answer-callout.warning { --callout: #91500e; }
+:root[data-theme="beige"] .body.answer-presented .answer-callout.danger { --callout: #ae3441; }
 .answer-classification-grid {
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px; margin: 14px 0; min-width: 0;

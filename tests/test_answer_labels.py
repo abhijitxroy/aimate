@@ -20,6 +20,10 @@ class LabelPolicyTests(unittest.TestCase):
             self.assertEqual(label_instruction(query,"auto"),"")
         self.assertEqual(label_instruction("Review this","plain"),"")
         self.assertEqual(label_instruction("Review this","custom-template"),"")
+        status=label_instruction("Summarize the delivered work and test status","auto")
+        self.assertIn("[!SUCCESS]",status)
+        self.assertIn("Distinguish earlier tests from fresh validation",status)
+        self.assertIn("must not imply tests, pushes, writes",status)
 
     def test_attachment_words_do_not_trigger_visual_guidance(self):
         self.assertEqual(label_instruction(

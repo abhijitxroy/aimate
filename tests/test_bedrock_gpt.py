@@ -65,7 +65,10 @@ class BedrockGPTTests(unittest.TestCase):
             config["ai"]["api_key"] = "replacement-token"
             self.store.save_config(config)
         if self.mode != "interrupted":
-            events.append({"type": "response.completed", "response": {"model": payload["model"], "output": output,
+            limited = self.mode == "length" and len(self.requests) == 1
+            events.append({"type": "response.incomplete" if limited else "response.completed", "response": {
+                           **({"status": "incomplete", "incomplete_details": {"reason": "max_output_tokens"}} if limited else {}),
+                           "model": payload["model"], "output": output,
                            "usage": {"input_tokens": 12, "output_tokens": 3,
                                      "input_tokens_details": {"cached_tokens": 4}}}})
         return httpx.Response(200, text="".join("data: " + json.dumps(event) + "\n\n" for event in events),
@@ -110,6 +113,16 @@ class BedrockGPTTests(unittest.TestCase):
         self.assertEqual(evidence["call_id"], "read1")
         self.assertIn("Synthetic reviewed PR", evidence["output"])
         self.assertFalse(self.store.rows("SELECT * FROM actions"))
+
+    def test_wire_output_limit_continues_without_another_user_request(self):
+        self.mode = "length"
+        _, events = self.turn()
+        self.assertEqual(len(self.requests), 2)
+        self.assertEqual([json.loads(r.content)["max_output_tokens"] for r in self.requests], [16384, 32768])
+        self.assertEqual(events[-1]["output_retries"], 1)
+        self.assertNotIn("completion", events[-1])
+        self.assertEqual(events[-1]["usage"]["input_tokens"], 24)
+        self.assertEqual(len(self.store.rows("SELECT * FROM turns")), 1)
 
     def test_reviewed_proposal_stays_pending_and_viewer_has_no_write_tool(self):
         self.mode = "proposal"

@@ -27,19 +27,26 @@ def payload(args,ident,converted,stream):
 
 
 def result(data,model,message):
-    if data.get("status")!="completed":
+    from app.output_continuation import output_limited
+    limited=output_limited(data)
+    if data.get("status")!="completed" and not limited:
         raise ValueError("The OpenCode GPT response did not complete. Retry with a smaller request.")
     text=[];calls=[]
     for item in data.get("output",[]):
         if item.get("type")=="message":
             text.extend(part["text"] for part in item.get("content",[]) if part.get("type")=="output_text")
         elif item.get("type")=="function_call":
-            calls.append({"id":item["call_id"],"function":{"name":item["name"],"arguments":item["arguments"]}})
+            # Truncated arguments may not be valid JSON. No partial tool is
+            # executed; preserve its identifier with an empty, paired input.
+            calls.append({"id":item["call_id"],"function":{"name":item["name"],
+                          "arguments":"{}" if limited else item["arguments"]}})
     usage=data.get("usage")
     if usage is not None:
         usage={"prompt_tokens":usage.get("input_tokens",0),"completion_tokens":usage.get("output_tokens",0),
                "prompt_tokens_details":usage.get("input_tokens_details") or {}}
-    return message(model,"".join(text),calls,usage)
+    reply=message(model,"".join(text),calls,usage)
+    if limited:reply.stop_reason="max_tokens"
+    return reply
 
 
 class Stream:
@@ -59,6 +66,8 @@ class Stream:
                 try:event=json.loads(raw)
                 except ValueError:raise ValueError("The OpenCode GPT stream returned invalid data.") from None
                 if not isinstance(event,dict):raise ValueError("The OpenCode GPT stream returned invalid data.")
+                from app.output_continuation import normalize_event
+                event=normalize_event(event)
                 kind=event.get("type")
                 if kind in {"error","response.failed","response.incomplete"}:
                     raise ValueError("The OpenCode GPT response did not complete. Retry with a smaller request.")

@@ -24,6 +24,7 @@ from app.knowledge_index import TOOLS as KNOWLEDGE_TOOLS, Index as KnowledgeInde
 from app.investigation_completion import reason as completion_reason, checkpoint as completion_checkpoint
 from app.answer_synthesis import SYSTEM as SYNTHESIS_SYSTEM, packet as synthesis_packet, enabled as synthesis_enabled, recovered as synthesis_recovered
 from app.clarification import TOOL as CLARIFICATION_TOOL, POLICY as CLARIFICATION_POLICY, enabled as clarification_enabled, request as clarification_request, text as clarification_text
+from app.output_continuation import retries as output_retries_allowed, budget as output_budget, INSTRUCTION as OUTPUT_CONTINUE, output_limited, persisted as persist_output_messages
 
 SYSTEM = """You are AiMate, a project assistant for GitHub, Jira and Jenkins, created by Abhijit Roy.
 When asked your name, answer: "My name is AiMate, and my creator is Abhijit Roy."
@@ -422,10 +423,13 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
             selection["notice"]="Local AI · no cloud inference. Long context is compacted automatically; saved chat stays intact. Excerpts may be incomplete or stale; service reads still need network/VPN."
         add_usage(usage, by_model, config["ai"]["model"], selection["routing_usage"])
         yield selection
-        for round_no in range(9):
+        output_retries = 0
+        internal_messages = set()
+        for attempt in range(9 + output_retries_allowed(config)):
+            round_no = attempt - output_retries
             if access_check:
                 access_check()
-            params = {"model": selection["model"], "max_tokens": 4096,
+            params = {"model": selection["model"], "max_tokens": output_budget(selection["model"], quality.kind, output_retries),
                       "system": system, "messages": messages, "tools": available_tools}
             if round_no == 8:
                 params["tool_choice"] = {"type": "none"}
@@ -476,11 +480,20 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
                     messages.append({"role": "user", "content": [
                         {"type": "tool_result", "tool_use_id": call["id"], "is_error": True,
                          "content": "Not executed: investigation paused at a request limit."} for call in calls]})
-                if pause == "empty_answer" and synthesis_enabled():
+                if pause == "output_limit" and output_retries < output_retries_allowed(config):
+                    output_retries += 1
+                    prompt = {"role": "user", "content": OUTPUT_CONTINUE}
+                    internal_messages.add(id(prompt))
+                    messages.append(prompt)
+                    yield {"event": "continuation", "attempt": output_retries,
+                           "message": "Continuing automatically from saved evidence…"}
+                    continue
+                if pause in {"empty_answer", "output_limit"} and synthesis_enabled():
                     if access_check:
                         access_check()
                     try:
-                        final = await client.messages.create(model=selection["model"], max_tokens=4096,
+                        final = await client.messages.create(model=selection["model"],
+                            max_tokens=output_budget(selection["model"], quality.kind, output_retries),
                             system=SYNTHESIS_SYSTEM, messages=[{"role": "user",
                             "content": scrub(synthesis_packet(messages[start:], question), config)}])
                     except Exception:
@@ -590,13 +603,15 @@ async def run_turn(store, cid, question, *, client_factory=ai_client, services_f
                 access_check()
             # Persist the readable prompt and answer; do not replay image bytes on every follow-up.
             messages[start] = {"role": "user", "content": question}
-            store.save_turn(cid, scrub(messages[start:], config),
+        store.save_turn(cid, scrub(persist_output_messages(messages[start:], internal_messages), config),
                             {"model": selection["model"], "mode": model_mode, "route": selection["route"],
                              "usage": usage, "by_model": by_model, "notice": selection.get("notice"),
                              "quality": final_quality if completion else quality.metadata(), "answer_preference": preference,
+                             **({"output_retries": output_retries} if output_retries else {}),
                              **({"completion": completion, "notice": completion["notice"]} if completion else {})})
         yield {"event": "done", "usage": usage, "model": selection["model"], "mode": model_mode, "by_model": by_model,
                "quality": final_quality if completion else quality.metadata(),
+               **({"output_retries": output_retries} if output_retries else {}),
                **({"completion": completion} if completion else {})}
     finally:
         try:
@@ -729,12 +744,17 @@ async def _run_chatgpt_turn(store, cid, question, connection, services_factory, 
     if model not in available:
         raise ValueError("The selected Analysis model is unavailable. Choose an available model in Settings.")
     yield selection
-    for round_no in range(9):
+    output_retries = 0
+    internal_messages = set()
+    for attempt in range(9 + output_retries_allowed(config)):
+        round_no = attempt - output_retries
         if access_check:
             access_check()
         payload = {"model": model, "instructions": instructions, "input": input_items,
                    "store": False, "stream": True, "tools": [namespace],
                    "include": ["reasoning.encrypted_content"]}
+        if config.get("ai", {}).get("provider") == "bedrock-openai":
+            payload["max_output_tokens"] = output_budget(model, quality.kind, output_retries)
         if round_no == 8:
             payload["tool_choice"] = "none"
         output, text = None, ""
@@ -743,7 +763,7 @@ async def _run_chatgpt_turn(store, cid, question, connection, services_factory, 
                 access_check()
             if event["type"] == "response.output_text.delta":
                 delta = event.get("delta", "")
-                if not text and round_no:
+                if not text and (round_no or output_retries):
                     delta = "\n\n" + delta
                 text += delta
                 if not config["_vault_ai_access"]:
@@ -774,7 +794,7 @@ async def _run_chatgpt_turn(store, cid, question, connection, services_factory, 
                  "content": "Not executed: waiting for the user's clarification."} for call in calls]})
             prompt = clarification_text(clarification)
             saved.append({"role": "assistant", "content": prompt})
-            store.save_turn(cid, scrub(saved, config), {"model": model, "mode": model_mode,
+            store.save_turn(cid, scrub(persist_output_messages(saved, internal_messages), config), {"model": model, "mode": model_mode,
                 "route": selection["route"], "usage": usage, "by_model": by_model,
                 "answer_preference": preference, "quality": None, "completion": clarification,
                 "notice": clarification["notice"]})
@@ -782,18 +802,33 @@ async def _run_chatgpt_turn(store, cid, question, connection, services_factory, 
             yield {"event": "done", "usage": usage, "model": model, "mode": model_mode,
                    "by_model": by_model, "quality": None, "completion": clarification}
             return
-        pause = completion_reason(round_no, calls, final_text=bool(text.strip()))
+        pause = completion_reason(round_no, calls, "max_tokens" if output_limited(result) else None,
+                                  final_text=bool(text.strip()))
         if pause:
             if calls:
                 saved.append({"role": "user", "content": [
                     {"type": "tool_result", "tool_use_id": call["call_id"], "is_error": True,
                      "content": "Not executed: investigation paused at a request limit."} for call in calls]})
-            if pause == "empty_answer" and synthesis_enabled():
+            if pause == "output_limit" and output_retries < output_retries_allowed(config):
+                outputs = [{"type": "function_call_output", "call_id": call["call_id"],
+                            "output": "Not executed: response was truncated."} for call in calls]
+                input_items.extend(outputs)
+                input_items.append({"role": "user", "content": OUTPUT_CONTINUE})
+                prompt = {"role": "user", "content": OUTPUT_CONTINUE}
+                internal_messages.add(id(prompt))
+                saved.append(prompt)
+                output_retries += 1
+                yield {"event": "continuation", "attempt": output_retries,
+                       "message": "Continuing automatically from saved evidence…"}
+                continue
+            if pause in {"empty_answer", "output_limit"} and synthesis_enabled():
                 if access_check:
                     access_check()
                 recovery_payload = {"model": model, "instructions": SYNTHESIS_SYSTEM, "store": False,
                     "stream": True, "tool_choice": "none", "input": [{"role": "user",
                     "content": scrub(synthesis_packet(saved, question), config)}]}
+                if config.get("ai", {}).get("provider") == "bedrock-openai":
+                    recovery_payload["max_output_tokens"] = output_budget(model, quality.kind, output_retries)
                 recovered_text, recovered_result = "", None
                 try:
                     async for recovery_event in response_events(connection, recovery_payload, expected_account=account_id):
@@ -809,7 +844,7 @@ async def _run_chatgpt_turn(store, cid, question, connection, services_factory, 
                 if access_check:
                     access_check()
                 recovered_text = scrub(recovered_text, config)
-                if (recovered_result and recovered_text.strip() and
+                if (recovered_result and not output_limited(recovered_result) and recovered_text.strip() and
                     not any(item.get("type") == "function_call" for item in recovered_result.get("output", []))):
                     saved.append({"role": "assistant", "content": recovered_text})
                     completion, final_quality = synthesis_recovered(quality)
@@ -823,18 +858,19 @@ async def _run_chatgpt_turn(store, cid, question, connection, services_factory, 
                 yield {"event": "text", "delta": "\n\n" + completion["notice"]}
             if access_check:
                 access_check()
-            store.save_turn(cid, scrub(saved, config), {"model": model, "mode": model_mode, "route": selection["route"],
+            store.save_turn(cid, scrub(persist_output_messages(saved, internal_messages), config), {"model": model, "mode": model_mode, "route": selection["route"],
                             "usage": usage, "by_model": by_model, "notice": completion["notice"],
                             "quality": final_quality, "answer_preference": preference, "completion": completion})
             yield {"event": "done", "usage": usage, "model": model, "mode": model_mode,
                    "by_model": by_model, "quality": final_quality, "completion": completion}
             return
         if not calls:
-            store.save_turn(cid, scrub(saved, config), {"model": model, "mode": model_mode, "route": selection["route"],
+            store.save_turn(cid, scrub(persist_output_messages(saved, internal_messages), config), {"model": model, "mode": model_mode, "route": selection["route"],
                                         "usage": usage, "by_model": by_model, "notice": selection.get("notice"),
-                                        "quality": quality.metadata(), "answer_preference": preference})
+                                        "quality": quality.metadata(), "answer_preference": preference,
+                                        **({"output_retries": output_retries} if output_retries else {})})
             yield {"event": "done", "usage": usage, "model": model, "mode": model_mode, "by_model": by_model,
-                   "quality": quality.metadata()}
+                   "quality": quality.metadata(), **({"output_retries": output_retries} if output_retries else {})}
             return
         results = []
         prefetched = None if supplied else await prefetch_reads(calls, services, evidence, responses=True)

@@ -189,8 +189,14 @@ class Client:
             if family=="bedrock-runtime-openai":
                 from app.opencode_responses import result
                 return result(data,args["model"],message)
-            choice=data["choices"][0]["message"]
-            return message(args["model"],choice.get("content") or "",choice.get("tool_calls") or [],data.get("usage"))
+            choice=data["choices"][0]
+            row=choice["message"]
+            calls=row.get("tool_calls") or []
+            limited=choice.get("finish_reason")=="length"
+            if limited:
+                calls=[{**call,"function":{**call["function"],"arguments":"{}"}} for call in calls]
+            reply=message(args["model"],row.get("content") or "",calls,data.get("usage"))
+            return reply.model_copy(update={"stop_reason":"max_tokens"}) if limited else reply
         except (ValueError,KeyError,IndexError,TypeError,AttributeError):
             raise ValueError("The OpenCode gateway returned an invalid reply.") from None
 
@@ -225,7 +231,7 @@ class AnthropicStream:
 class ChatStream:
     def __init__(self,response,model):
         self.response,self.model=response,model
-        self.text="";self.calls={};self.usage=None;self.done=False;self.finished=False;self.text_stream=self.deltas()
+        self.text="";self.calls={};self.usage=None;self.done=False;self.finished=False;self.limited=False;self.text_stream=self.deltas()
 
     async def deltas(self):
         async for line in self.response.aiter_lines():
@@ -240,7 +246,7 @@ class ChatStream:
             if packet.get("usage") is not None:self.usage=packet["usage"]
             for choice in packet.get("choices",[])[:1]:
                 if choice.get("finish_reason")=="length":
-                    raise ValueError("The OpenCode reply reached its output limit. Ask for a smaller section.")
+                    self.limited=True;self.finished=True
                 if choice.get("finish_reason") in {"stop","tool_calls"}:self.finished=True
                 delta=choice.get("delta",{})
                 text=delta.get("content") or ""
@@ -261,4 +267,8 @@ class ChatStream:
     async def get_final_message(self):
         if not self.done:
             async for _ in self.text_stream:pass
-        return message(self.model,self.text,[self.calls[k] for k in sorted(self.calls)],self.usage)
+        calls=[self.calls[k] for k in sorted(self.calls)]
+        if self.limited:
+            calls=[{**call,"function":{**call["function"],"arguments":"{}"}} for call in calls]
+        reply=message(self.model,self.text,calls,self.usage)
+        return reply.model_copy(update={"stop_reason":"max_tokens"}) if self.limited else reply

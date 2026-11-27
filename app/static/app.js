@@ -1093,6 +1093,7 @@ async function ask(question) {
           });
         }
         if (event.event === "local_status") activity(event.message);
+        if (event.event === "continuation") activity(event.message);
         if (event.event === "source") addSource(bot, event.url);
         if (event.event === "tool") {
           activity(event.name === "propose_action" ? "Preparing a change for review…" : `Reading ${event.input.service || event.name}${event.input.path ? ": "+event.input.path : ""}…`);

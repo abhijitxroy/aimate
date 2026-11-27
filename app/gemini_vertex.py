@@ -152,6 +152,8 @@ def message(model, parts, usage, reason, context=None):
                 raise ValueError("Gemini returned invalid function arguments.")
             blocks.append({"type": "tool_use", "name": call["name"], "input": call.get("args", {}),
                            "id": call.get("id") or secrets.token_hex(12), "vertex_call_id": call.get("id")})
+    if not blocks and reason == "MAX_TOKENS":
+        blocks = [{"type": "text", "text": ""}]
     if not blocks:
         raise ValueError("Gemini returned no answer. Retry with a narrower question.")
     # Opaque provider parts/signatures stay with their own model, never cross-provider.
@@ -165,7 +167,8 @@ def message(model, parts, usage, reason, context=None):
         incoming = {"input_tokens": prompt - cached, "output_tokens": output + thoughts, "cache_read_input_tokens": cached}
     try:
         result = Message.model_validate({"id": "gemini-reply", "type": "message", "role": "assistant", "model": model,
-            "content": blocks, "stop_reason": "tool_use" if any(b["type"] == "tool_use" for b in blocks) else "end_turn",
+            "content": blocks, "stop_reason": "max_tokens" if reason == "MAX_TOKENS" else
+                "tool_use" if any(b["type"] == "tool_use" for b in blocks) else "end_turn",
             "stop_sequence": None, "usage": incoming})
     except (ValueError, TypeError):
         raise ValueError("Gemini returned an invalid answer format.") from None

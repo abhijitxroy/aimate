@@ -138,6 +138,8 @@ class Connection:
                         if raw == "[DONE]":
                             continue
                         event = json.loads(raw)
+                        from app.output_continuation import normalize_event
+                        event = normalize_event(event)
                         kind = event.get("type")
                         if kind in {"error", "response.failed", "response.incomplete"}:
                             raise ValueError("Bedrock GPT did not complete this answer. Check model access and service status.")

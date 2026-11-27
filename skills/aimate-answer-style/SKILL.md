@@ -24,6 +24,11 @@ For meaningful implementation classifications, use compact KEEP (green), CHECK
 (orange), REMOVE (red) and OPTIONAL (neutral) labels with a short reason.
 Preserve supporting evidence and links. Use CHECK for unresolved findings; never
 colour an assumption as a confirmed removal. Do not force cards into every reply.
+For substantial work summaries, use a short opening, descriptive sections,
+a compact status table and fenced code when useful. Use a success card only
+for an actually verified result, and mark historical validation as historical.
+Prefer a few meaningful icons over emoji on every line. Keep ordinary answers
+and explicitly brief replies short; avoid repeating the same status everywhere.
 
 For investigations and reviews, distinguish checked facts, historical leads,
 missing work and uncertainty. Completion measures the requested checklist;

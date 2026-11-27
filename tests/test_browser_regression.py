@@ -130,6 +130,22 @@ class BrowserRegressionTests(unittest.TestCase):
         self.assertNotIn("AiMate Inter", self.page.locator("#send").evaluate(
             "el => getComputedStyle(el).fontFamily"))
 
+    def test_automatic_output_continuation_finishes_and_keeps_glow_until_done(self):
+        self.page.locator("#newChat").click()
+        self.page.locator("#question").fill("Automatic output recovery fixture")
+        self.page.locator("#send").click()
+        self.expect(self.page.locator("#activity")).to_have_text(
+            "Continuing automatically from saved evidence…")
+        self.expect(self.page.locator("#chatForm")).to_have_class(re.compile("composer-generating"))
+        self.context.request.post(self.url + "/api/test/output/release")
+        self.expect(self.page.locator("#messages")).to_contain_text("Final diagram: Client")
+        self.expect(self.page.locator("#activity")).to_have_text("Answer complete")
+        self.expect(self.page.locator("#chatForm")).not_to_have_class(re.compile("composer-generating"))
+        self.assertNotIn("Ask Continue", self.page.locator("#messages").inner_text())
+        self.page.reload()
+        self.expect(self.page.locator("#messages")).to_contain_text("Final diagram: Client")
+        self.assertEqual(self.page.locator("#messages .assistant").count(), 1)
+
     def test_incomplete_answer_checkpoint_is_visible_and_survives_reload(self):
         self.page.locator("#question").fill("Output limit fixture")
         self.page.locator("#send").click()
@@ -303,6 +319,26 @@ class BrowserRegressionTests(unittest.TestCase):
             self.assertAlmostEqual(before[key],after[key],delta=1)
         self.page.evaluate("document.querySelector('#stop').hidden=true")
         self.expect(form).not_to_have_class(re.compile(r"composer-generating"))
+
+    def test_result_status_cards_use_crisp_icons_and_keep_tables_and_code(self):
+        sample="## Final status\\n\\n> [!SUCCESS] **Checks passed**\\n> Synthetic test example.\\n\\n| Item | Status |\\n|---|---|\\n| Test | Passed |\\n\\n```json\\n{\"result\":\"passed\"}\\n```\\n\\n> [!WARNING] Example risk.\\n\\n> [!NOTE] Earlier validation."
+        self.page.evaluate("text=>addMessage('assistant',text).root.id='status-sample'",sample.replace("\\n","\n"))
+        root=self.page.locator("#status-sample")
+        self.expect(root.locator(".answer-callout .callout-title svg")).to_have_count(3)
+        self.expect(root.locator(".callout-title").first).to_have_text("Success")
+        self.expect(root.locator("table")).to_contain_text("Test")
+        self.expect(root.locator("pre code")).to_contain_text('"result"')
+        for theme in ("navy","beige","black-blue","life","brown-gold"):
+            self.page.evaluate("theme=>window.AiMateAppearance.apply(theme)",theme)
+            status=root.locator(".answer-callout.success")
+            sides=status.evaluate("el=>{const s=getComputedStyle(el);return [s.borderLeftWidth,s.borderRightWidth,s.borderTopWidth,s.borderBottomWidth]}")
+            self.assertEqual(sides,["1px"]*4)
+            self.expect(status).to_be_visible()
+            self.assertEqual(status.locator("svg").first.bounding_box()["width"],16)
+        self.page.evaluate("""()=>{window.AiMateFeatures={answerLabels:false};
+            addMessage('assistant','> [!SUCCESS] Readable fallback').root.id='status-fallback';}""")
+        self.expect(self.page.locator("#status-fallback .callout-title svg")).to_have_count(0)
+        self.expect(self.page.locator("#status-fallback")).to_contain_text("Readable fallback")
 
     def test_classification_labels_are_safe_theme_aware_and_responsive(self):
         source="### Findings\\n\\n> [!KEEP] **Core flow** — needed and tested.\\n\\n> [!CHECK] Validate the assumption.\\n\\n> [!REMOVE] Confirmed unused helper.\\n\\n> [!OPTIONAL] Nice to have.\\n\\nEvidence: [source](https://github.com/example/repo)."
