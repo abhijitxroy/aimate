@@ -225,8 +225,8 @@
   },
   {
     "id": "review-resume-range-sorting",
-    "title": "P0 · WIP — Fix pinned file reads after restoring saved review progress\n\nParent: comprehensive PR reviews and restart continuity. Confirmed root cause: JSON restores byte/character ranges as lists while new reads append tuples; mixed sorting raises TypeError. Both retained live review sessions reproduced it with read-only source replays. Preserve existing progress, normalize range ordering without changing offsets, and test persisted/restarted partial reads, rereads and encrypted state.",
-    "completed": false,
+    "title": "P0 · Done — Fix pinned file reads after restoring saved review progress\n\nParent: comprehensive PR reviews and restart continuity. Confirmed root cause: JSON restores byte/character ranges as lists while new reads append tuples; mixed sorting raises TypeError. Both retained live review sessions reproduced it with read-only source replays. Preserve existing progress, normalize range ordering without changing offsets, and test persisted/restarted partial reads, rereads and encrypted state.\n\nVerified: Regression failed before the fix with the exact mixed tuple/list TypeError, then passed. All 13 reader checks and 14 final-review checks passed; all seven workflows green at 21ce326. Both retained live review sessions replay successfully through the installed reader after safe idle restart. Existing encrypted progress/history preserved, no AI inference or new chat, and no review reset needed.\nCI: https://github.com/abhijitxroy/aimate/actions/runs/45998296978",
+    "completed": true,
     "type": "bug",
     "priority": "P0"
   }
