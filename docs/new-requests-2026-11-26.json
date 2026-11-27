@@ -99,22 +99,22 @@
   },
   {
     "id": "askbar-expand-restore",
-    "title": "P1 · WIP — Expand and restore the askbar\n\nKeep one mounted draft editor; enlarge for tables and multiline formatted input, retain attachments/selection, restore with icon or Escape. Theme-aware, keyboard-contained, narrow-screen and plain-text fallback support. Independently disableable. Remark: local browser checks passed; all seven source workflows and installation verification pending.",
-    "completed": false,
+    "title": "P1 · Done — Expand and restore the askbar\n\nKeep one mounted draft editor; enlarge for tables and multiline formatted input, retain attachments/selection, restore with icon or Escape. Theme-aware, keyboard-contained, narrow-screen and plain-text fallback support. Independently disableable. Remark: local browser checks passed; all seven source workflows and installation verification pending.\n\nVerified 27 November 2026: enabled/disabled, draft/selection/attachment retention, responsive layout, compact and dense rail navigation, generation/cancel/idle-chat states, saved Appearance preference and reduced motion passed browser tests. All seven workflows passed at de76c3f. Installed UI checked without AI invocation or chat submission; verified source copied into the OneDrive migration code kit. Initial compact-layout regression was fixed before installation. CI: https://github.com/abhijitxroy/aimate/actions/runs/45926370114",
+    "completed": true,
     "type": "feature",
     "priority": "P1"
   },
   {
     "id": "message-rail-compact-spacing",
-    "title": "P2 · WIP — Compact message navigation markers\n\nExtend the existing navigation rail with a narrow strip and ten-pixel marker rhythm. Short chats must not spread markers across the whole screen; dense chats stay within the gutter. Retain previews, bookmarks, keyboard navigation and click-to-jump. Remark: local browser checks passed; source workflows and installed verification pending.",
-    "completed": false,
+    "title": "P2 · Done — Compact message navigation markers\n\nExtend the existing navigation rail with a narrow strip and ten-pixel marker rhythm. Short chats must not spread markers across the whole screen; dense chats stay within the gutter. Retain previews, bookmarks, keyboard navigation and click-to-jump. Remark: local browser checks passed; source workflows and installed verification pending.\n\nVerified 27 November 2026: enabled/disabled, draft/selection/attachment retention, responsive layout, compact and dense rail navigation, generation/cancel/idle-chat states, saved Appearance preference and reduced motion passed browser tests. All seven workflows passed at de76c3f. Installed UI checked without AI invocation or chat submission; verified source copied into the OneDrive migration code kit. Initial compact-layout regression was fixed before installation. CI: https://github.com/abhijitxroy/aimate/actions/runs/45926370114",
+    "completed": true,
     "type": "enhancement",
     "priority": "P2"
   },
   {
     "id": "askbar-reply-glow",
-    "title": "P2 · WIP — Subtle askbar glow during generation\n\nTheme-aware border light while the visible chat prepares a reply; stop immediately on completion/cancel/error or idle-chat navigation. Appearance off switch persists per browser. Reduced motion uses a steady border; hidden tabs pause animation. No glow on file import alone, no flashing/rotating gradients; independently disableable. Remark: implementation under browser/CI validation; not completed yet.",
-    "completed": false,
+    "title": "P2 · Done — Subtle askbar glow during generation\n\nTheme-aware border light while the visible chat prepares a reply; stop immediately on completion/cancel/error or idle-chat navigation. Appearance off switch persists per browser. Reduced motion uses a steady border; hidden tabs pause animation. No glow on file import alone, no flashing/rotating gradients; independently disableable. Remark: implementation under browser/CI validation; not completed yet.\n\nVerified 27 November 2026: enabled/disabled, draft/selection/attachment retention, responsive layout, compact and dense rail navigation, generation/cancel/idle-chat states, saved Appearance preference and reduced motion passed browser tests. All seven workflows passed at de76c3f. Installed UI checked without AI invocation or chat submission; verified source copied into the OneDrive migration code kit. Initial compact-layout regression was fixed before installation. CI: https://github.com/abhijitxroy/aimate/actions/runs/45926370114",
+    "completed": true,
     "type": "enhancement",
     "priority": "P2"
   }
