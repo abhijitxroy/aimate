@@ -378,6 +378,21 @@ class BrowserRegressionTests(unittest.TestCase):
         self.page.evaluate("window.AiMateFeatures={latestModelChoices:false};window.AiMateManualModels.update()")
         self.expect(self.page.locator("#modelMode [data-manual-models] option")).to_have_count(8)
 
+    def test_latest_model_menu_bootstraps_when_script_loads_after_state(self):
+        response=self.page.request.put(self.url+"/api/settings/ai",
+            headers={"X-CSRF-Token":self.page.evaluate("csrf")},data={
+                "provider":"bedrock","model":"us.anthropic.claude-haiku-5-5",
+                "analysis_model":"us.anthropic.claude-sonnet-5-5","api_key":"synthetic-fixture",
+                "region":"us-east-2","bedrock_mode":"advanced","bedrock_endpoint":"runtime"})
+        self.assertEqual(response.status,200,response.text())
+        self.page.evaluate("async()=>{await refreshState();await window.AiMateManualModels.update();}")
+        self.expect(self.page.locator("#modelMode [data-manual-models] option")).to_have_count(4)
+        self.page.evaluate("document.querySelector('#modelMode [data-manual-models]').remove()")
+        # State is already loaded. A newly arriving module must bootstrap itself
+        # without relying on another state event or the minute-long timer.
+        self.page.add_script_tag(url=self.url+"/static/manual_models_ui.js?late-startup")
+        self.expect(self.page.locator("#modelMode [data-manual-models] option")).to_have_count(4)
+
     def test_reply_glow_real_stream_stops_and_optional_module_can_be_disabled(self):
         self.page.locator("#newChat").click()
         self.page.locator("#question").fill("Glow held fixture")

@@ -59,5 +59,10 @@ window.AiMateManualModels = (() => {
   }
   document.addEventListener("aimate:state", update);
   window.addEventListener("aimate-import-state", update);
+  // On a fast local backend, initial state can arrive before this deferred
+  // script. Do not depend exclusively on a state event that already happened.
+  queueMicrotask(() => {
+    if (!generation && config.ai?.provider === "bedrock" && !document.querySelector("#workspace").hidden) void update();
+  });
   return Object.freeze({update,syncActive});
 })();
