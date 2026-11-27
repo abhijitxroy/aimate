@@ -190,7 +190,10 @@ Jira Simple setup needs only the site URL and a Data Center PAT. Save & connect 
 
 On Windows, service connections validate TLS against the Windows certificate store.
 The launcher refreshes Windows PAC direct routes for saved service URLs on every
-start, including when `HTTPS_PROXY` or `ALL_PROXY` was inherited. Existing proxy
+start, including when `HTTPS_PROXY` or `ALL_PROXY` was inherited. Proxy environment
+variables are temporarily cleared while reading Windows' system routes, because
+modern .NET otherwise reports the inherited proxy as the system route. The
+variables are restored even if route resolution fails. Existing proxy
 values and `NO_PROXY` entries are preserved. Restart `run_aimate.ps1` after adding
 a new intranet host so its route is refreshed. Set `AIMATE_PROXY_ROUTING=0` to
 disable this optional module and use an explicitly managed environment unchanged.

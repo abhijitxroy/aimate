@@ -1,4 +1,27 @@
 # Optional Windows launch-time routing; never changes stored credentials or TLS.
+function Get-AiMateSystemProxyRoute {
+    param([uri]$Target, [scriptblock]$ProxyFactory)
+    # Modern .NET otherwise treats inherited proxy variables as the "system" route.
+    $names = @("HTTPS_PROXY", "HTTP_PROXY", "ALL_PROXY", "NO_PROXY")
+    $previous = @{}
+    try {
+        foreach ($name in $names) {
+            $previous[$name] = [Environment]::GetEnvironmentVariable($name, "Process")
+            [Environment]::SetEnvironmentVariable($name, $null, "Process")
+        }
+        $resolver = if ($ProxyFactory) { & $ProxyFactory } else {
+            [System.Net.WebRequest]::GetSystemWebProxy()
+        }
+        return $resolver.GetProxy($Target)
+    } finally {
+        foreach ($name in $names) {
+            if ($previous.ContainsKey($name)) {
+                [Environment]::SetEnvironmentVariable($name, $previous[$name], "Process")
+            }
+        }
+    }
+}
+
 function Get-AiMateProxyRoutes {
     param(
         [string[]]$ConnectionUrls = @(),
@@ -12,8 +35,7 @@ function Get-AiMateProxyRoutes {
         return [pscustomobject]@{ HttpsProxy = $HttpsProxy; NoProxy = $NoProxy }
     }
     if (-not $ResolveProxy) {
-        $resolver = [System.Net.WebRequest]::GetSystemWebProxy()
-        $ResolveProxy = { param($target) $resolver.GetProxy($target) }.GetNewClosure()
+        $ResolveProxy = { param($target) Get-AiMateSystemProxyRoute -Target $target }
     }
     $selectedProxy = $HttpsProxy
     if (-not $HttpsProxy -and -not $AllProxy) {
